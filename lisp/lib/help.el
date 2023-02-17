@@ -698,16 +698,11 @@ config blocks in your private config."
   (cond ((fboundp 'consult--grep)
          (consult--grep
           prompt
-          (lambda
-            (input)
-            (unwind-protect
-                (progn
-                  (defadvice! consult--command-split-add-dirs-a (fn &rest args)
-                    "Avoid converting dirs to string and back"
-                    :around 'consult--command-split
-                    (append (apply fn args) dirs))
-                  (funcall (consult--ripgrep-make-builder) input))
-              (advice-remove 'consult--command-split 'consult--command-split-add-dirs-a)))
+          (lambda (input)
+            ;; PERF: avoid converting dirs to string and back when adding them to ripgrep args.
+            (letf! (defun consult--command-split (fn &rest args)
+                     (append (apply consult--command-split args) dirs))
+              (funcall (consult--ripgrep-make-builder) input)))
           data-directory query))
         ((fboundp 'counsel-rg)
          (let ((counsel-rg-base-command
