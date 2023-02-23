@@ -161,7 +161,7 @@
   "Current version of Doom Emacs core.")
 
 ;; DEPRECATED: Remove these when the modules are moved out of core.
-(defconst doom-modules-version "22.10.0-pre"
+(defconst doom-modules-version "23.02.0-pre"
   "Current version of Doom Emacs.")
 
 (defvar doom-init-time nil
@@ -487,7 +487,7 @@ All valid contexts:
   sandbox    -- This session was launched from Doom's sandbox.
   packages   -- when packagedefs are being read
   reload     -- while reloading doom")
-(put 'doom-context 'valid-values '(cli compile eval init modules packages reload sandbox))
+(put 'doom-context 'valid-values '(cli compile eval init modules packages reload doctor sandbox))
 (put 'doom-context 'risky-local-variable t)
 
 (defun doom-context--check (context)
