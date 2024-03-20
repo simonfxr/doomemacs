@@ -107,7 +107,7 @@ orderless."
         ;; find-file etc.
         completion-category-overrides '((file (styles +vertico-basic-remote orderless partial-completion)))
         orderless-style-dispatchers '(+vertico-orderless-dispatch)
-        orderless-component-separator "[ &]")
+        orderless-component-separator #'orderless-escapable-split-on-space)
   ;; ...otherwise find-file gets different highlighting than other commands
   (set-face-attribute 'completions-first-difference nil :inherit nil))
 
@@ -250,6 +250,11 @@ orderless."
   :when (and (modulep! :checkers syntax)
              (not (modulep! :checkers syntax +flymake)))
   :after (consult flycheck))
+
+(use-package! consult-yasnippet
+  :when (modulep! :editor snippets)
+  :defer t
+  :init (map! [remap yas-insert-snippet] #'consult-yasnippet))
 
 
 (use-package! embark
