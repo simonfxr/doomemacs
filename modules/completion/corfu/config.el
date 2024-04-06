@@ -28,7 +28,8 @@ use the minibuffer such as `query-replace'.")
               ('aggressive
                (not (or (bound-and-true-p mct--active)
                         (bound-and-true-p vertico--input)
-                        (eq (current-local-map) read-passwd-map)
+                        (and (featurep 'auth-source)
+                             (eq (current-local-map) read-passwd-map))
                         (and (featurep 'helm-core) (helm--alive-p))
                         (and (featurep 'ido) (ido-active))
                         (where-is-internal 'minibuffer-complete
@@ -102,10 +103,10 @@ use the minibuffer such as `query-replace'.")
 (use-package! cape
   :defer t
   :init
-  (add-hook! prog-mode
+  (add-hook! 'prog-mode-hook
     (defun +corfu-add-cape-file-h ()
       (add-hook 'completion-at-point-functions #'cape-file -10 t)))
-  (add-hook! (org-mode markdown-mode)
+  (add-hook! '(org-mode-hook markdown-mode-hook)
     (defun +corfu-add-cape-elisp-block-h ()
       (add-hook 'completion-at-point-functions #'cape-elisp-block 0 t)))
   ;; Enable Dabbrev completion basically everywhere as a fallback.
@@ -114,8 +115,12 @@ use the minibuffer such as `query-replace'.")
     ;; Set up `cape-dabbrev' options.
     (defun +dabbrev-friend-buffer-p (other-buffer)
       (< (buffer-size other-buffer) +corfu-buffer-scanning-size-limit))
-    (add-hook! (prog-mode text-mode conf-mode comint-mode minibuffer-setup
-                          eshell-mode)
+    (add-hook! '(prog-mode-hook
+                 text-mode-hook
+                 conf-mode-hook
+                 comint-mode-hook
+                 minibuffer-setup-hook
+                 eshell-mode-hook)
       (defun +corfu-add-cape-dabbrev-h ()
         (add-hook 'completion-at-point-functions #'cape-dabbrev 20 t)))
     (after! dabbrev
