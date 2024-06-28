@@ -189,9 +189,9 @@ Targets `vimmish-fold', `hideshow', `ts-fold' and `outline' folds."
            (+fold--ensure-hideshow-mode)
            (if (integerp level)
                (progn
-                 (outline-hide-sublevels (max 1 (1- level)))
+                 (outline-hide-sublevels (max 1 level))
                  (hs-life-goes-on
-                  (hs-hide-level-recursive (1- level) (point-min) (point-max))))
+                  (hs-hide-level-recursive level (point-min) (point-max))))
              (hs-show-all)
              (when (fboundp 'outline-show-all)
                (outline-show-all)))))))
@@ -211,15 +211,16 @@ Targets `vimmish-fold', `hideshow', `ts-fold' and `outline' folds."
         (hs-life-goes-on
          (if (integerp level)
              (progn
-               (outline--show-headings-up-to-level (1+ level))
-               (hs-hide-level-recursive (1- level) (point-min) (point-max)))
+               (outline--show-headings-up-to-level level)
+               (hs-hide-level-recursive level (point-min) (point-max)))
            (hs-hide-all)
            (when (fboundp 'outline-hide-sublevels)
              (outline-show-only-headings))))))))
 
 ;;;###autoload
 (defun +fold/next (count)
-  "Jump to the next vimish fold, outline heading or folded region."
+  "Jump to the next vimish fold, folded outline heading or folded
+region."
   (interactive "p")
   (cl-loop with orig-pt = (point)
            for fn
@@ -233,6 +234,24 @@ Targets `vimmish-fold', `hideshow', `ts-fold' and `outline' folds."
                           (dotimes (_ count)
                             (vimish-fold-previous-fold (- count)))))
                       (if (/= (point) orig-pt) (point)))
+                    (lambda ()
+                      (when (or (bound-and-true-p outline-minor-mode)
+                                (derived-mode-p 'outline-mode))
+                        (cl-destructuring-bind
+                            (count fn bound-fn)
+                            (if (> count 0)
+                                (list count
+                                      #'outline-next-visible-heading #'eobp)
+                              (list (- count)
+                                    #'outline-previous-visible-heading #'bobp))
+                          (dotimes (_ count)
+                            (funcall fn 1)
+                            (outline-end-of-heading)
+                            (while (and (not (funcall bound-fn))
+                                        (not (outline-invisible-p)))
+                              (funcall fn 1)
+                              (outline-end-of-heading))))
+                        (point)))
                     (lambda ()
                       ;; ts-fold does not define movement functions so we need to do it ourselves
                       (when (+fold--ts-fold-p)
