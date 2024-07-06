@@ -46,7 +46,8 @@
                 (doom-lookup-key (kbd "TAB") overriding-terminal-local-map))
             cmd)
            ,@(when (modulep! :editor snippets)
-               '(((+yas-active-p)
+               '(((memq (bound-and-true-p yas--active-field-overlay)
+                        (overlays-in (1- (point)) (1+ (point))))
                   #'yas-next-field-or-maybe-expand)
                  ((yas-maybe-expand-abbrev-key-filter 'yas-expand)
                   #'yas-expand)))
@@ -379,8 +380,8 @@
         :desc "New named workspace"       "N"   #'+workspace/new-named
         :desc "Load workspace from file"  "l"   #'+workspace/load
         :desc "Save workspace to file"    "s"   #'+workspace/save
-        :desc "Delete session"            "x"   #'+workspace/kill-session
-        :desc "Delete this workspace"     "d"   #'+workspace/delete
+        :desc "Kill session"              "x"   #'+workspace/kill-session
+        :desc "Kill this workspace"       "d"   #'+workspace/kill
         :desc "Rename workspace"          "r"   #'+workspace/rename
         :desc "Restore last session"      "R"   #'+workspace/restore-last-session
         :desc "Next workspace"            "]"   #'+workspace/switch-right
