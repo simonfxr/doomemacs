@@ -205,6 +205,9 @@ Is relative to `org-directory', unless it is absolute. Is used in Doom's default
         ;; Our :lang common-lisp module uses sly, so...
         org-babel-lisp-eval-fn #'sly-eval)
 
+  ;; A shorter alias for markdown code blocks.
+  (add-to-list 'org-src-lang-modes '("md" . markdown))
+
   ;; I prefer C-c C-c over C-c ' (more consistent)
   (define-key org-src-mode-map (kbd "C-c C-c") #'org-edit-src-exit)
 
@@ -747,15 +750,6 @@ mutating hooks on exported output, like formatters."
     :before-while #'org-fix-tags-on-the-fly
     org-auto-align-tags)
 
-  (defadvice! +org--recenter-after-follow-link-a (&rest _args)
-    "Recenter after following a link, but only internal or file links."
-    :after '(org-footnote-action
-             org-follow-timestamp-link
-             org-link-open-as-file
-             org-link-search)
-    (when (get-buffer-window)
-      (recenter)))
-
   (defadvice! +org--strip-properties-from-outline-a (fn &rest args)
     "Fix variable height faces in eldoc breadcrumbs."
     :around #'org-format-outline-path
@@ -781,26 +775,14 @@ mutating hooks on exported output, like formatters."
         (let (persp-autokill-buffer-on-remove)
           (persp-remove-buffer org-agenda-new-buffers
                                (get-current-persp)
-                               nil))))
-    (defun +org-defer-mode-in-agenda-buffers-h ()
-      "`org-agenda' opens temporary, incomplete org-mode buffers.
-I've disabled a lot of org-mode's startup processes for these invisible buffers
-to speed them up (in `+org--exclude-agenda-buffers-from-recentf-a'). However, if
-the user tries to visit one of these buffers they'll see a gimped, half-broken
-org buffer. To avoid that, restart `org-mode' when they're switched to so they
-can grow up to be fully-fledged org-mode buffers."
-      (dolist (buffer org-agenda-new-buffers)
-        (when (buffer-live-p buffer)      ; Ensure buffer is not killed
-          (with-current-buffer buffer
-            (add-hook 'doom-switch-buffer-hook #'+org--restart-mode-h
-                      nil 'local))))))
+                               nil)))))
 
   (defadvice! +org--restart-mode-before-indirect-buffer-a (&optional buffer _)
     "Restart `org-mode' in buffers in which the mode has been deferred (see
 `+org-defer-mode-in-agenda-buffers-h') before they become the base buffer for an
-indirect buffer. This ensures that the buffer is fully functional not only when
-the *user* visits it, but also when some code interacts with it via an indirect
-buffer as done, e.g., by `org-capture'."
+indirect org-cpature buffer. This ensures that the buffer is fully functional
+not only when the *user* visits it, but also when org-capture interacts with it
+via an indirect buffer."
     :before #'org-capture-get-indirect-buffer
     (with-current-buffer (or buffer (current-buffer))
       (when (memq #'+org--restart-mode-h doom-switch-buffer-hook)
@@ -808,7 +790,14 @@ buffer as done, e.g., by `org-capture'."
 
   (defvar recentf-exclude)
   (defadvice! +org--optimize-backgrounded-agenda-buffers-a (fn file)
-    "Prevent temporarily opened agenda buffers from polluting recentf."
+    "Disable a lot of org-mode's startup processes for temporary agenda buffers.
+
+    This includes preventing them from polluting recentf.
+
+    However, if the user tries to visit one of these buffers they'll see a
+    gimped, half-broken org buffer. To avoid that, install a hook to restart
+    `org-mode' when they're switched to so they can grow up to be fully-fledged
+    org-mode buffers."
     :around #'org-get-agenda-file-buffer
     (let ((recentf-exclude (list (lambda (_file) t)))
           (doom-inhibit-large-file-detection t)
@@ -817,7 +806,12 @@ buffer as done, e.g., by `org-capture'."
           vc-handled-backends
           org-mode-hook
           find-file-hook)
-      (funcall fn file)))
+      (let ((buf (funcall fn file)))
+        (if buf
+         (with-current-buffer buf
+            (add-hook 'doom-switch-buffer-hook #'+org--restart-mode-h
+                      nil 'local)))
+       buf)))
 
   (defadvice! +org--fix-inconsistent-uuidgen-case-a (uuid)
     "Ensure uuidgen is always lowercase (consistent) regardless of system."
