@@ -814,7 +814,8 @@ via an indirect buffer."
        buf)))
 
   (defadvice! +org--fix-inconsistent-uuidgen-case-a (uuid)
-    "Ensure uuidgen is always lowercase (consistent) regardless of system."
+    "Ensure uuidgen is always lowercase (consistent) regardless of system.
+See https://lists.gnu.org/archive/html/emacs-orgmode/2019-07/msg00081.html."
     :filter-return #'org-id-new
     (if (eq org-id-method 'uuid)
         (downcase uuid)
@@ -988,6 +989,7 @@ between the two."
          "s" #'org-store-link
          "S" #'org-insert-last-stored-link
          "t" #'org-toggle-link-display
+         "y" #'+org/yank-link
          (:when (modulep! :os macos)
           "g" #'org-mac-link-get-link))
         (:prefix ("P" . "publish")
@@ -1125,6 +1127,15 @@ between the two."
   :hook (org-mode . org-eldoc-load)
   :init (setq org-eldoc-breadcrumb-separator " → ")
   :config
+  (defadvice! +org-eldoc--display-link-at-point-a (&rest _)
+    "Display help for doom-*: links in minibuffer when cursor/mouse is over it."
+    :before-until #'org-eldoc-documentation-function
+    (if-let ((url (thing-at-point 'url t)))
+        (format "LINK: %s" url)
+      (and (eq (get-text-property (point) 'help-echo)
+               #'+org-link-doom--help-echo-from-textprop)
+           (+org-link-doom--help-echo-from-textprop nil (current-buffer) (point)))))
+
   ;; HACK Fix #2972: infinite recursion when eldoc kicks in 'org' or 'python'
   ;;   src blocks.
   ;; TODO Should be reported upstream!
