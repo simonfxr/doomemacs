@@ -12,19 +12,36 @@ Emacs.")
 (defvar doom-projectile-cache-purge-non-projects nil
   "If non-nil, non-projects are purged from the cache on `kill-emacs-hook'.")
 
-(defvar doom-projectile-fd-binary
-  (cl-find-if #'executable-find (list "fdfind" "fd"))
-  "The filename of the `fd' executable. On some distros it's 'fdfind' (ubuntu,
-debian, and derivatives). On most it's 'fd'.")
+(define-obsolete-variable-alias 'doom-projectile-fd-binary 'doom-fd-executable "v3.0.0")
+(defvar doom-fd-executable (cl-find-if #'executable-find (list "fdfind" "fd"))
+  "The filename of the fd executable.
 
-(defvar doom-projects--fd-version nil)
+On some distros it's fdfind (ubuntu, debian, and derivatives). On most it's fd.
+Is nil if no executable is found in your PATH during startup.")
+
+(defvar doom-ripgrep-executable (executable-find "rg")
+  "The filename of the Ripgrep executable.
+
+Is nil if no executable is found in your PATH during startup.")
 
 
 ;;
 ;;; Packages
 
-(after! project
-  (setq project-list-file (file-name-concat doom-data-dir "projects")))
+(use-package! project
+  :defer t
+  :init
+  (setq project-list-file (file-name-concat doom-profile-state-dir "projects"))
+  :config
+  ;; Not valid vc backends, but I use it to inform (global) file index
+  ;; exclusions below and elsewhere.
+  (add-to-list 'project-vc-backend-markers-alist '(Jujutsu . ".jj"))
+  (add-to-list 'project-vc-backend-markers-alist '(Sapling . ".sl"))
+  (add-to-list 'project-vc-extra-root-markers ".jj")
+
+  ;; TODO: Advice or add command for project-wide `find-sibling-file'.
+  )
+
 
 ;; DEPRECATED: Will be replaced with project.el
 (use-package! projectile
@@ -44,7 +61,8 @@ debian, and derivatives). On most it's 'fd'.")
         projectile-kill-buffers-filter 'kill-only-files
         projectile-known-projects-file (concat doom-cache-dir "projectile.projects")
         projectile-ignored-projects '("~/")
-        projectile-ignored-project-function #'doom-project-ignored-p)
+        projectile-ignored-project-function #'doom-project-ignored-p
+        projectile-fd-executable doom-fd-executable)
 
   (global-set-key [remap evil-jump-to-tag] #'projectile-find-tag)
   (global-set-key [remap find-tag]         #'projectile-find-tag)
@@ -81,19 +99,15 @@ debian, and derivatives). On most it's 'fd'.")
   ;;
   ;; In the interest of performance, we reduce the number of project root marker
   ;; files/directories projectile searches for when resolving the project root.
-  (setq projectile-project-root-files-bottom-up
-        (append '(".projectile"  ; projectile's root marker
-                  ".project"     ; doom project marker
-                  ".git")        ; Git VCS root dir
-                (when (executable-find "hg")
-                  '(".hg"))      ; Mercurial VCS root dir
-                (when (executable-find "bzr")
-                  '(".bzr")))    ; Bazaar VCS root dir
-        ;; This will be filled by other modules. We build this list manually so
-        ;; projectile doesn't perform so many file checks every time it resolves
-        ;; a project's root -- particularly when a file has no project.
-        projectile-project-root-files '()
+  ;;
+  ;; These will be filled by other modules. We build this list manually so
+  ;; projectile doesn't perform so many file checks every time it resolves a
+  ;; project's root -- particularly when a file has no project.
+  (setq projectile-project-root-files '()
         projectile-project-root-files-top-down-recurring '("Makefile"))
+
+  ;; Adds a more editor/plugin-agnostic project marker.
+  (add-to-list 'projectile-project-root-files-bottom-up ".project")
 
   (push (abbreviate-file-name doom-local-dir) projectile-globally-ignored-directories)
 
@@ -104,8 +118,9 @@ debian, and derivatives). On most it's 'fd'.")
   ;; Support the more generic .project files as an alternative to .projectile
   (defadvice! doom--projectile-dirconfig-file-a ()
     :override #'projectile-dirconfig-file
-    (cond ((file-exists-p! (or ".projectile" ".project") (projectile-project-root)))
-          ((expand-file-name ".project" (projectile-project-root)))))
+    (let ((proot (projectile-project-root)))
+      (cond ((file-exists-p! (or projectile-dirconfig-file ".project") proot))
+            ((expand-file-name ".project" proot)))))
 
   ;; Disable commands that won't work, as is, and that Doom already provides a
   ;; better alternative for.
@@ -150,14 +165,15 @@ c) are not valid projectile projects."
                  and do (remhash proot projectile-project-type-cache))
         (projectile-serialize-cache))))
 
-  ;; Some MSYS utilities auto expanded the `/' path separator, so we need to prevent it.
+  ;; HACK: Some MSYS utilities auto expanded the `/' path separator, so we need
+  ;;   to prevent it.
   (when doom--system-windows-p
     (setenv "MSYS_NO_PATHCONV" "1") ; Fix path in Git Bash
     (setenv "MSYS2_ARG_CONV_EXCL" "--path-separator")) ; Fix path in MSYS2
 
-  ;; HACK Don't rely on VCS-specific commands to generate our file lists. That's
-  ;;      7 commands to maintain, versus the more generic, reliable and
-  ;;      performant `fd' or `ripgrep'.
+  ;; HACK: Don't rely on VCS-specific commands to generate our file lists.
+  ;;   That's 7 commands to maintain, versus the more generic, reliable, and
+  ;;   performant `fd' or `ripgrep'.
   (defadvice! doom--only-use-generic-command-a (fn vcs)
     "Only use `projectile-generic-command' for indexing project files.
 And if it's a function, evaluate it."
@@ -166,41 +182,59 @@ And if it's a function, evaluate it."
              (not (file-remote-p default-directory)))
         (funcall projectile-generic-command vcs)
       (let ((projectile-git-submodule-command
-             (get 'projectile-git-submodule-command 'initial-value)))
+             (or projectile-git-submodule-command
+                 (get 'projectile-git-submodule-command 'initial-value))))
         (funcall fn vcs))))
 
-  ;; `projectile-generic-command' doesn't typically support a function, but my
-  ;; `doom--only-use-generic-command-a' advice allows this. I do it this way so
-  ;; that projectile can adapt to remote systems (over TRAMP), rather then look
-  ;; for fd/ripgrep on the remote system simply because it exists on the host.
-  ;; It's faster too.
+  ;; HACK: `projectile-generic-command' doesn't typically support a function,
+  ;;   but my `doom--only-use-generic-command-a' advice allows this. I do it
+  ;;   this way to make it easier for folks to undo the change (if not set to a
+  ;;   function, projectile will revert to default behavior).
   (put 'projectile-git-submodule-command 'initial-value projectile-git-submodule-command)
   (setq projectile-git-submodule-command nil
+        ;; Include and follow symlinks in file listings.
+        projectile-git-fd-args (concat "-L -tl " projectile-git-fd-args " --ignore-file .project")
         projectile-indexing-method 'hybrid
         projectile-generic-command
         (lambda (_)
-          ;; If fd exists, use it for git and generic projects. fd is a rust
-          ;; program that is significantly faster than git ls-files or find, and
-          ;; it respects .gitignore. This is recommended in the projectile docs.
+          ;; If fd or ripgrep exists, use it to produce file listings for
+          ;; projectile commands. fd is a rust program that is significantly
+          ;; faster than git ls-files, find, or the various VCS commands
+          ;; projectile is configured to use. Plus, it respects .gitignore.
           (cond
            ((when-let*
-                ((bin (if (ignore-errors (file-remote-p default-directory nil t))
-                          (cl-find-if (doom-rpartial #'executable-find t)
-                                      (list "fdfind" "fd"))
-                        doom-projectile-fd-binary))
+                ((doom-fd-executable)
+                 (projectile-git-use-fd)
                  ;; REVIEW Temporary fix for #6618. Improve me later.
-                 (version (with-memoization doom-projects--fd-version
-                            (cadr (split-string (cdr (doom-call-process bin "--version"))
+                 (version (with-memoization (get 'doom-fd-executable 'version)
+                            (cadr (split-string (cdr (doom-call-process doom-fd-executable "--version"))
                                                 " " t))))
                  ((ignore-errors (version-to-list version))))
-                (concat (format "%s . -0 -H --color=never --type file --type symlink --follow --exclude .git %s"
-                                bin (if (version< version "8.3.0")
-                                        "" "--strip-cwd-prefix"))
-                        (if doom--system-windows-p " --path-separator=/"))))
+              (string-join
+               (delq
+                nil (list doom-fd-executable "."
+                          (if (version< version "8.3.0")
+                              (replace-regexp-in-string "--strip-cwd-prefix" "" projectile-git-fd-args t t)
+                            projectile-git-fd-args)
+                          (when project-vc-backend-markers-alist
+                            (mapconcat (fn! (format "-E %s" (shell-quote-argument (cdr %))))
+                                       project-vc-backend-markers-alist
+                                       " "))
+                          (if doom--system-windows-p " --path-separator=/" "")))
+               " ")))
            ;; Otherwise, resort to ripgrep, which is also faster than find
-           ((executable-find "rg" t)
-            (concat "rg -0 --files --follow --color=never --hidden -g!.git"
-                    (if doom--system-windows-p " --path-separator=/")))
+           (doom-ripgrep-executable
+            (string-join
+             (delq
+              nil (list doom-ripgrep-executable
+                        "-0 --files --follow --color=never --hidden"
+                        (when project-vc-backend-markers-alist
+                          (mapconcat (fn! (format "-g!%s" (shell-quote-argument (cdr %))))
+                                     project-vc-backend-markers-alist
+                                     " "))
+                        (if doom--system-windows-p " --path-separator=/")))
+             " "))
+           ((not doom--system-windows-p) "find . -type f | cut -c3- | tr '\\n' '\\0'")
            ("find . -type f -print0"))))
 
   (defadvice! doom--projectile-default-generic-command-a (fn &rest args)
