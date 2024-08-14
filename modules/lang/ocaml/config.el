@@ -13,6 +13,13 @@
 
 
 (after! tuareg
+  (set-formatter! 'ocamlformat
+    '("ocamlformat" "-" "--name" filepath "--enable-outside-detected-project"
+      (if (locate-dominating-file default-directory ".ocamlformat")
+          (pcase (apheleia-formatters-extension-p "eliom" "eliomi")
+            ("eliom"  '("--impl"))
+            ("eliomi" '("--intf")))
+        '("--profile=ocamlformat"))))
   ;; tuareg-mode has the prettify symbols itself
   (set-ligatures! 'tuareg-mode :alist
     (append tuareg-prettify-symbols-basic-alist
@@ -91,50 +98,39 @@
 
 
 (use-package! ocp-indent
-  ;; must be careful to always defer this, it has autoloads that adds hooks
-  ;; which we do not want if the executable can't be found
-  :hook (tuareg-mode-local-vars . +ocaml-init-ocp-indent-h)
+  :hook (tuareg-mode-local-vars . ocp-setup-indent)
+  :hook (caml-mode-local-vars . ocp-indent-caml-mode-setup)
+  :init
+  (defadvice! +ocaml--init-ocp-indent-maybe-h (fn &rest args)
+    "Run `ocp-setup-indent' only if the ocp-indent binary is found."
+    :around #'ocp-setup-indent
+    (when (executable-find ocp-indent-path)
+      (apply fn args)))
   :config
-  (defun +ocaml-init-ocp-indent-h ()
-    "Run `ocp-setup-indent', so long as the ocp-indent binary exists."
-    (when (executable-find "ocp-indent")
-      (ocp-setup-indent))))
+  ;; HACK: The package adds these hooks, but they're redundant (even
+  ;;   counter-productive) with the hooks I add above.
+  (remove-hook 'tuareg-mode-hook #'ocp-setup-indent)
+  (remove-hook 'caml-mode-hook #'ocp-indent-caml-mode-setup))
 
-
-(use-package! ocamlformat
-  :when (modulep! :editor format)
-  :commands ocamlformat
-  :hook (tuareg-mode-local-vars . +ocaml-init-ocamlformat-h)
-  :config
-  ;; TODO Fix region-based formatting support
-  (defun +ocaml-init-ocamlformat-h ()
-    (setq-local +format-with 'ocp-indent)
-    (when (and (executable-find "ocamlformat")
-               (locate-dominating-file default-directory ".ocamlformat"))
-      (when buffer-file-name
-        (let ((ext (file-name-extension buffer-file-name t)))
-          (cond ((equal ext ".eliom")
-                 (setq-local ocamlformat-file-kind 'implementation))
-                ((equal ext ".eliomi")
-                 (setq-local ocamlformat-file-kind 'interface)))))
-      (setq-local +format-with 'ocamlformat))))
 
 (use-package! opam-switch-mode
-  :hook (tuareg-mode-local-vars . +ocaml-init-opam-switch-h)
-  :init
-  (map! :localleader
+  :hook (tuareg-mode-local-vars . opam-switch-mode)
+  :preface
+  (map! :after tuareg
+        :localleader
         :map tuareg-mode-map
         "w" #'opam-switch-set-switch)
-
-  (defun +ocaml-init-opam-switch-h ()
+  :init
+  (defadvice! +ocaml--init-opam-switch-mode-maybe-h (fn &rest args)
     "Activate `opam-switch-mode' if the opam executable exists."
-    (when (executable-find "opam")
-      (opam-switch-mode)))
+    :around #'opam-switch-mode
+    (when (executable-find opam-switch-program-name)
+      (apply fn args)))
   :config
   ;; Use opam to set environment
   (setq tuareg-opam-insinuate t)
   (opam-switch-set-switch (tuareg-opam-current-compiler)))
 
-;; Tree sitter
+
 (eval-when! (modulep! +tree-sitter)
-  (add-hook! 'tuareg-mode-local-vars-hook #'tree-sitter!))
+  (add-hook 'tuareg-mode-local-vars-hook #'tree-sitter!))
