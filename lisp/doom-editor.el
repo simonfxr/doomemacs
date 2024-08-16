@@ -450,6 +450,8 @@ files, so this replace calls to `pp' with the much faster `prin1'."
   ;; REVIEW Suppress byte-compiler warning spawning a *Compile-Log* buffer at
   ;; startup. This can be removed once gilbertw1/better-jumper#2 is merged.
   (defvar better-jumper-local-mode nil)
+  ;; REVIEW: Remove if/when gilbertw1/better-jumper#26 is addressed.
+  (defvaralias 'evil--jumps-jump-command 'evil--jumps-jumping-backard)
   :init
   (global-set-key [remap evil-jump-forward]  #'better-jumper-jump-forward)
   (global-set-key [remap evil-jump-backward] #'better-jumper-jump-backward)
@@ -575,8 +577,8 @@ files, so this replace calls to `pp' with the much faster `prin1'."
        (lambda (button)
          (helpful-variable (button-get button 'apropos-symbol))))))
 
-  (when (> emacs-major-version 28)
-    ;; REVIEW This should be reported upstream to Emacs.
+  ;; DEPRECATED: Remove when support for 29 is dropped.
+  (when (= emacs-major-version 29)
     (defadvice! doom--find-function-search-for-symbol-save-excursion-a (fn &rest args)
       "Suppress cursor movement by `find-function-search-for-symbol'.
 
