@@ -747,7 +747,6 @@
        :desc "Find recent project files"    "r" #'projectile-recentf
        :desc "Run project"                  "R" #'projectile-run-project
        :desc "Save project files"           "s" #'projectile-save-project-buffers
-       :desc "List project todos"           "t" #'magit-todos-list
        :desc "Test project"                 "T" #'projectile-test-project
        :desc "Pop up scratch buffer"        "x" #'doom/open-project-scratch-buffer
        :desc "Switch to scratch buffer"     "X" #'doom/switch-to-project-scratch-buffer
@@ -833,6 +832,7 @@
       (:prefix-map ("t" . "toggle")
        :desc "Big mode"                     "b" #'doom-big-font-mode
        :desc "Fill Column Indicator"        "c" #'global-display-fill-column-indicator-mode
+       :desc "Diff Highlights (Git Gutter)" "d" #'diff-hl-mode
        :desc "Flymake"                      "f" #'flymake-mode
        (:when (and (modulep! :checkers syntax)
                    (not (modulep! :checkers syntax +flymake)))
