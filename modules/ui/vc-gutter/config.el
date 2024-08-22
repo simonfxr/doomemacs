@@ -192,5 +192,21 @@ Respects `diff-hl-disable-on-remote'."
   ;;   triggered from Elisp's buffer API (from what I can tell).
   (defadvice! +vc-gutter--kill-diff-hl-thread-a (&optional buf)
     :before #'kill-buffer
-    (with-current-buffer (or buf (current-buffer))
-      (+vc-gutter--kill-thread t))))
+    (when-let ((buf (ignore-errors (window-normalize-buffer buf))))
+      (with-current-buffer buf
+        (+vc-gutter--kill-thread t))))
+
+  ;; HACK: diff-hl won't be visible in TTY frames, but there's no simple way to
+  ;;   use the fringe in GUI Emacs and use the margin in the terminal *AND*
+  ;;   support daemon users, so we need more than a static `display-graphic-p'
+  ;;   check at startup.
+  (when (modulep! :os tty)
+    (put 'diff-hl-mode 'last (display-graphic-p))
+    (add-hook! 'doom-switch-window-hook
+      (defun +vc-gutter-use-margins-in-tty-h ()
+        (let ((graphic? (display-graphic-p)))
+          (unless (and global-diff-hl-mode (eq (get 'diff-hl-mode 'last) graphic?))
+            (global-diff-hl-mode -1)
+            (diff-hl-margin-mode (if graphic? -1 +1))
+            (global-diff-hl-mode +1)
+            (put 'diff-hl-mode 'last graphic?)))))))
