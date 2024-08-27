@@ -1,5 +1,22 @@
 ;;; editor/fold/config.el -*- lexical-binding: t; -*-
 
+(defcustom +fold-ellipsis " [...] "
+  "The ellipsis to show for ellided regions (folds).
+
+`org-ellipsis', `truncate-string-ellipsis', and `ts-fold-replacement' are set to
+this."
+  :type 'string
+  :group '+fold)
+
+(defface +fold-hideshow-folded-face
+  `((t (:inherit font-lock-comment-face :weight light)))
+  "Face to hightlight `hideshow' overlays."
+  :group 'doom-themes)
+
+
+;;
+;;; Global config
+
 (when (modulep! :editor evil)
   ;; Add vimish-fold, outline-mode & hideshow support to folding commands
   (define-key! 'global
@@ -18,9 +35,15 @@
       "zd" #'vimish-fold-delete
       "zE" #'vimish-fold-delete-all)))
 
+(after! org
+  (setq org-ellipsis +fold-ellipsis))
+
+(after! mule-util
+  (setq truncate-string-ellipsis +fold-ellipsis))
+
 
 ;;
-;; Packages
+;;; Packages
 
 (use-package! hideshow ; built-in
   :commands (hs-toggle-hiding
@@ -91,11 +114,5 @@
   :when (modulep! :tools tree-sitter)
   :after tree-sitter
   :config
-  ;; we want to use our own face so we nullify this one to have no effect and
-  ;; make it more similar to hideshows
-  (custom-set-faces! '(ts-fold-replacement-face :foreground unspecified
-                                                :box nil
-                                                :inherit font-lock-comment-face
-                                                :weight light))
-  (setq ts-fold-replacement "  [...]  ")
+  (setq ts-fold-replacement +fold-ellipsis)
   (global-ts-fold-mode +1))
