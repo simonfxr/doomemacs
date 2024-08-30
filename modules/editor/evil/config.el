@@ -150,15 +150,6 @@ directives. By default, this only recognizes C directives.")
     :after-until #'evil-global-marker-p
     (and (>= char ?2) (<= char ?9)))
 
-  ;; HACK Invoking helpful from evil-ex throws a "No recursive edit is in
-  ;;      progress" error because, between evil-ex and helpful,
-  ;;      `abort-recursive-edit' gets called one time too many.
-  (defadvice! +evil--fix-helpful-key-in-evil-ex-a (key-sequence)
-    :before #'helpful-key
-    (when (evil-ex-p)
-      (run-at-time 0.1 nil #'helpful-key key-sequence)
-      (abort-recursive-edit)))
-
   ;; Make J (evil-join) remove comment delimiters when joining lines.
   (advice-add #'evil-join :around #'+evil-join-a)
 
@@ -464,9 +455,6 @@ directives. By default, this only recognizes C directives.")
        :v  "gR"  #'+eval:replace-region
        ;; Restore these keybinds, since the blacklisted/overwritten gr/gR will
        ;; undo them:
-       (:after helpful
-        :map helpful-mode-map
-        :n "gr" #'helpful-update)
        (:after compile
         :map (compilation-mode-map compilation-minor-mode-map)
         :n "gr" #'recompile)
@@ -571,24 +559,25 @@ directives. By default, this only recognizes C directives.")
       :v "gL" #'evil-lion-right
 
       ;; Emulation of Vim's omni-completion keybinds
-      (:prefix "C-x"
-        (:when (modulep! :completion company)
-         :i "C-l"  #'+company/whole-lines
-         :i "C-k"  #'+company/dict-or-keywords
-         :i "C-f"  #'company-files
-         :i "C-]"  #'company-etags
-         :i "s"    #'company-ispell
-         :i "C-s"  #'company-yasnippet
-         :i "C-o"  #'company-capf
-         :i "C-n"  #'+company/dabbrev
-         :i "C-p"  #'+company/dabbrev-code-previous)
-        (:when (modulep! :completion corfu)
-         :i "C-l"  #'cape-line
-         :i "C-k"  #'cape-keyword
-         :i "C-f"  #'cape-file
-         :i "C-]"  #'complete-tag
-         :i "s"    #'cape-dict
-         :i "C-s"  #'yasnippet-capf
-         :i "C-o"  #'completion-at-point
-         :i "C-n"  #'cape-dabbrev
-         :i "C-p"  #'+corfu/dabbrev-this-buffer)))
+      (:unless evil-disable-insert-state-bindings
+        (:prefix "C-x"
+          (:when (modulep! :completion company)
+           :i "C-l"  #'+company/whole-lines
+           :i "C-k"  #'+company/dict-or-keywords
+           :i "C-f"  #'company-files
+           :i "C-]"  #'company-etags
+           :i "s"    #'company-ispell
+           :i "C-s"  #'company-yasnippet
+           :i "C-o"  #'company-capf
+           :i "C-n"  #'+company/dabbrev
+           :i "C-p"  #'+company/dabbrev-code-previous)
+          (:when (modulep! :completion corfu)
+           :i "C-l"  #'cape-line
+           :i "C-k"  #'cape-keyword
+           :i "C-f"  #'cape-file
+           :i "C-]"  #'complete-tag
+           :i "s"    #'cape-dict
+           :i "C-s"  #'yasnippet-capf
+           :i "C-o"  #'completion-at-point
+           :i "C-n"  #'cape-dabbrev
+           :i "C-p"  #'+corfu/dabbrev-this-buffer))))
