@@ -565,6 +565,42 @@ Continues comments if executed from a commented line."
 ;;
 ;;; Bootstrap configs
 
-(if (featurep 'evil)
-    (load! "+evil")
-  (load! "+emacs"))
+(cond
+ ((modulep! :editor evil)
+  (defun +default-disable-delete-selection-mode-h ()
+    (delete-selection-mode -1))
+  (add-hook 'evil-insert-state-entry-hook #'delete-selection-mode)
+  (add-hook 'evil-insert-state-exit-hook  #'+default-disable-delete-selection-mode-h)
+
+  ;; Make SPC u SPC u [...] possible (#747)
+  (map! :map universal-argument-map
+        :prefix doom-leader-key     "u" #'universal-argument-more
+        :prefix doom-leader-alt-key "u" #'universal-argument-more)
+
+  (when (modulep! +bindings)
+    (load! "+evil-bindings")))
+
+ (t
+  (add-hook 'doom-first-buffer-hook #'delete-selection-mode)
+  (setq shift-select-mode t)
+
+  (use-package! drag-stuff
+    :defer t
+    :init
+    (map! "<M-up>"    #'drag-stuff-up
+          "<M-down>"  #'drag-stuff-down
+          "<M-left>"  #'drag-stuff-left
+          "<M-right>" #'drag-stuff-right))
+
+  (use-package! expand-region
+    :commands (er/contract-region er/mark-symbol er/mark-word)
+    :config
+    (defadvice! doom--quit-expand-region-a (&rest _)
+      "Properly abort an expand-region region."
+      :before '(evil-escape doom/escape)
+      (when (memq last-command '(er/expand-region er/contract-region))
+        (er/contract-region 0))))
+
+  (when (modulep! +bindings)
+    (require 'projectile nil t) ; we need its keybinds immediately
+    (load! "+emacs-bindings"))))

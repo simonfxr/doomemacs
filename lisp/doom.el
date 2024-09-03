@@ -384,8 +384,6 @@ users).")
            (locate-file-internal "calc-loaddefs.el" load-path))
          nil
        (list (rassq 'jka-compr-handler old-value))))
-    ;; Make sure the new value survives any current let-binding.
-    (set-default-toplevel-value 'file-name-handler-alist file-name-handler-alist)
     ;; Remember it so it can be reset where needed.
     (put 'file-name-handler-alist 'initial-value old-value)
     ;; COMPAT: Eventually, Emacs will process any files passed to it via the
@@ -502,10 +500,10 @@ users).")
 
     ;; PERF,UX: site-lisp files are often obnoxiously noisy (emitting output
     ;;   that isn't useful to end-users, like load messages, deprecation
-    ;;   notices, and linter warnings. Displaying these in the minibuffer causes
-    ;;   unnecessary redraws at startup which can impact startup time
-    ;;   drastically and cause flashes of white. It also pollutes the logs. By
-    ;;   suppressing it here, I load it myself, later, in a more controlled way
+    ;;   notices, and linter warnings). Displaying these in the minibuffer
+    ;;   causes unnecessary redraws at startup which can impact startup time
+    ;;   drastically and cause flashes of white. It also pollutes the logs. I
+    ;;   suppress it here and load it myself, later, in a more controlled way
     ;;   (see `startup--load-user-init-file@undo-hacks').
     (put 'site-run-file 'initial-value site-run-file)
     (setq site-run-file nil)
