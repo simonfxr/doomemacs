@@ -81,8 +81,9 @@ Change `$DOOMDIR' with the `--doomdir' option, e.g.
                    . ,(file-name-with-extension (doom-path template-dir doom-module-packages-file)
                                                 ".example.el")))))))
 
-    ;; In case no init.el was present the first time it was loaded.
+    ;; In case no init.el (or cli.el) was present before the config was deployed
     (doom-load (doom-path doom-user-dir doom-module-init-file) t)
+    (doom-load (doom-path doom-user-dir "cli.el") t)
 
     ;; Ask if user would like an envvar file generated
     (if (eq envfile? :no)
@@ -99,15 +100,19 @@ Change `$DOOMDIR' with the `--doomdir' option, e.g.
     ;; Install Doom packages
     (if (eq install? :no)
         (print! (warn "Not installing plugins, as requested"))
-      (print! "Installing plugins")
-      (doom-packages-ensure))
+      (print! (start "Installing plugins"))
+      (print-group! (doom-packages-ensure)))
 
-    (print! "Regenerating autoloads files")
-    (doom-profile-generate)
+    (when (doom-profiles-bootloadable-p)
+      (print! (start "Initializing profile bootstrapper..."))
+      (call! '(profiles sync "--reload")))
+
+    (print! (start "Synchronizing default profile..."))
+    (print-group! (doom-profile-generate))
 
     (if (eq hooks? :no)
         (print! (warn "Not deploying commit-msg and pre-push git hooks, as requested"))
-      (print! "Deploying commit-msg and pre-push git hooks")
+      (print! (start "Deploying commit-msg and pre-push git hooks"))
       (print-group!
        (condition-case e
            (call! `(ci deploy-hooks ,@(if yes? '("--force"))))
@@ -117,7 +122,7 @@ Change `$DOOMDIR' with the `--doomdir' option, e.g.
     (when (file-exists-p "~/.emacs")
       (print! (warn "A ~/.emacs file was detected. This conflicts with Doom and should be deleted!")))
 
-    (print! (success "\nFinished! Doom is ready to go!\n"))
+    (print! (success "Finished! Doom is ready to go!\n"))
     (with-temp-buffer
       (insert-file-contents (doom-path doom-emacs-dir "templates/QUICKSTART_INTRO"))
       (print! "%s" (buffer-string)))))
