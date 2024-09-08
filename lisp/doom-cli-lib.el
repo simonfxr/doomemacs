@@ -180,6 +180,14 @@ If set to nil, only display benchmark if a CLI explicitly requested with a
 non-nil :benchmark property.
 If set to `always', show the benchmark no matter what.")
 
+(defvar doom-cli-shell
+  (pcase (getenv "__DOOMSH")
+    ("ps1" 'pwsh)
+    (_ 'sh))
+  "What shell environment Doom has been started with.
+
+Can be `pwsh' if invoked via bin/doom.ps1, or `sh' in unix environments.")
+
 ;;; Internal variables
 (defvar doom-cli--context nil)
 (defvar doom-cli--exit-code 255)
@@ -1121,19 +1129,27 @@ Emacs' batch library lacks an implementation of the exec system call."
     (error "__DOOMSTEP envvar missing; extended `exit!' functionality will not work"))
   (let* ((pid  (doom-cli-context-pid context))
          (step (doom-cli-context-step context))
+         (shext (if (eq doom-cli-shell 'pwsh) "ps1" "sh"))
          (context-file (format (doom-path temporary-file-directory "doom.%s.%s.context") pid step))
-         (script-file  (format (doom-path temporary-file-directory "doom.%s.%s.sh") pid step))
+         (script-file  (format (doom-path temporary-file-directory "doom.%s.%s.%s") pid step shext))
          (command (if (listp args) (combine-and-quote-strings (remq nil args)) args))
          (persistent-files
           (combine-and-quote-strings (delq nil (list script-file context-file))))
          (persisted-env
-          (save-match-data
-            (cl-loop with initial-env = (get 'process-environment 'initial-value)
-                     for env in (seq-difference process-environment initial-env)
-                     if (string-match "^\\([a-zA-Z0-9_][^=]+\\)=\\(.+\\)$" env)
-                     collect (format "%s=%s"
-                                     (match-string 1 env)
-                                     (shell-quote-argument (match-string 2 env)))))))
+          (cl-remove-if-not
+           #'cdr (append
+                  `(("DOOMPROFILE" . ,(ignore-errors (doom-profile->id doom-profile)))
+                    ("EMACSDIR" . ,doom-emacs-dir)
+                    ("DOOMDIR" . ,doom-user-dir)
+                    ("DEBUG" . ,(if init-file-debug "1"))
+                    ("__DOOMPID" . ,(number-to-string (doom-cli-context-pid context)))
+                    ("__DOOMSTEP" . ,(number-to-string (doom-cli-context-step context)))
+                    ("__DOOMCONTEXT" . ,context-file))
+                  (save-match-data
+                    (cl-loop with initial-env = (get 'process-environment 'initial-value)
+                             for env in (seq-difference process-environment initial-env)
+                             if (string-match "^\\([a-zA-Z0-9_][^=]+\\)=\\(.+\\)$" env)
+                             collect (cons (match-string 1 env) (match-string 2 env))))))))
     (cl-incf (doom-cli-context-step context))
     (with-file-modes #o600
       (doom-log "restart: writing context to %s" context-file)
@@ -1154,25 +1170,35 @@ Emacs' batch library lacks an implementation of the exec system call."
                       newcontext))
       (doom-log "restart: writing post-script to %s" script-file)
       (doom-file-write
-       script-file `("#!/usr/bin/env sh\n"
-                     "trap _doomcleanup EXIT\n"
-                     "_doomcleanup() {\n  rm -f " ,persistent-files "\n}\n"
-                     "_doomrun() {\n  " ,command "\n}\n"
-                     ,(string-join persisted-env " \\\n")
-                     ,(cl-loop for (envvar . val)
-                               in `(("DOOMPROFILE" . ,(ignore-errors (doom-profile->id doom-profile)))
-                                    ("EMACSDIR" . ,doom-emacs-dir)
-                                    ("DOOMDIR" . ,doom-user-dir)
-                                    ("DEBUG" . ,(if init-file-debug "1"))
-                                    ("__DOOMSTEP" . ,(number-to-string (doom-cli-context-step context)))
-                                    ("__DOOMCONTEXT" . ,context-file))
-                               if val
-                               concat (format "%s=%s \\\n" envvar (shell-quote-argument val)))
-                     ,(format "PATH=\"%s%s$PATH\" \\\n"
-                              (doom-path doom-emacs-dir "bin")
-                              path-separator)
-                     "_doomrun \"$@\"\n")))
-    (doom-log "_doomrun: %s %s" (string-join persisted-env " ") command)
+       script-file
+       (pcase-exhaustive doom-cli-shell
+         (`sh `(,(if (featurep :system 'android)
+                     "#!/bin/sh\n"
+                   "#!/usr/bin/env sh\n")
+                "trap _doomcleanup EXIT\n"
+                "_doomcleanup() {\n  rm -f " ,persistent-files "\n}\n"
+                "_doomrun() {\n  " ,command "\n}\n"
+                ,(cl-loop for (var . val) in persisted-env
+                          concat (format "%s=%s \\\n" var (shell-quote-argument val)))
+                ,(format "PATH=\"%s%s$PATH\" \\\n"
+                         (doom-path doom-emacs-dir "bin")
+                         path-separator)
+                "_doomrun \"$@\"\n"))
+         (`pwsh `("try {\n"
+                  ,(cl-loop for (var . val) in persisted-env
+                            concat (format "  $__%s = $env:%s; $env:%s = %S\n  "
+                                           var var var val))
+                  ,command
+                  "\n} finally {\n"
+                  ,(cl-loop for file in persistent-files
+                            concat (format "  Remove-Item -Path %S\n  " file))
+                  ,(cl-loop for (var . val) in envvars
+                            concat (format "  $env:%s = $__%s\n  " var var))
+                  "\n}")))))
+    (doom-log "_doomrun: %s %s"
+              (cl-loop for (var . val) in persisted-env
+                       concat (format "%s=%s \\\n" var (shell-quote-argument val)))
+              command)
     (doom-log "_doomcleanup: %s" persistent-files)
     ;; Error code 254 is special: it indicates to the caller that the
     ;; post-script should be executed after this session ends. It's up to
@@ -1268,7 +1294,11 @@ Arguments don't have to be switches either."
 
 ARGS are options passed to less. If DOOMPAGER is set, ARGS are ignored."
   (let ((pager (or doom-cli-pager (getenv "DOOMPAGER"))))
-    (cond ((null (or pager (executable-find "less")))
+    (cond ((eq doom-cli-shell 'pwsh)
+           ;; Pager isn't supported in powershell
+           (doom-cli--exit 0 context))
+
+          ((null (or pager (executable-find "less")))
            (user-error "No pager set or available")
            (doom-cli--exit 1 context))
 
@@ -1300,16 +1330,18 @@ ARGS are options passed to less. If DOOMPAGER is set, ARGS are ignored."
 
 ARGS are options passed to less. If DOOMPAGER is set, ARGS are ignored."
   (doom-cli--exit
-   (let ((threshold (ceiling (* (doom-cli-context-height context)
-                                doom-cli-pager-ratio))))
-     (if (>= (let ((stdout (doom-cli-context-stdout context)))
-               (if (fboundp 'buffer-line-statistics)
-                   (car (buffer-line-statistics stdout))
-                 (with-current-buffer stdout
-                   (count-lines (point-min) (point-max)))))
-             threshold)
-         (cons :pager args)
-       0))
+   (if (eq doom-cli-shell 'pwsh)
+       0
+     (let ((threshold (ceiling (* (doom-cli-context-height context)
+                                  doom-cli-pager-ratio))))
+       (if (>= (let ((stdout (doom-cli-context-stdout context)))
+                 (if (fboundp 'buffer-line-statistics)
+                     (car (buffer-line-statistics stdout))
+                   (with-current-buffer stdout
+                     (count-lines (point-min) (point-max)))))
+               threshold)
+           (cons :pager args)
+         0)))
    context))
 
 ;; (defun doom-cli--exit-editor (args context))  ; TODO Launch $EDITOR

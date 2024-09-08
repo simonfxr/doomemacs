@@ -388,13 +388,14 @@ windows, switch to `doom-fallback-buffer'. Otherwise, delegate to original
       (unless hl-line-mode
         (setq-local doom--hl-line-mode nil))))
 
-  (add-hook! '(evil-visual-state-entry-hook activate-mark-hook)
+  ;; TODO: Use (de)activate-mark-hook in the absence of evil
+  (add-hook! 'evil-visual-state-entry-hook
     (defun doom-disable-hl-line-h ()
       (when hl-line-mode
         (hl-line-mode -1)
         (setq-local doom--hl-line-mode t))))
 
-  (add-hook! '(evil-visual-state-exit-hook deactivate-mark-hook)
+  (add-hook! 'evil-visual-state-exit-hook
     (defun doom-enable-hl-line-maybe-h ()
       (when doom--hl-line-mode
         (hl-line-mode +1)))))
@@ -588,7 +589,9 @@ windows, switch to `doom-fallback-buffer'. Otherwise, delegate to original
           (setq doom-theme theme)
           (put 'doom-theme 'previous-themes (or last-themes 'none))
           ;; DEPRECATED Hook into `enable-theme-functions' when we target 29
-          (doom-run-hooks 'doom-load-theme-hook))))))
+          (doom-run-hooks 'doom-load-theme-hook)
+          (setf (alist-get 'foreground-color default-frame-alist) (face-foreground 'default nil t)
+                (alist-get 'background-color default-frame-alist) (face-background 'default nil t)))))))
 
 
 ;;

@@ -2,6 +2,7 @@
 
 (defvar +mu4e-backend 'mbsync
   "Which backend to use. Can either be offlineimap, mbsync or nil (manual).")
+(make-obsolete-variable '+mu4e-backend "Use the :email mu4e module's +mbsync or +offlineimap flags instead" "3.0.0")
 
 (defvar +mu4e-personal-addresses 'nil
   "Alternative to mu4e-personal-addresses that can be set for each account (mu4e context).")
@@ -19,10 +20,32 @@
             (version< mu4e-mu-version "1.4"))
     (setq mu4e-maildir "~/.mail"
           mu4e-user-mail-address-list nil))
-  (setq mu4e-attachment-dir
-        (lambda (&rest _)
-          (expand-file-name ".attachments" (mu4e-root-maildir))))
   :config
+  (add-to-list 'doom-debug-variables 'mu4e-debug)
+  ;; mu4e now uses `display-buffer-alist' so we need to add some rules of our own
+  (set-popup-rule! "^\\*mu4e-\\(main\\|headers\\)\\*" :ignore t)
+
+  ;; Ensures backward/forward compatibility for mu4e, which is prone to breaking
+  ;; updates, and also cannot be pinned, because it's bundled with mu (which you
+  ;; must install via your OS package manager).
+  (with-demoted-errors "%s" (require 'mu4e-compat nil t))
+  ;; For users on older mu4e.
+  (unless (boundp 'mu4e-headers-buffer-name)
+    (defvar mu4e-headers-buffer-name "*mu4e-headers*"))
+
+  (cond ((or (modulep! +mbsync)
+             (eq +mu4e-backend 'mbsync))
+         (setq mu4e-get-mail-command
+               (concat "mbsync --all"
+                       ;; XDG support was added to isync 1.5, but this lets
+                       ;; users on older benefit from it sooner.
+                       (when-let (file (file-exists-p! "isyncrc" (or (getenv "XDG_CONFIG_HOME") "~/.config")))
+                         (format " --config %S" file)))
+               mu4e-change-filenames-when-moving t))
+        ((or (modulep! +offlineimap)
+             (eq +mu4e-backend 'offlineimap))
+         (setq mu4e-get-mail-command "offlineimap -o -q")))
+
   (when (version< mu4e-mu-version "1.8")
     ;; Define aliases to maintain backwards compatibility. The list of suffixes
     ;; were obtained by comparing mu4e~ and mu4e-- functions in `obarray'.
@@ -66,13 +89,6 @@ is non-nil."
           mu4e-view-show-images t
           mu4e-view-image-max-width 800
           mu4e-view-use-gnus t))
-
-  (pcase +mu4e-backend
-    (`mbsync
-     (setq mu4e-get-mail-command "mbsync -a"
-           mu4e-change-filenames-when-moving t))
-    (`offlineimap
-     (setq mu4e-get-mail-command "offlineimap -o -q")))
 
   (setq mu4e-update-interval nil
         mu4e-notification-support t
@@ -223,50 +239,46 @@ is non-nil."
   ;; Wrap text in messages
   (setq-hook! 'mu4e-view-mode-hook truncate-lines nil)
 
-  ;; mu4e now uses `display-buffer-alist' so we need to add some rules of our own
-  (set-popup-rule! "^\\*mu4e-\\(main\\|headers\\)\\*" :ignore t)
-
   ;; Html mails might be better rendered in a browser
-  (add-to-list 'mu4e-view-actions '("View in browser" . mu4e-action-view-in-browser))
-  (when (fboundp 'make-xwidget)
-    (add-to-list 'mu4e-view-actions '("xwidgets view" . mu4e-action-view-in-xwidget)))
+  (add-to-list 'mu4e-view-actions '("view in browser" . mu4e-action-view-in-browser))
+  (when (fboundp 'xwidget-webkit-browse-url)
+    (add-to-list 'mu4e-view-actions '("xview in xwidget" . mu4e-action-view-in-xwidget)))
 
   ;; Detect empty subjects, and give users an opotunity to fill something in
-  (defun +mu4e-check-for-subject ()
-    "Check that a subject is present, and prompt for a subject if not."
-    (save-excursion
-      (goto-char (point-min))
-      (search-forward "--text follows this line--")
-      (re-search-backward "^Subject:") ; this should be present no matter what
-      (let ((subject (string-trim (substring (thing-at-point 'line) 8))))
-        (when (string-empty-p subject)
-          (end-of-line)
-          (insert (read-string "Subject (optional): "))
-          (message "Sending...")))))
+  (add-hook! 'message-send-hook
+    (defun +mu4e-check-for-subject ()
+      "Check that a subject is present, and prompt for a subject if not."
+      (save-excursion
+        (goto-char (point-min))
+        (search-forward "--text follows this line--")
+        (re-search-backward "^Subject:") ; this should be present no matter what
+        (let ((subject (string-trim (substring (thing-at-point 'line) 8))))
+          (when (string-empty-p subject)
+            (end-of-line)
+            (insert (read-string "Subject (optional): "))
+            (message "Sending..."))))))
 
-  (add-hook 'message-send-hook #'+mu4e-check-for-subject)
-
-  ;; The header view needs a certain amount of horizontal space to
-  ;; actually show you all the information you want to see
-  ;; so if the header view is entered from a narrow frame,
-  ;; it's probably worth trying to expand it
-  (defun +mu4e-widen-frame-maybe ()
-    "Expand the mu4e-headers containing frame's width to `+mu4e-min-header-frame-width'."
-    (dolist (frame (frame-list))
-      (when (and (string= (buffer-name (window-buffer (frame-selected-window frame)))
-                          mu4e-headers-buffer-name)
-                 (< (frame-width) +mu4e-min-header-frame-width))
-        (set-frame-width frame +mu4e-min-header-frame-width))))
-  (add-hook 'mu4e-headers-mode-hook #'+mu4e-widen-frame-maybe)
+  ;; The header view needs a certain amount of horizontal space to actually show
+  ;; you all the information you want to see so if the header view is entered
+  ;; from a narrow frame, it's probably worth trying to expand it
+  (defvar +mu4e-min-header-frame-width 120
+    "Minimum reasonable with for the header view.")
+  (add-hook! 'mu4e-headers-mode-hook
+    (defun +mu4e-widen-frame-maybe ()
+      "Expand the mu4e-headers containing frame's width to `+mu4e-min-header-frame-width'."
+      (dolist (frame (frame-list))
+        (when (and (string= (buffer-name (window-buffer (frame-selected-window frame)))
+                            mu4e-headers-buffer-name)
+                   (< (frame-width) +mu4e-min-header-frame-width))
+          (set-frame-width frame +mu4e-min-header-frame-width)))))
 
   (when (fboundp 'imagemagick-register-types)
     (imagemagick-register-types))
 
-  (when (modulep! :ui workspaces)
-    (map! :map mu4e-main-mode-map
-          :ne "h" #'+workspace/other))
-
-  (map! :map mu4e-headers-mode-map
+  (map! (:when (modulep! :ui workspaces)
+         :map mu4e-main-mode-map
+         :ne "h" #'+workspace/other)
+        :map mu4e-headers-mode-map
         :vne "l" #'+mu4e/capture-msg-to-agenda)
 
   ;; Functionality otherwise obscured in mu4e 1.6
@@ -344,18 +356,19 @@ Acts like a singular `mu4e-view-save-attachments', without the saving."
         :desc "save draft"    "S" #'message-dont-send
         :desc "attach"        "a" #'+mu4e/attach-files)
 
-  ;; Due to evil, none of the marking commands work when making a visual selection in
-  ;; the headers view of mu4e. Without overriding any evil commands we may actually
-  ;; want to use in and evil selection, this can be easily fixed.
-  (when (modulep! :editor evil)
-    (map! :map mu4e-headers-mode-map
-          :v "*" #'mu4e-headers-mark-for-something
-          :v "!" #'mu4e-headers-mark-for-read
-          :v "?" #'mu4e-headers-mark-for-unread
-          :v "u" #'mu4e-headers-mark-for-unmark))
+  ;; Due to evil, none of the marking commands work when making a visual
+  ;; selection in the headers view of mu4e. Without overriding any evil commands
+  ;; we may actually want to use in and evil selection, this can be easily
+  ;; fixed.
+  (map! :map mu4e-headers-mode-map
+        :v "*" #'mu4e-headers-mark-for-something
+        :v "!" #'mu4e-headers-mark-for-read
+        :v "?" #'mu4e-headers-mark-for-unread
+        :v "u" #'mu4e-headers-mark-for-unmark)
 
-  (add-hook 'mu4e-compose-pre-hook '+mu4e-set-from-address-h)
+  (add-hook 'mu4e-compose-pre-hook #'+mu4e-set-from-address-h)
 
+  ;; HACK
   (defadvice! +mu4e-ensure-compose-writeable-a (&rest _)
     "Ensure that compose buffers are writable.
 This should already be the case yet it does not always seem to be."
@@ -365,29 +378,23 @@ This should already be the case yet it does not always seem to be."
     :before #'mu4e-compose-resend
     (read-only-mode -1))
 
-  ;; process lock control
+  ;; HACK: process lock control
   (when (featurep :system 'windows)
-    (setq
-     +mu4e-lock-file (expand-file-name "~/AppData/Local/Temp/mu4e_lock")
-     +mu4e-lock-request-file (expand-file-name "~/AppData/Local/Temp/mu4e_lock_request")))
+    (setq +mu4e-lock-file (expand-file-name "~/AppData/Local/Temp/mu4e_lock")
+          +mu4e-lock-request-file (expand-file-name "~/AppData/Local/Temp/mu4e_lock_request")))
 
   (add-hook 'kill-emacs-hook #'+mu4e-lock-file-delete-maybe)
-  (advice-add 'mu4e--start :around #'+mu4e-lock-start)
-  (advice-add 'mu4e-quit :after #'+mu4e-lock-file-delete-maybe))
+  (advice-add #'mu4e--start :around #'+mu4e-lock-start)
+  (advice-add #'mu4e-quit :after #'+mu4e-lock-file-delete-maybe))
 
-(unless (modulep! +org)
-  (after! mu4e
-    (defun org-msg-mode (&optional _)
-      "Dummy function."
-      (message "Enable the +org mu4e flag to use org-msg-mode."))
-    (defun +mu4e-compose-org-msg-handle-toggle (&rest _)
-      "Placeholder to allow for the assumtion that this function is defined.
-Ignores all arguments and returns nil."
-      nil)))
 
 (use-package! org-msg
-  :after mu4e
   :when (modulep! +org)
+  :defer t
+  :init
+  ;; Avoid using `:after' because it ties the :config below to when `mu4e'
+  ;; loads, rather than when `org-msg' loads.
+  (after! mu4e (require 'org-msg))
   :config
   (setq org-msg-options "html-postamble:nil H:5 num:nil ^:{} toc:nil author:nil email:nil tex:dvipng"
         org-msg-startup "hidestars indent inlineimages"
@@ -403,26 +410,25 @@ Ignores all arguments and returns nil."
 (\\(?:attached\\|enclosed\\))\\|\
 \\(?:attached\\|enclosed\\)[ \t\n]\\(?:for\\|is\\)[ \t\n]")
 
-  (defvar +org-msg-currently-exporting nil
-    "Helper variable to indicate whether org-msg is currently exporting the org buffer to HTML.
-Usefull for affecting HTML export config.")
-  (defadvice! +org-msg--now-exporting-a (&rest _)
-    :before #'org-msg-org-to-xml
-    (setq +org-msg-currently-exporting t))
-  (defadvice! +org-msg--not-exporting-a (&rest _)
-    :after #'org-msg-org-to-xml
-    (setq +org-msg-currently-exporting nil))
-
-  (advice-add #'org-html-latex-fragment    :override #'+org-html-latex-fragment-scaled-a)
-  (advice-add #'org-html-latex-environment :override #'+org-html-latex-environment-scaled-a)
-
   (map! :map org-msg-edit-mode-map
+        "TAB" #'org-msg-tab   ; To mirror the binding on <tab>
         :desc "attach" "C-c C-a" #'+mu4e/attach-files
         :localleader
         :desc "attach" "a" #'+mu4e/attach-files)
 
-  ;; I feel like it's reasonable to expect files to be attached
-  ;; in the order you attach them, not the reverse.
+  ;; HACK: ...
+  (defvar +org-msg-currently-exporting nil
+    "Non-nil if org-msg is currently exporting the org buffer to HTML.")
+  (defadvice! +org-msg--now-exporting-a (fn &rest args)
+    :around #'org-msg-org-to-xml
+    (let ((+org-msg-currently-exporting t))
+      (apply fn args)))
+
+  ;; HACK: ...
+  (advice-add #'org-html-latex-fragment    :override #'+org-html-latex-fragment-scaled-a)
+  (advice-add #'org-html-latex-environment :override #'+org-html-latex-environment-scaled-a)
+
+  ;; HACK: Ensure files are attached in the order they were attached.
   (defadvice! +org-msg-attach-attach-in-order-a (file &rest _args)
     "Link FILE into the list of attachment."
     :override #'org-msg-attach-attach
@@ -431,30 +437,27 @@ Usefull for affecting HTML export config.")
       (org-msg-set-prop "attachment" (nconc files (list file)))))
 
   (defvar +mu4e-compose-org-msg-toggle-next t ; t to initialise org-msg
-    "Whether to toggle ")
+    "Whether to toggle `org-msg-toggle' on ")
   (defun +mu4e-compose-org-msg-handle-toggle (toggle-p)
     (when (xor toggle-p +mu4e-compose-org-msg-toggle-next)
       (org-msg-mode (if org-msg-mode -1 1))
       (setq +mu4e-compose-org-msg-toggle-next
             (not +mu4e-compose-org-msg-toggle-next))))
 
-  (defadvice! +mu4e-maybe-toggle-org-msg-a (fn &optional toggle-p)
-    :around #'mu4e-compose-new
-    :around #'mu4e-compose-reply
-    :around #'mu4e-compose-forward
-    :around #'mu4e-compose-resend
-    (interactive "p")
-    (+mu4e-compose-org-msg-handle-toggle (/= 1 (or toggle-p 0)))
-    (funcall fn))
+  ;; HACK: ...
+  (defadvice! +mu4e-maybe-toggle-org-msg-a (&rest _)
+    :before #'mu4e-compose-new
+    :before #'mu4e-compose-reply
+    :before #'mu4e-compose-forward
+    :before #'mu4e-compose-resend
+    (+mu4e-compose-org-msg-handle-toggle (/= 1 (or current-prefix-arg 0))))
 
+  ;; HACK: ...
   (defadvice! +mu4e-draft-open-signature-a (fn &rest args)
     "Prevent `mu4e-compose-signature' from being used with `org-msg-mode'."
     :around #'mu4e-draft-open
     (let ((mu4e-compose-signature (unless org-msg-mode mu4e-compose-signature)))
       (apply fn args)))
-
-  (map! :map org-msg-edit-mode-map
-        "TAB" #'org-msg-tab) ; only <tab> bound by default
 
   (defvar +org-msg-accent-color "#c01c28"
     "Accent color to use in org-msg's generated CSS.
@@ -472,12 +475,11 @@ Must be set before org-msg is loaded to take effect.")
                (table `((margin-top . "6px") (margin-bottom . "6px")
                         (border-left . "none") (border-right . "none")
                         (border-top . "2px solid #222222")
-                        (border-bottom . "2px solid #222222")
-                        ))
+                        (border-bottom . "2px solid #222222")))
                (ftl-number `(,color ,bold (text-align . "left")))
                (inline-modes '(asl c c++ conf cpp csv diff ditaa emacs-lisp
-                                   fundamental ini json makefile man org plantuml
-                                   python sh xml))
+                               fundamental ini json makefile man org plantuml
+                               python sh xml))
                (inline-src `((background-color . "rgba(27,31,35,.05)")
                              (border-radius . "3px")
                              (padding . ".2em .4em")

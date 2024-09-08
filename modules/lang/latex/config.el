@@ -42,7 +42,15 @@ If no viewer is found, `latex-preview-pane-mode' is used.")
 ;;
 ;; Packages
 
-(add-to-list 'auto-mode-alist '("\\.tex\\'" . LaTeX-mode))
+;; HACK: Doom sets `custom-dont-initialize' during the early parts of its
+;;   startup process. This stops tex-site's setter on `TeX-modes' from
+;;   activating in `tex-site', which auctex loads *very early* from its
+;;   autoloads file. `tex-site's existence is hacky (more a historical artifact
+;;   and necessary evil, given its conflicts with the built in latex modes), so
+;;   I fix it as a one-off problem rather than a systemic one.
+(after! tex-site
+  (TeX-modes-set 'TeX-modes TeX-modes))
+
 
 (setq TeX-parse-self t ; parse on load
       TeX-auto-save t  ; parse on save
@@ -120,7 +128,18 @@ If no viewer is found, `latex-preview-pane-mode' is used.")
         :desc "View"          "v" #'TeX-view
         :desc "Compile"       "c" #'+latex/compile
         :desc "Run all"       "a" #'TeX-command-run-all
-        :desc "Run a command" "m" #'TeX-command-master))
+        :desc "Run a command" "m" #'TeX-command-master)
+
+  ;; HACK: The standard LaTeXMk command uses `TeX-run-format', which doesn't
+  ;;   trigger `TeX-after-compilation-finished-functions', so swap it out for
+  ;;   `TeX-run-TeX', which does.
+  (defadvice! +latex--run-after-compilation-finished-functions-a (&rest args)
+    :after #'TeX-TeX-sentinel
+    (unless (TeX-error-report-has-errors-p)
+      (run-hook-with-args 'TeX-after-compilation-finished-functions
+                          (with-current-buffer TeX-command-buffer
+                            (expand-file-name
+                             (TeX-active-master (TeX-output-extension))))))))
 
 
 (use-package! tex-fold
