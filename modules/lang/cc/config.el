@@ -4,29 +4,14 @@
   (list "include"
         "includes")
   "A list of default relative paths which will be searched for up from the
-current file, to be passed to irony as extra header search paths. Paths can be
-absolute. This is ignored if your project has a compilation database.
+current file. Paths can be absolute. This is ignored if your project has a
+compilation database.
 
 This is ignored by ccls.")
 
 (defvar +cc-default-header-file-mode 'c-mode
   "Fallback major mode for .h files if all other heuristics fail (in
 `+cc-c-c++-objc-mode').")
-
-(defvar +cc-default-compiler-options
-  `((c-mode . nil)
-    (c++-mode
-     . ,(list "-std=c++1z" ; use C++17 draft by default
-              (when (featurep :system 'macos)
-                ;; NOTE beware: you'll get abi-inconsistencies when passing
-                ;; std-objects to libraries linked with libstdc++ (e.g. if you
-                ;; use boost which wasn't compiled with libc++)
-                "-stdlib=libc++")))
-    (objc-mode . nil))
-  "A list of default compiler options for the C family. These are ignored if a
-compilation database is present in the project.
-
-This is ignored by ccls.")
 
 
 ;;
@@ -37,9 +22,8 @@ This is ignored by ccls.")
   ;; Use `c-mode'/`c++-mode'/`objc-mode' depending on heuristics
   :mode ("\\.h\\'" . +cc-c-c++-objc-mode)
   ;; Ensure find-file-at-point recognize system libraries in C modes. It must be
-  ;; set up before the likes of irony/lsp are initialized. Also, we use
-  ;; local-vars hooks to ensure these only run in their respective major modes,
-  ;; and not their derived modes.
+  ;; set up before lsp is initialized. Also, we use local-vars hooks to ensure
+  ;; these only run in their respective major modes, and not derived modes.
   :hook ((c-mode-local-vars c++-mode-local-vars objc-mode-local-vars) . +cc-init-ffap-integration-h)
   ;;; Improve fontification in C/C++ (also see `modern-cpp-font-lock')
   :hook (c-mode-common . rainbow-delimiters-mode)
@@ -139,38 +123,6 @@ This is ignored by ccls.")
   :hook (c++-mode . modern-c++-font-lock-mode))
 
 
-(use-package! irony
-  :unless (modulep! +lsp)
-  :commands irony-install-server
-  ;; Initialize compilation database, if present. Otherwise, fall back on
-  ;; `+cc-default-compiler-options'.
-  :hook (irony-mode . +cc-init-irony-compile-options-h)
-  ;; Only initialize `irony-mode' if the server is available. Otherwise fail
-  ;; quietly and gracefully.
-  :hook ((c-mode-local-vars c++-mode-local-vars objc-mode-local-vars) . +cc-init-irony-mode-maybe-h)
-  :preface (setq irony-server-install-prefix (concat doom-data-dir "irony-server/"))
-  :config
-  (defun +cc-init-irony-mode-maybe-h ()
-    (if (file-directory-p irony-server-install-prefix)
-        (irony-mode +1)
-      (message "Irony server isn't installed")))
-
-  (setq irony-cdb-search-directory-list '("." "build" "build-conda"))
-
-  (use-package! irony-eldoc
-    :hook (irony-mode . irony-eldoc))
-
-  (use-package! flycheck-irony
-    :when (and (modulep! :checkers syntax)
-               (not (modulep! :checkers syntax +flymake)))
-    :config (flycheck-irony-setup))
-
-  (use-package! company-irony
-    :when (modulep! :completion company)
-    :init (set-company-backend! 'irony-mode '(:separate company-irony-c-headers company-irony))
-    :config (require 'company-irony-c-headers)))
-
-
 ;;
 ;; Major modes
 
@@ -198,57 +150,7 @@ This is ignored by ccls.")
 
 
 ;;
-;; Rtags Support
-
-(use-package! rtags
-  :unless (modulep! +lsp)
-  ;; Only initialize rtags-mode if rtags and rdm are available.
-  :hook ((c-mode-local-vars c++-mode-local-vars objc-mode-local-vars) . +cc-init-rtags-maybe-h)
-  :preface (setq rtags-install-path (concat doom-data-dir "rtags/"))
-  :config
-  (defun +cc-init-rtags-maybe-h ()
-    "Start an rtags server in c-mode and c++-mode buffers.
-If rtags or rdm aren't available, fail silently instead of throwing a breaking error."
-    (and (require 'rtags nil t)
-         (rtags-executable-find rtags-rdm-binary-name)
-         (rtags-start-process-unless-running)))
-
-  (setq rtags-autostart-diagnostics t
-        rtags-use-bookmarks nil
-        rtags-completions-enabled nil
-        rtags-display-result-backend
-        (cond ((modulep! :completion ivy)  'ivy)
-              ((modulep! :completion helm) 'helm)
-              ('default))
-        ;; These executables are named rtags-* on debian
-        rtags-rc-binary-name
-        (or (cl-find-if #'executable-find (list rtags-rc-binary-name "rtags-rc"))
-            rtags-rc-binary-name)
-        rtags-rdm-binary-name
-        (or (cl-find-if #'executable-find (list rtags-rdm-binary-name "rtags-rdm"))
-            rtags-rdm-binary-name)
-        ;; If not using ivy or helm to view results, use a pop-up window rather
-        ;; than displaying it in the current window...
-        rtags-results-buffer-other-window t
-        ;; ...and don't auto-jump to first match before making a selection.
-        rtags-jump-to-first-match nil)
-
-  (set-lookup-handlers! '(c-mode c++-mode)
-    :definition #'rtags-find-symbol-at-point
-    :references #'rtags-find-references-at-point)
-
-  ;; Use rtags-imenu instead of imenu/counsel-imenu
-  (define-key! (c-mode-map c++-mode-map) [remap imenu] #'+cc/imenu)
-
-  ;; Ensure rtags cleans up after itself properly when exiting Emacs, rather
-  ;; than display a jarring confirmation prompt for killing it.
-  (add-hook! 'kill-emacs-hook (ignore-errors (rtags-cancel-process)))
-
-  (add-hook 'rtags-jump-hook #'better-jumper-set-jump))
-
-
-;;
-;; LSP
+;;; LSP
 
 (when (modulep! +lsp)
   (add-hook! '(c-mode-local-vars-hook
@@ -257,25 +159,6 @@ If rtags or rdm aren't available, fail silently instead of throwing a breaking e
                cmake-mode-local-vars-hook
                cuda-mode-local-vars-hook)
              :append #'lsp!)
-
-  (map! :after ccls
-        :map (c-mode-map c++-mode-map)
-        :n "C-h" (cmd! (ccls-navigate "U"))
-        :n "C-j" (cmd! (ccls-navigate "R"))
-        :n "C-k" (cmd! (ccls-navigate "L"))
-        :n "C-l" (cmd! (ccls-navigate "D"))
-        (:localleader
-         :desc "Preprocess file"        "lp" #'ccls-preprocess-file
-         :desc "Reload cache & CCLS"    "lf" #'ccls-reload)
-        (:after lsp-ui-peek
-         (:localleader
-          :desc "Callers list"          "c" #'+cc/ccls-show-caller
-          :desc "Callees list"          "C" #'+cc/ccls-show-callee
-          :desc "References (address)"  "a" #'+cc/ccls-show-references-address
-          :desc "References (not call)" "f" #'+cc/ccls-show-references-not-call
-          :desc "References (Macro)"    "m" #'+cc/ccls-show-references-macro
-          :desc "References (Read)"     "r" #'+cc/ccls-show-references-read
-          :desc "References (Write)"    "w" #'+cc/ccls-show-references-write)))
 
   (when (modulep! :tools lsp +eglot)
     (set-eglot-client! 'cuda-mode '("clangd"))
@@ -308,11 +191,9 @@ If rtags or rdm aren't available, fail silently instead of throwing a breaking e
     (add-to-list 'projectile-globally-ignored-directories "^.ccls-cache$")
     (add-to-list 'projectile-project-root-files-bottom-up ".ccls-root")
     (add-to-list 'projectile-project-root-files-top-down-recurring "compile_commands.json"))
-  ;; Avoid using `:after' because it ties the :config below to when `lsp-mode'
-  ;; loads, rather than `ccls' loads.
-  (after! lsp-mode (require 'ccls))
   :config
   (set-evil-initial-state! 'ccls-tree-mode 'emacs)
+  (set-lsp-priority! 'ccls -2) ; Prioritize clangd over ccls
   ;; Disable `ccls-sem-highlight-method' if `lsp-enable-semantic-highlighting'
   ;; is nil. Otherwise, it appears ccls bypasses it.
   (setq-hook! 'lsp-configure-hook
@@ -329,4 +210,22 @@ If rtags or rdm aren't available, fail silently instead of throwing a breaking e
                   `(:clang ,(list :extraArgs ["-isystem/Library/Developer/CommandLineTools/usr/include/c++/v1"
                                               "-isystem/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include"
                                               "-isystem/usr/local/include"]
-                                  :resourceDir (cdr (doom-call-process "clang" "-print-resource-dir"))))))))
+                                  :resourceDir (cdr (doom-call-process "clang" "-print-resource-dir")))))))
+  (map! :after cc-mode
+        :map (c-mode-map c++-mode-map)
+        :n "C-h" (cmd! (ccls-navigate "U"))
+        :n "C-j" (cmd! (ccls-navigate "R"))
+        :n "C-k" (cmd! (ccls-navigate "L"))
+        :n "C-l" (cmd! (ccls-navigate "D"))
+        (:localleader
+         :desc "Preprocess file"        "lp" #'ccls-preprocess-file
+         :desc "Reload cache & CCLS"    "lf" #'ccls-reload)
+        (:when (modulep! :tools lsp +peek)
+         (:localleader
+          :desc "Callers list"          "c" #'+cc/ccls-show-caller
+          :desc "Callees list"          "C" #'+cc/ccls-show-callee
+          :desc "References (address)"  "a" #'+cc/ccls-show-references-address
+          :desc "References (not call)" "f" #'+cc/ccls-show-references-not-call
+          :desc "References (Macro)"    "m" #'+cc/ccls-show-references-macro
+          :desc "References (Read)"     "r" #'+cc/ccls-show-references-read
+          :desc "References (Write)"    "w" #'+cc/ccls-show-references-write))))
