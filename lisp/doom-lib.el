@@ -7,6 +7,7 @@
 (define-error 'doom-font-error "Could not find a font on your system" 'doom-error)
 (define-error 'doom-nosync-error "Doom hasn't been initialized yet; did you remember to run 'doom sync' in the shell?" 'doom-error)
 (define-error 'doom-core-error "Unexpected error in Doom's core" 'doom-error)
+(define-error 'doom-context-error "Incorrect context error" 'doom-error)
 (define-error 'doom-hook-error "Error in a Doom startup hook" 'doom-error)
 (define-error 'doom-autoload-error "Error in Doom's autoloads file" 'doom-error)
 (define-error 'doom-user-error "Error caused by user's config or system" 'doom-error)
@@ -19,10 +20,27 @@
 ;;; Logging
 
 (defvar doom-inhibit-log (not (or noninteractive init-file-debug))
-  "If non-nil, suppress `doom-log' output.")
+  "If non-nil, suppress `doom-log' output completely.")
 
-(defun doom--log (text &rest args)
-  (let ((inhibit-message (not init-file-debug))
+(defvar doom-log-level
+  (if init-file-debug
+      (if-let ((level (getenv-internal "DEBUG"))
+               (level (string-to-number level))
+               ((not (zerop level))))
+          level
+        2)
+    0)
+  "How verbosely to log from `doom-log' calls.
+
+0 -- No logging at all.
+1 -- Only warnings.
+2 -- Warnings and notices.
+3 -- Debug info, warnings, and notices.")
+
+(defun doom--log (level text &rest args)
+  (let ((inhibit-message (if noninteractive
+                             (not init-file-debug)
+                           (> level doom-log-level)))
         (absolute? (string-prefix-p ":" text)))
     (apply #'message
            (propertize (concat "* %.06f:%s" (if (not absolute?) ":") text)
@@ -38,14 +56,19 @@
             ":")
            args)))
 
+;; This is a macro instead of a function to prevent the potentially expensive
+;; evaluation of its arguments when debug mode is off. Return non-nil.
 (defmacro doom-log (message &rest args)
-  "Log a message in *Messages*.
-
-Does not emit the message in the echo area. This is a macro instead of a
-function to prevent the potentially expensive evaluation of its arguments when
-debug mode is off. Return non-nil."
+  "Log a message to stderr or *Messages* (without displaying in the echo area)."
   (declare (debug t))
-  `(unless doom-inhibit-log (doom--log ,message ,@args)))
+  (let ((level (if (integerp message)
+                   (prog1 message
+                     (setq message (pop args)))
+                 2)))
+    `(when (and (not doom-inhibit-log)
+                (or (not noninteractive)
+                    (<= ,level doom-log-level)))
+       (doom--log ,level ,message ,@args))))
 
 
 ;;
@@ -290,14 +313,13 @@ TRIGGER-HOOK is a list of quoted hooks and/or sharp-quoted functions."
 
 (defmacro file! ()
   "Return the file of the file this macro was called."
-  (or
-   ;; REVIEW: Use `macroexp-file-name' once 27 support is dropped.
-   (let ((file (car (last current-load-list))))
-     (if (stringp file) file))
-   (bound-and-true-p byte-compile-current-file)
-   load-file-name
-   buffer-file-name   ; for `eval'
-   (error "file!: cannot deduce the current file path")))
+  (or (bound-and-true-p byte-compile-current-file)
+      load-file-name
+      (buffer-file-name (buffer-base-buffer))  ; for `eval'
+      ;; REVIEW: Use `macroexp-file-name' once 27 support is dropped.
+      (let ((file (car (last current-load-list))))
+        (if (stringp file) file))
+      (error "file!: cannot deduce the current file path")))
 
 (defmacro dir! ()
   "Return the directory of the file in which this macro was called."
@@ -311,24 +333,26 @@ TRIGGER-HOOK is a list of quoted hooks and/or sharp-quoted functions."
   "Temporarily rebind function, macros, and advice in BODY.
 
 Intended as syntax sugar for `cl-letf', `cl-labels', `cl-macrolet', and
-temporary advice.
+temporary advice (`define-advice').
 
 BINDINGS is either:
 
-  A list of, or a single, `defun', `defun*', `defmacro', or `defadvice' forms.
   A list of (PLACE VALUE) bindings as `cl-letf*' would accept.
+  A list of, or a single, `defun', `defun*', `defmacro', or `defadvice' forms.
 
-TYPE is one of:
+The def* forms accepted are:
 
-  `defun' (uses `cl-letf')
-  `defun*' (uses `cl-labels'; allows recursive references),
-  `defmacro' (uses `cl-macrolet')
-  `defadvice' (uses `defadvice!' before BODY, then `undefadvice!' after)
-
-NAME, ARGLIST, and BODY are the same as `defun', `defun*', `defmacro', and
-`defadvice!', respectively.
-
-\(fn ((TYPE NAME ARGLIST &rest BODY) ...) BODY...)"
+  (defun NAME (ARGS...) &rest BODY)
+    Defines a temporary function with `cl-letf'
+  (defun* NAME (ARGS...) &rest BODY)
+    Defines a temporary function with `cl-labels' (allows recursive
+    definitions).
+  (defmacro NAME (ARGS...) &rest BODY)
+    Uses `cl-macrolet'.
+  (defadvice FUNCTION WHERE ADVICE)
+    Uses `advice-add' (then `advice-remove' afterwards).
+  (defadvice FUNCTION (HOW LAMBDA-LIST &optional NAME DEPTH) &rest BODY)
+    Defines temporary advice with `define-advice'."
   (declare (indent defun))
   (setq body (macroexp-progn body))
   (when (memq (car bindings) '(defun defun* defmacro defadvice))
@@ -339,16 +363,33 @@ NAME, ARGLIST, and BODY are the same as `defun', `defun*', `defmacro', and
       (setq
        body (pcase type
               (`defmacro `(cl-macrolet ((,@rest)) ,body))
-              (`defadvice `(progn (defadvice! ,@rest)
-                                  (unwind-protect ,body (undefadvice! ,@rest))))
-              ((or `defun `defun*)
+              (`defadvice
+               (if (keywordp (cadr rest))
+                   (cl-destructuring-bind (target where fn) rest
+                     `(when-let (fn ,fn)
+                        (advice-add ,target ,where fn)
+                        (unwind-protect ,body (advice-remove ,target fn))))
+                 (let* ((fn (pop rest))
+                        (argspec (pop rest)))
+                   (when (< (length argspec) 3)
+                     (setq argspec
+                           (list (nth 0 argspec)
+                                 (nth 1 argspec)
+                                 (or (nth 2 argspec) (gensym (format "%s-a" (symbol-name fn)))))))
+                   (let ((name (nth 2 argspec)))
+                     `(progn
+                        (define-advice ,fn ,argspec ,@rest)
+                        (unwind-protect ,body
+                          (advice-remove #',fn #',name)
+                          ,(if name `(fmakunbound ',name))))))))
+              (`defun
                `(cl-letf ((,(car rest) (symbol-function #',(car rest))))
                   (ignore ,(car rest))
-                  ,(if (eq type 'defun*)
-                       `(cl-labels ((,@rest)) ,body)
-                     `(cl-letf (((symbol-function #',(car rest))
-                                 (lambda! ,(cadr rest) ,@(cddr rest))))
-                        ,body))))
+                  (cl-letf (((symbol-function #',(car rest))
+                             (lambda! ,(cadr rest) ,@(cddr rest))))
+                    ,body)))
+              (`defun*
+               `(cl-labels ((,@rest)) ,body))
               (_
                (when (eq (car-safe type) 'function)
                  (setq type (list 'symbol-function type)))
