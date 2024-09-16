@@ -1141,7 +1141,7 @@ Emacs' batch library lacks an implementation of the exec system call."
                   `(("DOOMPROFILE" . ,(ignore-errors (doom-profile->id doom-profile)))
                     ("EMACSDIR" . ,doom-emacs-dir)
                     ("DOOMDIR" . ,doom-user-dir)
-                    ("DEBUG" . ,(if init-file-debug "1"))
+                    ("DEBUG" . ,(if init-file-debug (number-to-string doom-log-level)))
                     ("__DOOMPID" . ,(number-to-string (doom-cli-context-pid context)))
                     ("__DOOMSTEP" . ,(number-to-string (doom-cli-context-step context)))
                     ("__DOOMCONTEXT" . ,context-file))
@@ -1179,7 +1179,9 @@ Emacs' batch library lacks an implementation of the exec system call."
                 "_doomcleanup() {\n  rm -f " ,persistent-files "\n}\n"
                 "_doomrun() {\n  " ,command "\n}\n"
                 ,(cl-loop for (var . val) in persisted-env
-                          concat (format "%s=%s \\\n" var (shell-quote-argument val)))
+                          if (<= (length val) 2048)  ; Prevent "Argument list too long" errors
+                          concat (format "%s=%s \\\n" var (shell-quote-argument val))
+                          else do (doom-log 1 "restart: wiscarding envvar %S for being too long (%d)" var (length val)))
                 ,(format "PATH=\"%s%s$PATH\" \\\n"
                          (doom-path doom-emacs-dir "bin")
                          path-separator)
