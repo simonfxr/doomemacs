@@ -58,23 +58,31 @@ in."
                (string-match-p ".\\([56]0\\|9[0-9]\\)$" emacs-version))
            (warn! "Detected a development version of Emacs (%s)" emacs-version)
            (if (> emacs-major-version 29)
-               (explain! "This is the bleeding edge of Emacs. As it is constantly changed, Doom will not "
-                         "(officially) support it. If you've found a stable commit, great! But be "
-                         "cautious about updating Emacs too eagerly!\n")
-             (explain! "A .50, .60, or .9X appended to the version string indicates that this is a version "
-                       "of Emacs in between stable releases. These are not well supported.\n"))
+               (explain! "This is the bleeding edge of Emacs. As it is constantly changing, Doom will not "
+                         "(officially) support it. If you've found a stable commit, great! But be cautious "
+                         "about updating Emacs too eagerly!\n")
+             (explain! "A version that ends in .50, .60, or .9X indicates a build of Emacs in between "
+                       "stable releases (i.e. development builds). Doom does not support these well.\n"))
            (explain! "Because development builds are prone to random breakage, there will be a greater "
                      "burden on you to investigate and deal with issues. Please make extra sure that "
-                     "your issue is reproducible in 29.1 before reporting them to Doom's issue tracker!\n"
+                     "your issue is reproducible on a stable version (between 27.1 and 29.4) before "
+                     "reporting them to Doom's issue tracker!\n"
                      "\n"
                      "If this doesn't phase you, read the \"Why does Doom not support Emacs HEAD\" QnA "
                      "in Doom's FAQ. It offers some advice for debugging and surviving issues on the "
-                     "bleeding edge. Failing that, 29.1 is highly recommended and will always be "
+                     "bleeding edge. Failing that, the latest stable release of Emacs will always be "
                      "Doom's best supported version of Emacs."))
           ((= emacs-major-version 27)
-           (warn! "Emacs 27 is supported, but consider upgrading to 28.1")
-           (explain! "Emacs 28.1 is better supported, faster, and more stable. Plus, Doom will drop "
-                     "27.x support sometime late-2023."))))
+           (warn! "Emacs 27 is supported, but not for long!")
+           (explain! "Doom will drop 27.x support sometime late-2024. It's recommended that you upgrade "
+                     "to the latest stable release (currently 29.4). It is better supported, faster, and "
+                     "more stable.")))
+
+    (when (and (version= emacs-version "29.4") (featurep 'pgtk))
+      (warn! "Detected emacs-pgtk 29.4!")
+      (explain! "If you are experiencing segfaults (crashes), consider downgrading to 29.3 or "
+                "upgrading to 30+. A known bug in 29.4 causes intermittent crashes. "
+                "See doomemacs#7915 for details.")))
 
   (print! (start "Checking for Doom's prerequisites..."))
   (print-group!
@@ -161,21 +169,52 @@ in."
         (explain! "The second directory will be ignored, as it has lower precedence."))))
 
   (print! (start "Checking for common environmental issues..."))
-  (when (string-match-p "/fish$" shell-file-name)
-    (print! (warn "Detected Fish as your $SHELL"))
-    (explain! "Fish (and possibly other non-POSIX shells) is known to inject garbage "
-              "output into some of the child processes that Emacs spawns. Many Emacs "
-              "packages/utilities will choke on this output, causing unpredictable issues. "
-              "To get around this, either:\n\n"
-              "  - Add the following to $DOOMDIR/config.el:\n\n"
-              "    (setq shell-file-name (executable-find \"bash\"))\n\n"
-              "  - Or change your default shell to a POSIX shell (like bash or zsh) "
-              "    and explicitly configure your terminal apps to use the shell you "
-              "    want.\n\n"
-              "If you opt for option 1 and use one of Emacs' terminal emulators, you "
-              "will also need to configure them to use Fish, e.g.\n\n"
-              "  (setq-default vterm-shell (executable-find \"fish\"))\n\n"
-              "  (setq-default explicit-shell-file-name (executable-find \"fish\"))\n"))
+  (print-group!
+    (when (string-match-p "/fish$" shell-file-name)
+      (print! (warn "Detected Fish as your $SHELL"))
+      (explain! "Fish (and possibly other non-POSIX shells) is known to inject garbage "
+                "output into some of the child processes that Emacs spawns. Many Emacs "
+                "packages/utilities will choke on this output, causing unpredictable issues. "
+                "To get around this, either:\n\n"
+                "  - Add the following to $DOOMDIR/config.el:\n\n"
+                "    (setq shell-file-name (executable-find \"bash\"))\n\n"
+                "  - Or change your default shell to a POSIX shell (like bash or zsh) "
+                "    and explicitly configure your terminal apps to use the shell you "
+                "    want.\n\n"
+                "If you opt for option 1 and use one of Emacs' terminal emulators, you "
+                "will also need to configure them to use Fish, e.g.\n\n"
+                "  (setq-default vterm-shell (executable-find \"fish\"))\n\n"
+                "  (setq-default explicit-shell-file-name (executable-find \"fish\"))\n"))
+
+    (condition-case e
+        (when (featurep :system 'windows)
+          (let ((filea (expand-file-name "__testfile1" temporary-file-directory))
+                (fileb (expand-file-name "__testfile2" temporary-file-directory)))
+            (unwind-protect
+                (progn
+                  (with-temp-file fileb)
+                  (make-symbolic-link fileb filea)
+                  (not (file-symlink-p filea)))
+              (delete-file filea)
+              (delete-file fileb))))
+      ('file-error
+       (when (equal (cons (nth 1 e) (nth 2 e))
+                    (cons "Making symbolic link" "Operation not permitted"))
+         (print! (warn "Symlinks are not enabled on this operating system"))
+         (explain! "In the near future, Doom will make extensive use of symlinks to save space "
+                   "and simplify package and profile management. Without symlinks, much of it "
+                   "won't be functional. To get around this, you have three options:"
+                   "\n\n"
+                   "  - Enabling 'Developer Mode' in the Windows settings (search for 'Developer "
+                   "    Settings' in the start menu). This will warn you about its effect on system "
+                   "    security, but this can be ignored. If it bothers you, consider another option "
+                   "    below.\n"
+                   "  - Running your shell (cmd or powershell) in administrator mode anytime you "
+                   "    need to use the 'doom' script. Also, the `doom/reload' command won't work "
+                   "    unless Emacs itself is launched in administrator mode.\n"
+                   "  - Install Emacs in WSL 1/2; the native Linux environment it creates supports "
+                   "    symlinks out of the box and is the best option (as Emacs is generally more "
+                   "    stable, predictable, and faster there).\n\n")))))
 
   (print! (start "Checking for stale elc files..."))
   (elc-check-dir doom-core-dir)
@@ -251,22 +290,23 @@ in."
                          (`darwin "~/Library/Fonts/"))
                        (require 'nerd-icons nil t))
               (with-temp-buffer
-                (let ((errors 0))
-                  (cl-destructuring-bind (status . output)
-                      (doom-call-process "fc-list" "" "file")
-                    (if (not (zerop status))
-                        (print! (error "There was an error running `fc-list'. Is fontconfig installed correctly?"))
-                      (insert (cdr (doom-call-process "fc-list" "" "file")))
-                      (dolist (font nerd-icons-font-names)
-                        (if (save-excursion (re-search-backward font nil t))
-                            (success! "Found font %s" font)
-                          (print! (warn "%S font is not installed on your system") font)
-                          (cl-incf errors)))
-                      (when (> errors 0)
-                        (explain! "Some needed fonts are not properly installed on your system. To download and "
-                                  "install them, run `M-x nerd-icons-install-fonts' from within Doom Emacs. "
-                                  "However, on Windows this command will only download them; the fonts must "
-                                  "be installed manually afterwards.")))))))))
+                (cl-destructuring-bind (status . output)
+                    (doom-call-process "fc-list" "" "family")
+                  (if (not (zerop status))
+                      (print! (error "There was an error running `fc-list'. Is fontconfig installed correctly?"))
+                    (insert output)
+                    (if (re-search-backward nerd-icons-font-family nil t)
+                        (success! "Found %s" nerd-icons-font-family)
+                      (print! (warn "Failed to locate '%s' font on your system") nerd-icons-font-family)
+                      (explain! "This font is required for icons in Doom Emacs. To download and install "
+                                "them, do one of the following:\n\n"
+                                "  - Execute `M-x nerd-icons-install-fonts' from within Doom Emacs (NOTE: "
+                                "    on Windows this command will only download them; the fonts must then "
+                                "    be installed manually afterwards).\n"
+                                "  - Download and install 'Symbols Nerd Font' from https://nerdfonts.com "
+                                "    or via your OS package manager. (You'll need to change the "
+                                "    `nerd-icons-font-names' and/or `nerd-icons-font-family' variables to "
+                                "    reflect a non-standard file or font family name).\n"))))))))
 
         (print! (start "Checking for stale elc files in your DOOMDIR..."))
         (when (file-directory-p doom-user-dir)
