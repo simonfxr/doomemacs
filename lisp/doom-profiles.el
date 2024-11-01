@@ -243,12 +243,12 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
             ;; `user-emacs-directory' requires that it end in a directory
             ;; separator, but users may forget this in their profile configs.
             (setq user-emacs-directory (file-name-as-directory user-emacs-directory))))
-   :mode #o600
+   :mode (cons #o600 #o700)
    :printfn #'pp)
   (print-group!
     (or (let ((byte-compile-warnings (if init-file-debug byte-compile-warnings))
               (byte-compile-dest-file-function
-               (lambda (_) (format "%s.%d.elc" (file-name-sans-extension file) emacs-major-version))))
+               (lambda (_) (format "%s.elc" (file-name-sans-extension file)))))
           (byte-compile-file file))
         ;; Do it again? So the errors/warnings are visible?
         ;; (let ((byte-compile-warnings t))
