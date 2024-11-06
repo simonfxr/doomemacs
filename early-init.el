@@ -89,8 +89,8 @@
                            emacs-major-version)
                    (or (if windows? (getenv-internal "LOCALAPPDATA"))
                        (getenv-internal "XDG_DATA_HOME")
-                       "~/.local/share"))
-                  'noerror (not init-file-debug) 'nosuffix))
+                       "~/.local/share")))
+                'noerror (not init-file-debug) 'nosuffix)
           (user-error "Profiles not initialized yet; run 'doom sync' first"))))
 
   ;; PERF: When `load'ing or `require'ing files, each permutation of
@@ -133,8 +133,10 @@
           ;;   fit guess. It's better than Emacs' 80kb default.
           (setq gc-cons-threshold (* 16 1024 1024))
           nil))
-       ;; ...Otherwise, we're loading a Doom config, so continue as normal.
-      (doom-require (if noninteractive 'doom-cli 'doom-start))
+      ;; In non-interactive sessions, leave to the consumer to call
+      ;; `doom-initialize' at the best time, otherwise we need to initialize
+      ;; ASAP for the Emacs session ahead.
+      (doom-initialize (not noninteractive))
     ;; If we're here, the user wants to load another config/profile (that may or
     ;; may not be a Doom config).
     (load user-init-file 'noerror (not init-file-debug) nil 'must-suffix)))
