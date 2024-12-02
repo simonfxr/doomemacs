@@ -13,7 +13,7 @@
 (use-package! sh-script ; built-in
   :mode ("\\.bats\\'" . sh-mode)
   :mode ("\\.\\(?:zunit\\|env\\)\\'" . sh-mode)
-  :mode ("/bspwmrc\\'" . sh-mode)
+  :mode ("/[a-z]+rc\\'" . sh-mode)
   :magic ("#compdef " . sh-mode)
   :config
   (set-docsets! 'sh-mode "Bash")
@@ -43,7 +43,7 @@
   (setq sh-indent-after-continuation 'always)
 
   ;; [pedantry intensifies]
-  (setq-hook! 'sh-mode-hook mode-name "sh")
+  (setq-hook! 'sh-mode-local-vars-hook mode-name "Sh")
 
   ;; recognize function names with dashes in them
   (add-to-list 'sh-imenu-generic-expression
