@@ -70,13 +70,14 @@
 ;;
 ;;; Code:
 
-;; For `when-let*' and `if-let*' on versions of Emacs before they were autoloaded.
+;; For the `when-let*' and `if-let*' macros on older versions of Emacs, before
+;; they were autoloaded.
 (eval-when-compile (require 'subr-x))
 
-(eval-and-compile  ; Check version at both compile and runtime.
-  ;; Doom's minimum supported version of Emacs is 27.1. Its my goal to support
-  ;; one major version below the stable release, for about a year or until
-  ;; stable is ubiquitous (or at least easily accessible) across Linux distros.
+(eval-and-compile
+  ;; Doom core supports Emacs 27.1 and newer. However, keep in mind that modules
+  ;; may have different requirements (e.g. the official module library requires
+  ;; 29.x or newer).
   (when (< emacs-major-version 27)
     (user-error
      (concat
@@ -107,17 +108,16 @@
 ;; up/downgraded. This is because byte-code isn't backwards compatible, and many
 ;; packages (including Doom), bake in absolute paths into their caches that need
 ;; to be refreshed.
-(let ((old-version (eval-when-compile emacs-version)))
-  (unless (equal emacs-version old-version)
+(let ((old-version (eval-when-compile emacs-major-version)))
+  (unless (= emacs-major-version old-version)
     (user-error (concat "Doom was compiled with Emacs %s, but was loaded with %s. Run 'doom sync' to"
                         "recompile it.")
-                emacs-version old-version)))
+                emacs-major-version old-version)))
 
 ;;; Custom features & global constants
 ;; Doom has its own features that its modules, CLI, and user extensions can
 ;; announce, and don't belong in `features', so they are stored here, which can
-;; include information about the external system environment. Module-specific
-;; features are kept elsewhere, however.
+;; include information about the external system environment.
 (defconst doom-system
   (pcase system-type
     ('darwin                           '(macos bsd))
@@ -133,8 +133,7 @@
 (defconst doom--system-linux-p   (eq 'linux   (car doom-system)))
 
 ;; `system-type' is esoteric, so I create a pseudo feature as a stable and
-;; consistent alternative, and all while using the same `featurep' interface
-;; we're already familiar with.
+;; consistent alternative, for use with `featurep'.
 (push :system features)
 (put :system 'subfeatures doom-system)
 
@@ -151,13 +150,13 @@
 
 ;; The `native-compile' feature exists whether or not it is functional (e.g.
 ;; libgcc is available or not). This seems silly, as some packages will blindly
-;; use the native-comp API if it's present, whether or not it's functional. so
-;; pretend it doesn't exist if that's the case.
+;; use the native-comp API if it's present but non-functional, so let's pretend
+;; it doesn't exist if that's the case.
 (if (featurep 'native-compile)
     (if (not (native-comp-available-p))
         (delq 'native-compile features)))
 
-;; DEPRECATED remove in v3
+;; DEPRECATED: Remove in v3
 (with-no-warnings
   (defconst IS-MAC      doom--system-macos-p)
   (defconst IS-LINUX    doom--system-linux-p)
@@ -181,10 +180,10 @@
   (define-obsolete-variable-alias 'doom-etc-dir 'doom-data-dir "3.0.0"))
 
 ;; HACK: Silence obnoxious obsoletion warnings about (if|when)-let in >=31.
-;;   These warnings are unhelpful to end-users, and so, so many packages use
-;;   these macros so rather than hopelessly pester them, I'll silence them. Not
-;;   to mention, Emacs doesn't respect `warning-suppress-types' when it comes to
-;;   obsoletion warnings.
+;;   These warnings are unhelpful to end-users, and many packages use these
+;;   macros, so I silence these warnings to spare users the unactionable spam.
+;;   Not to mention, Emacs doesn't respect `warning-suppress-types' when it
+;;   comes to obsoletion warnings.
 (put 'if-let 'byte-obsolete-info nil)
 (put 'when-let 'byte-obsolete-info nil)
 
@@ -192,14 +191,17 @@
 ;;; Fix $HOME on Windows
 ;; $HOME isn't normally defined on Windows, but many unix tools expect it.
 (when doom--system-windows-p
-  (when-let (realhome
-             (and (null (getenv-internal "HOME"))
-                  (getenv "USERPROFILE")))
+  (when-let* ((realhome
+               (and (null (getenv-internal "HOME"))
+                    (getenv "USERPROFILE"))))
     (setenv "HOME" realhome)
     (setq abbreviated-home-dir nil)))
 
+
 ;;; Load Doom's stdlib
 (add-to-list 'load-path (file-name-directory load-file-name))
+(when (< emacs-major-version 30)
+  (require 'doom-compat)) ; backport niceties from later versions of Emacs
 (require 'doom-lib)
 
 
@@ -215,14 +217,14 @@
   "Current version of Doom Emacs core.")
 
 ;; DEPRECATED: Remove these when the modules are moved out of core.
-(defconst doom-modules-version "25.01.0-pre"
+(defconst doom-modules-version "25.02.0-pre"
   "Current version of Doom Emacs.")
 
 (defvar doom-init-time nil
   "The time it took, in seconds (as a float), for Doom Emacs to start up.")
 
 (defconst doom-profile
-  (if-let (profile (getenv-internal "DOOMPROFILE"))
+  (if-let* ((profile (getenv-internal "DOOMPROFILE")))
       (save-match-data
         (if (string-match "^\\([^@]+\\)@\\(.+\\)$" profile)
             (cons (match-string 1 profile)
@@ -245,7 +247,7 @@
 
 (defvar doom-user-dir
   (expand-file-name
-   (if-let (doomdir (getenv-internal "DOOMDIR"))
+   (if-let* ((doomdir (getenv-internal "DOOMDIR")))
        (file-name-as-directory doomdir)
      (or (let ((xdgdir
                 (file-name-concat
@@ -273,15 +275,9 @@ where the module's group and name was deduced from the first and second level of
 directories. For example: if $DOOMDIR/modules/ is an entry, a
 $DOOMDIR/modules/lang/ruby/ directory represents a ':lang ruby' module.")
 
-(defvar doom-bin-dir (expand-file-name "bin/" doom-emacs-dir)
-  "Where Doom's executables are stored.
-
-Defaults to $EMACSDIR/bin, where $EMACSDIR is `doom-emacs-dir'. Must end in a
-slash.")
-
 ;; DEPRECATED: .local will be removed entirely in 3.0
 (defvar doom-local-dir
-  (if-let (localdir (getenv-internal "DOOMLOCALDIR"))
+  (if-let* ((localdir (getenv-internal "DOOMLOCALDIR")))
       (expand-file-name (file-name-as-directory localdir))
     (expand-file-name ".local/" doom-emacs-dir))
   "Root directory for local storage.
@@ -559,7 +555,7 @@ uses a straight or package.el command directly).")
 (when noninteractive
   ;; Don't generate superfluous files when writing temp buffers.
   (setq make-backup-files nil)
-  ;; Stop user config from interfering with package management.
+  ;; Stop user config from interfering with elisp shell scripts.
   (setq enable-dir-local-variables nil)
   ;; Reduce ambiguity, embrace specificity, enjoy predictability.
   (setq case-fold-search nil)
@@ -571,8 +567,7 @@ uses a straight or package.el command directly).")
 ;;   ones) abuse it to build paths for storage/cache files (instead of correctly
 ;;   using `locate-user-emacs-file'). This change ensures that said data files
 ;;   are never saved to the root of your emacs directory *and* saves us the
-;;   trouble of setting a million directory/file variables. But it may throw off
-;;   anyone (or any package) that uses it to search for your Emacs initfiles.
+;;   trouble of setting a million directory/file variables.
 (setq user-emacs-directory doom-profile-cache-dir)
 
 ;; ...However, this may surprise packages (and users) that read
@@ -602,7 +597,7 @@ Otherwise, `en/disable-command' (in novice.el.gz) is hardcoded to write them to
 (when (boundp 'native-comp-eln-load-path)
   ;; Don't store eln files in ~/.emacs.d/eln-cache (where they can easily be
   ;; deleted by 'doom upgrade').
-  ;; REVIEW Use `startup-redirect-eln-cache' when 28 support is dropped
+  ;; REVIEW: Advise `startup-redirect-eln-cache' when 28 support is dropped.
   (add-to-list 'native-comp-eln-load-path (expand-file-name "eln/" doom-profile-cache-dir))
 
   ;; UX: Suppress compiler warnings and don't inundate users with their popups.
@@ -610,7 +605,7 @@ Otherwise, `en/disable-command' (in novice.el.gz) is hardcoded to write them to
   (setq native-comp-async-report-warnings-errors init-file-debug
         native-comp-warning-on-missing-source init-file-debug)
 
-  ;; HACK: native-comp-deferred-compilation-deny-list is replaced in later
+  ;; HACK: `native-comp-deferred-compilation-deny-list' is replaced in later
   ;;   versions of Emacs 29, and with no deprecation warning. I alias them to
   ;;   ensure backwards compatibility for packages downstream that may have not
   ;;   caught up yet. I avoid marking it obsolete because obsolete warnings are
@@ -631,18 +626,18 @@ Otherwise, `en/disable-command' (in novice.el.gz) is hardcoded to write them to
 
   (define-advice comp-run-async-workers (:around (fn &rest args) dont-litter-tmpdir)
     "Normally, native-comp writes a ton to /tmp. This advice forces it to write
-to `doom-cache-dir'/comp/ instead, so that Doom can safely clean it up as part
-of 'doom sync' or 'doom gc'."
+to `doom-profile-cache-dir' instead, so it can be safely cleaned up as part of
+'doom sync' or 'doom gc'."
     (let ((temporary-file-directory (expand-file-name "comp/" doom-profile-cache-dir)))
       (make-directory temporary-file-directory t)
       (apply fn args)))
 
-  (after! comp
+  (with-eval-after-load 'comp
     ;; HACK: On Emacs 30.0.92, `native-comp-jit-compilation-deny-list' was moved
     ;;   to comp-run. See emacsmirror/emacs@e6a955d24268. Doom forces straight
     ;;   to consult this variable when building packages.
     (require 'comp-run nil t)
-    ;; HACK Disable native-compilation for some troublesome packages
+    ;; HACK: Disable native-compilation for some troublesome packages
     (mapc (doom-partial #'add-to-list 'native-comp-deferred-compilation-deny-list)
           (list "/seq-tests\\.el\\'"
                 "/emacs-jupyter.*\\.el\\'"
@@ -851,12 +846,13 @@ appropriately against `noninteractive' or the `cli' context."
         (require 'doom-cli)
         (add-hook 'doom-cli-initialize-hook #'doom-finalize)))
 
-    ;; HACK: We suppress loading of site files so they can be loaded manually,
-    ;;   here. Why? To suppress the otherwise unavoidable output they commonly
-    ;;   produce (like deprecation notices, file-loaded messages, and linter
-    ;;   warnings). This output pollutes the output of doom's CLI (or scripts
-    ;;   derived from it) with potentially confusing or alarming -- but always
-    ;;   unimportant -- information to the user.
+    ;; HACK: I suppress loading of site files here to load them manually later.
+    ;;   Why? To suppress the otherwise unavoidable output they commonly produce
+    ;;   (like deprecation notices, file-loaded messages, and linter warnings).
+    ;;   This output pollutes Emacs' log and the output of doom's CLI (or
+    ;;   scripts derived from it) with potentially confusing or alarming -- but
+    ;;   always unimportant and rarely actionable -- information to the user. To
+    ;;   see that output, turn on debug mode!
     (let ((site-loader
            (lambda ()
              (quiet!!
@@ -885,8 +881,8 @@ appropriately against `noninteractive' or the `cli' context."
     ;; HACK: Ensure OS checks are as fast as possible (given their ubiquity).
     (setq features (cons :system (delq :system features)))
 
-    ;; Remember these variables' initial values, so we can safely reset them
-    ;; at a later time, or consult them without fear of contamination.
+    ;; Remember these variables' initial values, so they can be safely reset
+    ;; later (e.g. by `doom/reload'), or compared against for change heuristics.
     (dolist (var '(exec-path load-path process-environment))
       (put var 'initial-value (default-toplevel-value var)))
 
@@ -899,6 +895,13 @@ Triggers `doom-after-init-hook' and sets `doom-init-time.'"
   (when (doom-context-pop 'startup)
     (setq doom-init-time (float-time (time-subtract (current-time) before-init-time)))
     (doom-run-hooks 'doom-after-init-hook)
+
+    ;; If `gc-cons-threshold' hasn't been reset at this point, we reset it by
+    ;; force (without overwriting `gcmh' or the user's config). If this isn't
+    ;; done, this session will be prone to freezing and crashes. This also
+    ;; handles the case where the user has `gcmh' disabled.
+    (when (eq (default-value 'gc-cons-threshold) most-positive-fixnum)
+      (setq-default gc-cons-threshold (* 16 1024 1024)))
     t))
 
 (provide 'doom)
