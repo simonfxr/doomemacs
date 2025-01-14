@@ -219,7 +219,8 @@ windows, switch to `doom-fallback-buffer'. Otherwise, delegate to original
                 (run-hook-with-args-until-failure 'kill-buffer-query-functions))
            (let ((visible-p (delq (selected-window) (get-buffer-window-list buf nil t))))
              (unless visible-p
-               (when (and (buffer-modified-p buf)
+               (when (and (buffer-file-name (buffer-base-buffer))
+                          (buffer-modified-p buf)
                           (not (y-or-n-p
                                 (format "Buffer %s is modified; kill anyway?"
                                         buf))))
@@ -585,8 +586,9 @@ windows, switch to `doom-fallback-buffer'. Otherwise, delegate to original
 Themes wouldn't call `provide-theme' unless they were a color-scheme, so treat
 them as such. Also intended as a helper for `doom--theme-is-colorscheme-p'."
   :after #'provide-theme
-  (with-memoization (plist-get (get theme 'theme-properties) :kind)
-    'color-scheme))
+  (or (plist-get (get theme 'theme-properties) :kind)
+      (cl-callf plist-put (get theme 'theme-properties) :kind
+                'color-scheme)))
 
 (defun doom--theme-is-colorscheme-p (theme)
   (unless (memq theme '(nil user changed use-package))
