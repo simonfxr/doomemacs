@@ -94,16 +94,28 @@ Must end with a slash.")
   (setq compilation-buffer-name-function #'projectile-compilation-buffer-name
         compilation-save-buffers-predicate #'projectile-current-project-buffer-p)
 
-  ;; Centralize Projectile's per-project cache files, so they don't litter
-  ;; projects with dotfiles.
+  ;; HACK: Centralize Projectile's per-project cache files, so they don't litter
+  ;;   projects with dotfiles.
   (defadvice! doom--projectile-centralized-cache-files-a (fn &optional proot)
     :around #'projectile-project-cache-file
-    (let* ((proot (abbreviate-file-name (or proot (doom-project-root))))
+    (let* ((proot (or proot (doom-project-root) default-directory))
            (projectile-cache-file
             (expand-file-name
              (format "%s-%s" (doom-project-name proot) (sha1 proot))
              doom-projectile-cache-dir)))
       (funcall fn proot)))
+
+  ;; HACK: `projectile-ensure-project' operates on the current value of
+  ;;   `projectile-known-projects' when prompting the using for a project, which
+  ;;   may not have been initialized yet, so do so the first time it is called.
+  ;; REVIEW: PR this upstream
+  (defadvice! doom--projectile-update-known-projects-a (dir)
+    :before #'projectile-ensure-project
+    (unless dir
+      (when (and (eq projectile-require-project-root 'prompt)
+                 (not projectile-known-projects))
+        (projectile-known-projects))
+      (advice-remove 'projectile-ensure-project #'doom--projectile-update-known-projects-a)))
 
   ;; Support the more generic .project files as an alternative to .projectile
   (defadvice! doom--projectile-dirconfig-file-a ()
