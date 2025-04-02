@@ -143,6 +143,12 @@ directives. By default, this only recognizes C directives.")
                  (count-lines (point-min) (point-max))
                  (buffer-size)))))
 
+  ;; HACK: '=' moves the cursor to the beginning of selection. Disable this,
+  ;;   since it's more disruptive than helpful.
+  (defadvice! +evil--dont-move-cursor-a (fn &rest args)
+    :around #'evil-indent
+    (save-excursion (apply fn args)))
+
   ;; HACK: In vim, registers 2-9 are global. In Evil, they're buffer-local.  so
   ;;   I enforce vim's way.
   ;; REVIEW: PR this upstream?
@@ -320,7 +326,7 @@ don't offer any/enough real value to users.")
   :init
   (setq evil-escape-excluded-states '(normal visual multiedit emacs motion)
         evil-escape-excluded-major-modes '(neotree-mode treemacs-mode vterm-mode)
-        evil-escape-key-sequence "jk"
+        evil-escape-key-sequence nil
         evil-escape-delay 0.15)
   (evil-define-key* '(insert replace visual operator) 'global "\C-g" #'evil-escape)
   :config

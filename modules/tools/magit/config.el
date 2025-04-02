@@ -50,7 +50,7 @@ Only has an effect in GUI Emacs.")
   ;; ...then refresh the rest only when we switch to them or refocus the active
   ;; frame, not all at once.
   (add-hook 'doom-switch-buffer-hook #'+magit-revert-buffer-maybe-h)
-  (add-hook 'focus-in-hook #'+magit-mark-stale-buffers-h)
+  (add-hook 'doom-switch-frame-hook #'+magit-mark-stale-buffers-h)
 
   ;; The default location for git-credential-cache is in
   ;; ~/.cache/git/credential. However, if ~/.git-credential-cache/ exists, then
@@ -188,7 +188,7 @@ Only has an effect in GUI Emacs.")
         code-review-log-file (concat doom-data-dir "code-review/code-review-error.log")
         code-review-download-dir (concat doom-data-dir "code-review/"))
   :config
-  (transient-append-suffix 'magit-merge "i"
+  (transient-append-suffix 'magit-merge "d"
     '("y" "Review pull request" +magit/start-code-review))
   (after! forge
     (transient-append-suffix 'forge-dispatch "c u"
