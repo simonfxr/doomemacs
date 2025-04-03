@@ -36,7 +36,17 @@ Only has an effect in GUI Emacs.")
         magit-save-repository-buffers nil
         ;; Don't display parent/related refs in commit buffers; they are rarely
         ;; helpful and only add to runtime costs.
-        magit-revision-insert-related-refs nil)
+        magit-revision-insert-related-refs nil
+        ;; If two projects have the same project name (e.g. A/src and B/src will
+        ;; both resolve to the name "src"), Magit will treat them as the same
+        ;; project and destructively hijack each other's magit buffers. This is
+        ;; especially problematic if you use workspaces and have magit open in
+        ;; each, and the two projects happen to have the same name! By unsetting
+        ;; `magit-uniquify-buffer-names', magit uses the project's full path as
+        ;; its name, preventing such naming collisions.
+        magit-uniquify-buffer-names nil)
+
+  ;; Turn ref links into clickable buttons.
   (add-hook 'magit-process-mode-hook #'goto-address-mode)
 
   ;; Since the project likely now contains new files, best we undo the
@@ -52,29 +62,19 @@ Only has an effect in GUI Emacs.")
   (add-hook 'doom-switch-buffer-hook #'+magit-revert-buffer-maybe-h)
   (add-hook 'doom-switch-frame-hook #'+magit-mark-stale-buffers-h)
 
-  ;; The default location for git-credential-cache is in
-  ;; ~/.cache/git/credential. However, if ~/.git-credential-cache/ exists, then
-  ;; it is used instead. Magit seems to be hardcoded to use the latter, so here
-  ;; we override it to have more correct behavior.
-  (unless (file-exists-p "~/.git-credential-cache/")
-    (setq magit-credential-cache-daemon-socket
-          (doom-glob (or (getenv "XDG_CACHE_HOME")
-                         "~/.cache/")
-                     "git/credential/socket")))
-
   ;; Prevent sudden window position resets when staging/unstaging/discarding/etc
   ;; hunks in `magit-status-mode' buffers. It's disorienting, especially on
   ;; larger projects.
-  (defvar +magit--pos nil)
-  (add-hook! 'magit-pre-refresh-hook
-    (defun +magit--set-window-state-h ()
-      (setq-local +magit--pos (list (current-buffer) (point) (window-start)))))
-  (add-hook! 'magit-post-refresh-hook
-    (defun +magit--restore-window-state-h ()
-      (when (and +magit--pos (eq (current-buffer) (car +magit--pos)))
-        (goto-char (cadr +magit--pos))
-        (set-window-start nil (caddr +magit--pos) t)
-        (kill-local-variable '+magit--pos))))
+  (let (magit--pos)
+    (add-hook! 'magit-pre-refresh-hook
+      (defun +magit--set-window-state-h ()
+        (setq-local magit--pos (list (current-buffer) (point) (window-start)))))
+    (add-hook! 'magit-post-refresh-hook
+      (defun +magit--restore-window-state-h ()
+        (when (and magit--pos (eq (current-buffer) (car magit--pos)))
+          (goto-char (cadr magit--pos))
+          (set-window-start nil (caddr magit--pos) t)
+          (kill-local-variable 'magit--pos)))))
 
   ;; Magit uses `magit-display-buffer-traditional' to display windows, by
   ;; default, which is a little primitive. `+magit-display-buffer' marries

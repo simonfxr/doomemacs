@@ -81,8 +81,11 @@ want to change your symbol font, use `doom-symbol-font'.")
   "List of hooks to run when the UI has been initialized.")
 
 (defcustom doom-load-theme-hook nil
-  "Hook run after the theme is loaded with `load-theme' or reloaded with
-`doom/reload-theme'.")
+  "Hook run after a color-scheme is loaded.
+
+Triggered by `load-theme', `enable-theme', or reloaded with `doom/reload-theme',
+but only for themes that declare themselves as a :kind color-scheme (which Doom
+treats as the default).")
 
 (defcustom doom-switch-buffer-hook nil
   "A list of hooks run after changing the current buffer.")
@@ -121,7 +124,7 @@ non-interactive code, or the user accidentally (and rapidly) un-and-refocusing
 the frame through some other means.")
 
 (defun doom--run-switch-frame-hooks-fn (_)
-  (remove-hook 'pre-redisplay-functions #'doom--run-switch-frame-hooks)
+  (remove-hook 'pre-redisplay-functions #'doom--run-switch-frame-hooks-fn)
   (let ((gc-cons-threshold most-positive-fixnum))
     (dolist (fr (visible-frame-list))
       (let ((state (frame-focus-state fr)))
@@ -132,18 +135,18 @@ the frame through some other means.")
                          doom-switch-frame-hook-debounce-delay))
               (with-selected-frame fr
                 (unwind-protect
-                    (run-hooks 'doom-switch-frame-hook)
+                    (let ((inhibit-redisplay t))
+                      (run-hooks 'doom-switch-frame-hook))
                   (set-frame-parameter fr '+last-focus (current-time)))))))))))
 
 (let (last-focus-state)
   (defun doom-run-switch-frame-hooks-fn ()
     "Trigger `doom-switch-frame-hook' once per frame focus change."
-    (let ((inhibit-redisplay t))
-      (or (equal last-focus-state
-                 (setq last-focus-state
-                       (mapcar #'frame-focus-state (frame-list))))
-          ;; Defer until next redisplay
-          (add-hook 'pre-redisplay-functions #'doom--run-switch-frame-hooks-fn)))))
+    (or (equal last-focus-state
+               (setq last-focus-state
+                     (mapcar #'frame-focus-state (frame-list))))
+        ;; Defer until next redisplay
+        (add-hook 'pre-redisplay-functions #'doom--run-switch-frame-hooks-fn))))
 
 (defun doom-protect-fallback-buffer-h ()
   "Don't kill the scratch buffer. Meant for `kill-buffer-query-functions'."
