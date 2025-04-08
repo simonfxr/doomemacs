@@ -10,16 +10,24 @@
 
 (use-package! org-modern
   :hook (org-mode . org-modern-mode)
-  :hook (org-agenda-finalize . org-modern-mode)
-  :hook (org-modern-mode . +org-pretty-mode)
+  :hook (org-agenda-finalize . org-modern-agenda)
+  :init
+  (after! org
+    (setq org-hide-emphasis-markers t
+          org-pretty-entities t))
   :config
+  ;; HACK: The default unicode symbol for checked boxes often turn out much
+  ;;   larger than the others, so I swap it out with one that's more likely to
+  ;;   be consistent.
+  (setf (alist-get ?X org-modern-checkbox) #("□x" 0 2 (composition ((2)))))
+
   ;; HACK: If `org-indent-mode' is active, org-modern's default of hiding
   ;;   leading stars makes sub-headings look too sunken into the left margin.
   ;;   Those stars are already "hidden" by `org-hide-leading-stars' anyway, so
   ;;   rely on just that.
   (add-hook! 'org-modern-mode-hook
     (defun +org-modern-show-hidden-stars-in-indent-mode-h ()
-      (when org-indent-mode
+      (when (bound-and-true-p org-indent-mode)
         (setq-local org-modern-hide-stars nil))))
 
   ;; Carry over the default values of `org-todo-keyword-faces', `org-tag-faces',
@@ -27,7 +35,7 @@
   ;; hasn't already modified them.
   (letf! (defun new-spec (spec)
            (if (or (facep (cdr spec))
-                   (not (keyword (car-safe (cdr spec)))))
+                   (not (keywordp (car-safe (cdr spec)))))
                `(:inherit ,(cdr spec))
              (cdr spec)))
     (unless org-modern-tag-faces
