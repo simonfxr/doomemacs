@@ -12,7 +12,7 @@ will theirs, recursively)."
         (widen)
         (goto-char (point-min))
         (while (re-search-forward
-                (concat "^" (unless nested? "\\(?:;;;# \\)?")
+                (concat "^" (unless nested? "\\(?:;+# \\)?")
                         (rx "include" (+ " ") "\"" (group (+ (not "\"")))))
                 nil t)
           (when-let* ((path (match-string-no-properties 1)))
@@ -39,11 +39,12 @@ will theirs, recursively)."
 
 ;;;###autoload
 (defun +beancount--collect-unique-recursive (regexp n &optional context)
-  (let ((results (make-hash-table :test 'equal)))
-    (dolist (file (cons (buffer-file-name (buffer-base-buffer))
-                        (if (eq +beancount-files 'auto)
-                            (+beancount--included-files t context)
-                          +beancount-files)))
+  (let ((results (make-hash-table :test 'equal))
+        (buffer (or (buffer-base-buffer) (current-buffer)))
+        (files (if (eq +beancount-files 'auto)
+                   (+beancount--included-files t context)
+                 +beancount-files)))
+    (dolist (file (cons (buffer-file-name buffer) files))
       (with-temp-buffer
         (insert-file-contents file)
         (dolist (x (beancount-collect-pos-alist regexp n))
@@ -60,9 +61,9 @@ will theirs, recursively)."
           (category . ,(intern (format "beancount-%s" context)))
           (display-sort-function . identity))
       (make-local-variable '+beancount--completion-cache)
-      (with-current-buffer (let ((win (minibuffer-selected-window)))
-                             (if (window-live-p win) (window-buffer win)
-                               (current-buffer)))
+      (with-current-buffer (if (active-minibuffer-window)
+                               (window-buffer (minibuffer-selected-window))
+                             (current-buffer))
         (unless (assq context +beancount--completion-cache)
           (with-memoization (alist-get context +beancount--completion-cache)
             (+beancount--collect-unique-recursive regexp n context)))
@@ -149,7 +150,15 @@ will theirs, recursively)."
          ((beancount-looking-at
            (concat "^" beancount-date-regexp
                    "\\s-+" (regexp-opt beancount-account-directive-names)
-                   "\\s-+\\([" beancount-account-chars "]*\\)") 1 pos)
+                   "\\s-+\\([" beancount-account-chars "]*\\)")
+           1 pos)
+          (list (match-beginning 1) (match-end 1) (+beancount-account-completion-table)))
+
+         ;; budget directive followed by an account
+         ((beancount-looking-at
+           (concat "^" beancount-date-regexp "\\s-+"
+                   "custom\\s-+\"budget\"\\s-+\\([" beancount-account-chars "]*\\)")
+           1 pos)
           (list (match-beginning 1) (match-end 1) (+beancount-account-completion-table)))
 
          ;; pad directive followed by two accounts
@@ -255,7 +264,7 @@ will theirs, recursively)."
      (save-restriction
        (widen)
        (with-temp-buffer
-         (save-excursion (insert-buffer-substring source))
+         (save-excursion (insert-buffer-substring-no-properties source))
          (save-excursion
            (while (re-search-forward "^;+# " nil t)
              (replace-match "" t t)))
