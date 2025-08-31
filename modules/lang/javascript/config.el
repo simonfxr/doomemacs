@@ -121,11 +121,15 @@
            web-mode
            markdown-mode
            js-mode  ; includes js2-mode and rjsx-mode
+           js-ts-mode
            json-mode
+           json-ts-mode
            typescript-mode
+           typescript-ts-mode
+           tsx-ts-mode
            solidity-mode)
   :when (locate-dominating-file default-directory "package.json")
-  :add-hooks '(+javascript-add-npm-path-h npm-mode))
+  :add-hooks '(+javascript-add-npm-path-h))
 
 (def-project-mode! +javascript-gulp-mode
   :when (locate-dominating-file default-directory "gulpfile.js"))
