@@ -997,11 +997,10 @@ Must be run from a magit diff buffer."
                      (condition-case-unless-debug e
                          (let ((straight-vc-git-post-clone-hook
                                 (cons (lambda! (&key commit)
-                                        (print-group!
-                                          (if-let* ((pin (cdr (assoc package pinned))))
-                                              (print! (item "Pinned to %s") pin)
-                                            (when commit
-                                              (print! (item "Checked out %s") commit)))))
+                                        (if-let* ((pin (cdr (assoc package pinned))))
+                                            (print! (item "%s: pinned to %s") package pin)
+                                          (when commit
+                                            (print! (item "%s: checked out %s") package commit))))
                                       straight-vc-git-post-clone-hook)))
                            (straight-use-package (intern package))
                            (when (file-in-directory-p repo-dir straight-base-dir)
@@ -1106,6 +1105,12 @@ Must be run from a magit diff buffer."
                      (print! (item "\r(%d/%d) %s is up-to-date...%s") i total package esc)
                      (cl-return))
 
+                    ((file-exists-p ".straight-commit")
+                     (print! (start "\r(%d/%d) Downloading %s...%s") i total package esc)
+                     (delete-directory default-directory t)
+                     (straight-vc-git-clone recipe target-ref)
+                     (doom-packages--same-commit-p target-ref (straight-vc-get-commit type local-repo)))
+
                     ((if (straight-vc-commit-present-p recipe target-ref)
                          (print! (start "\r(%d/%d) Checking out %s (%s)...%s")
                                  i total package (doom-packages--abbrev-commit target-ref) esc)
@@ -1163,7 +1168,7 @@ Must be run from a magit diff buffer."
                          (if (> n 0)
                              (format " (w/ %d dependents)" n)
                            "")))
-               (unless (string-empty-p output)
+               (when (and (stringp output) (not (string-empty-p output)))
                  (let ((lines (split-string output "\n")))
                    (setq output
                          (if (> (length lines) 20)

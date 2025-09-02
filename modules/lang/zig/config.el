@@ -32,7 +32,7 @@
 
 
 (use-package! zig-mode
-  :hook (zig-mode . rainbow-delimiters-mode)
+  :defer t
   :config
   (setq zig-format-on-save nil) ; rely on :editor format instead
   (+zig-common-config 'zig-mode))
@@ -40,7 +40,6 @@
 
 (use-package! zig-ts-mode
   :when (modulep! +tree-sitter)
-  :when (fboundp 'zig-ts-mode)
   :defer t
   :init
   ;; REVIEW: maxxnino/tree-sitter-zig is unmaintained; waiting for alternatives.

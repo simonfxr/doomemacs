@@ -28,13 +28,11 @@
     '((t (:foreground "#E10098")))
     "Face for GraphQL icon."
     :group 'nerd-icons-faces)
-  (add-hook 'graphql-mode-hook #'rainbow-delimiters-mode)
   (+graphql-common-config 'graphql-mode))
 
 
 (use-package! graphql-ts-mode
   :when (modulep! +tree-sitter)
-  :when (fboundp 'treesit-available-p)
   :defer t
   :init
   (set-tree-sitter! 'graphql-mode 'graphql-ts-mode
