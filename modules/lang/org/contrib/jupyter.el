@@ -5,6 +5,23 @@
 (use-package! jupyter-repl
   :defer t
   :config
+  ;; HACK: Don't use treesit ts-modes for syntax highlighting (is brittle).
+  (defadvice! +org-jupyter--suppress-major-mode-remapping-a (fn &rest args)
+    :around #'jupyter-kernel-language-mode-properties
+    (let (major-mode-remap-alist major-mode-remap-defaults)
+      (apply fn args)))
+
+  ;; HACK: And un-remap the major mode when associating a repl with the current
+  ;;   buffer, otherwise it will fail with any treesit-enabled (or otherwise
+  ;;   remapped) modes.
+  (defadvice! +org-jupyter--unremap-major-mode-when-associating-buffer-a (fn &rest args)
+    :around #'jupyter-repl-associate-buffer
+    (let ((major-mode
+           (or (car (rassq major-mode (append major-mode-remap-alist
+                                              major-mode-remap-defaults)))
+               major-mode)))
+      (apply fn args)))
+
   ;; HACK: If the user is anywhere but the last prompt, typing should move them
   ;;   there instead of unhelpfully spewing read-only errors at them.
   ;; REVIEW: Upstream this (maybe?)
@@ -35,7 +52,7 @@
   ;; HACK: ob-juypter don't support ob-async and handles async itself, so
   ;;   piggyback off of `org-babel-jupyter-make-language-alias' to disable it
   ;;   for every current and future kernel language.
-  (defadvice! +org-jupyter--suppress-ob-async-a (fn _kernel lang)
+  (defadvice! +org-jupyter--suppress-ob-async-a (_kernel lang)
     :before #'org-babel-jupyter-make-language-alias
     (with-eval-after-load 'ob-async
       (add-to-list 'ob-async-no-async-languages-alist (concat "jupyter-" lang))))
