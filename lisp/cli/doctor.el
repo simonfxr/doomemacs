@@ -170,17 +170,25 @@ in."
 
   (print! (start "Checking for common environmental issues..."))
   (print-group!
-    (when (or (string-match-p "/fish$" shell-file-name)
-              (string-match-p "/nu\\(?:\\.exe\\)?$" shell-file-name))
-      (print! (warn "Detected a non-POSIX $SHELL"))
-      (explain! "Non-POSIX shells (particularly Fish and Nushell) can cause unpredictable issues "
-                "with any Emacs utilities that spawn child processes from shell commands (like "
-                "diff-hl and in-Emacs terminals). To get around this, configure Emacs to use a "
-                "POSIX shell internally, e.g.\n\n"
-                "  ;;; add to $DOOMDIR/config.el:\n"
+    (unless (file-writable-p temporary-file-directory)
+      (print! (error "Your temporary file directory is not writable!"))
+      (explain! "Emacs and Doom uses this directory to store temporary files. It is currently "
+                "set to:\n\n"
+                (format "  %s\n\n" temporary-file-directory)
+                "Set $TMPDIR to a writable directory to fix this. If it is not resolved, Doom "
+                "CLI commands and various Emacs components will unpredictably throw file "
+                "permissions errors at unpredictable times."))
+
+    (unless (string-match-p "/\\(ba\\|z\\|m?k\\|d?a\\)?sh$" shell-file-name)
+      (print! (warn "Detected a non-POSIX compliant shell (%s)" shell-file-name))
+      (explain! "Non-POSIX compliant shells (particularly Fish and Nushell) can cause "
+                "unpredictable issues with any Emacs utilities that spawn child processes "
+                "from shell commands (like diff-hl TRAMP, and terminal emulators). To get "
+                "around this, configure Emacs to use a POSIX shell internally, e.g.\n\n"
+                "  ;;; add to $DOOMDIR/config.el\n"
                 "  (setq shell-file-name (executable-find \"bash\"))\n\n"
                 "Emacs' terminal emulators can be safely configured to use your original $SHELL:\n\n"
-                "  ;;; add to $DOOMDIR/config.el:\n"
+                "  ;;; add to $DOOMDIR/config.el\n"
                 (format "  (setq-default vterm-shell \"%s\")\n" shell-file-name)
                 (format "  (setq-default explicit-shell-file-name \"%s\")\n" shell-file-name)))
 
