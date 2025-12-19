@@ -35,7 +35,8 @@ This module adds [[https://www.python.org/][Python]] support to Doom Emacs.
   Add support for the pyright LSP server (requires [[doom-module:+lsp]]).
 - +tree-sitter ::
   Leverages tree-sitter for better syntax highlighting and structural text
-  editing. Requires [[doom-module::tools tree-sitter]].
+  editing. Requires [[doom-module::tools tree-sitter]]. Support is much improved on
+  Emacs 30 and newer.
 
 ** Packages
 - [[doom-package:anaconda-mode]]
@@ -93,6 +94,24 @@ E.g.
   ~$ pip install basedpyright~
 - pyright ::
   ~$ pip install pyright~ or ~$ npm i -g pyright~.
+
+If you have multiple LSP servers installed and on your ~$PATH~, lsp-mode and eglot
+prioritizes which will be used depending on the client's ~:priority~ (in lsp-mode)
+or their order in ~eglot-server-programs~.
+
+To prioritize ~ty~:
+#+begin_src elisp
+;;; add to $DOOMDIR/config.el
+
+;; for eglot users
+(after! python
+  (set-eglot-client! '(python-mode python-ts-mode) '("ty" "server")))
+
+;; Not necessary for lsp-mode users, because `ty-ls' is already priority = -1
+;; (lower = higher priority). Including this for posterity:
+(after! python
+  (set-lsp-priority! 'ty-ls -5)) ; default is -1
+#+end_src
 
 ** Formatter
 Formatting is handled by the [[doom-module::editor format]] module. Python buffers
