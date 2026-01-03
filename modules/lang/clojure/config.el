@@ -57,6 +57,7 @@
 
 (use-package! clojure-ts-mode
   :when (modulep! +tree-sitter)
+  :when (> emacs-major-version 29)  ; package requires 30.1+
   :defer t
   :init
   (setq clojure-ts-auto-remap nil)  ; we do it ourselves
@@ -126,7 +127,7 @@
         cider-prompt-for-symbol nil
         cider-repl-history-display-duplicates nil
         cider-repl-history-display-style 'one-line
-        cider-repl-history-file (concat doom-cache-dir "cider-repl-history")
+        cider-repl-history-file (file-name-concat doom-profile-state-dir "cider-repl-history")
         cider-repl-history-highlight-current-entry t
         cider-repl-history-quit-action 'delete-and-restore
         cider-repl-history-highlight-inserted-item t

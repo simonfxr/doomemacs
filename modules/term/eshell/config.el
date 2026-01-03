@@ -12,7 +12,7 @@
   "Where to store eshell configuration files, as opposed to
 `eshell-directory-name', which is where Doom will store temporary/data files.")
 
-(defvar eshell-directory-name (concat doom-data-dir "eshell")
+(defvar eshell-directory-name (file-name-concat doom-profile-data-dir "eshell")
   "Where to store temporary/data files, as opposed to `eshell-config-dir',
 which is where Doom will store eshell configuration files.")
 
@@ -115,7 +115,7 @@ You should use `set-eshell-alias!' to change this.")
                              '(read-only t)))))
 
   ;; Enable autopairing in eshell
-  (add-hook 'eshell-mode-hook #'smartparens-mode)
+  (add-hook 'eshell-mode-hook #'electric-pair-local-mode)
 
   ;; Persp-mode/workspaces integration
   (when (modulep! :ui workspaces)

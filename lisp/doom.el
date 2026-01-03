@@ -223,7 +223,7 @@
   "Current version of Doom Emacs core.")
 
 ;; DEPRECATED: Remove these when the modules are moved out of core.
-(defconst doom-modules-version "26.01.0-pre"
+(defconst doom-modules-version "26.02.0-pre"
   "Current version of Doom Emacs.")
 
 (defvar doom-init-time nil
@@ -813,7 +813,7 @@ appropriately against `noninteractive' or the `cli' context."
 
           ;; These fire `MAJOR-MODE-local-vars-hook' hooks, which is a Doomism.
           ;; See the `MODE-local-vars-hook' section above.
-          (add-hook 'after-change-major-mode-hook #'doom-run-local-var-hooks-h 100)
+          (add-hook 'after-change-major-mode-hook #'doom-run-local-var-hooks-maybe-h 100)
           (add-hook 'hack-local-variables-hook #'doom-run-local-var-hooks-h)
 
           ;; This is the absolute latest a hook can run in Emacs' startup
