@@ -18,10 +18,13 @@
                       (expt text-scale-mode-step text-scale-mode-amount)
                     1))
            (spacing (or (and (display-graphic-p) (default-value 'line-spacing)) 0))
+           (total-spacing (pcase spacing
+                            ((pred numberp) spacing)
+                            (`(,above . ,below) (+ above below))))
            (h (+ (ceiling (* (frame-char-height) scale))
-                 (if (floatp spacing)
-                     (truncate (* (frame-char-height) spacing))
-                   spacing)))
+                 (if (floatp total-spacing)
+                     (truncate (* (frame-char-height) total-spacing))
+                   total-spacing)))
            (w (min (frame-parameter nil (intern (format "%s-fringe" diff-hl-side)))
                    diff-hl-bmp-max-width))
            (_ (if (zerop w) (setq w diff-hl-bmp-max-width))))
@@ -62,7 +65,6 @@
 (use-package! diff-hl
   :hook (doom-first-file . global-diff-hl-mode)
   :hook (vc-dir-mode . turn-on-diff-hl-mode)
-  :hook (diff-hl-mode . diff-hl-flydiff-mode)
   :commands diff-hl-stage-current-hunk diff-hl-revert-hunk diff-hl-next-hunk diff-hl-previous-hunk
   :init
   (add-hook! 'dired-mode-hook
@@ -75,15 +77,21 @@ Respects `diff-hl-disable-on-remote'."
                    (file-remote-p default-directory))
         (diff-hl-dired-mode +1))))
 
+  (unless (featurep :system 'macos)
+    ;; Enable on-the-fly vc-gutter updating, but not on MacOS (particularly
+    ;; newer versions of MacOS), due to #8554. Seems process management chokes
+    ;; on the diff/git processes this spawns, so we downgrade to update-on-save
+    ;; there, by default.
+    (add-hook 'diff-hl-mode-hook #'diff-hl-flydiff-mode))
+
   :config
   (set-popup-rule! "^\\*diff-hl" :select nil)
 
   (setq diff-hl-global-modes '(not image-mode pdf-view-mode))
   ;; PERF: A slightly faster algorithm for diffing.
   (setq vc-git-diff-switches '("--histogram"))
-  ;; PERF: Slightly more conservative delay before updating the diff. More so on
-  ;;   MacOS where async process management is slower.
-  (setq diff-hl-flydiff-delay (if (featurep :system 'macos) 1.0 0.5))  ; default: 0.3
+  ;; PERF: Slightly more conservative delay before updating the diff.
+  (setq diff-hl-flydiff-delay 0.5)  ; default: 0.3
   ;; PERF: don't block Emacs when updating vc gutter
   (setq diff-hl-update-async (or (> emacs-major-version 30) 'thread))
   ;; UX: get realtime feedback in diffs after staging/unstaging hunks.

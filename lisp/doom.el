@@ -144,6 +144,7 @@
 (push :system features)
 (put :system 'subfeatures doom-system)
 
+;;; DEPRECATED: Remove in v3
 ;; Emacs needs a more consistent way to detect build features, and the docs
 ;; claim `system-configuration-features' is not da way. Some features (that
 ;; don't represent packages) can be found in `features' (which `featurep'
@@ -223,7 +224,7 @@
   "Current version of Doom Emacs core.")
 
 ;; DEPRECATED: Remove these when the modules are moved out of core.
-(defconst doom-modules-version "26.02.0-pre"
+(defconst doom-modules-version "26.03.0-pre"
   "Current version of Doom Emacs.")
 
 (defvar doom-init-time nil
