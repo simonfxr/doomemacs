@@ -23,6 +23,7 @@ be enabled. If any function returns non-nil, the mode will not be activated."
   (defun +indent-guides-init-maybe-h ()
     "Enable `indent-bars-mode' depending on `+indent-guides-inhibit-functions'."
     (unless (or (eq major-mode 'fundamental-mode)
+                (doom-temp-buffer-p (current-buffer))
                 (run-hook-with-args-until-success '+indent-guides-inhibit-functions))
       (indent-bars-mode +1)))
 
@@ -56,18 +57,15 @@ be enabled. If any function returns non-nil, the mode will not be activated."
 
   (add-hook! '+indent-guides-inhibit-functions
     ;; Buffers that may have special fontification or may be invisible to the
-    ;; user. Particularly src blocks, org agenda, or special buffers like magit.
+    ;; user. Particularly src blocks, org agenda, or special modes like magit.
     (defun +indent-guides-in-special-buffers-p ()
-      (or (doom-special-buffer-p (current-buffer))
-          (doom-temp-buffer-p (current-buffer))))
+      (and (not (derived-mode-p 'text-mode 'prog-mode 'conf-mode))
+           (or buffer-read-only
+               (bound-and-true-p cursor-intangible-mode)
+               (doom-special-buffer-p (current-buffer) t))))
     ;; Org's virtual indentation messes up indent-guides.
     (defun +indent-guides-in-org-indent-mode-p ()
       (bound-and-true-p org-indent-mode))
-    ;; Fix #6438: indent-guides prevent inline images from displaying in ein
-    ;; notebooks.
-    (defun +indent-guides-in-ein-notebook-p ()
-      (and (bound-and-true-p ein:notebook-mode)
-           (bound-and-true-p ein:output-area-inlined-images)))
     ;; Don't display indent guides in childframe popups (which are almost always
     ;; used for completion or eldoc popups).
     ;; REVIEW: Swap with `frame-parent' when 27 support is dropped

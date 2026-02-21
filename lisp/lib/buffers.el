@@ -1,8 +1,7 @@
 ;;; lisp/lib/buffers.el -*- lexical-binding: t; -*-
 
 ;;;###autoload
-(defvar doom-real-buffer-functions
-  '(doom-dired-buffer-p)
+(defvar doom-real-buffer-functions ()
   "A list of predicate functions run to determine if a buffer is real, unlike
 `doom-unreal-buffer-functions'. They are passed one argument: the buffer to be
 tested.
@@ -23,6 +22,11 @@ Should any of these functions return non-nil, the rest of the functions are
 ignored and the buffer is considered unreal.
 
 See `doom-real-buffer-p' for more information.")
+
+;;;###autoload
+(defvar doom-real-buffer-modes
+  '(dired-mode comint-mode term-mode shell-mode eshell-mode vterm-mode)
+  "A list of major modes whose buffers are considered real.")
 
 ;;;###autoload
 (defvar-local doom-real-buffer-p nil
@@ -83,15 +87,14 @@ If no project is active, return all buffers."
            finally return (hash-table-keys projects)))
 
 ;;;###autoload
-(defun doom-dired-buffer-p (buf)
-  "Returns non-nil if BUF is a dired buffer."
-  (provided-mode-derived-p (buffer-local-value 'major-mode buf)
-                           'dired-mode))
+(defun doom-special-buffer-p (buf &optional consider-mode?)
+  "Returns non-nil if BUF's name starts with an *.
 
-;;;###autoload
-(defun doom-special-buffer-p (buf)
-  "Returns non-nil if BUF's name starts and ends with an *."
-  (char-equal ?* (aref (buffer-name buf) 0)))
+If CONSIDER-MODE? is non-nil, returns non-nil if BUF's mode is derived from
+`special-mode'."
+  (or (char-equal ?* (aref (buffer-name buf) 0))
+      (and consider-mode?
+           (provided-mode-derived-p (buffer-local-value 'major-mode buf) 'special-mode))))
 
 ;;;###autoload
 (defun doom-temp-buffer-p (buf)
@@ -147,6 +150,8 @@ If BUFFER-OR-NAME is omitted or nil, the current buffer is tested."
     (and (buffer-live-p buf)
          (not (doom-temp-buffer-p buf))
          (or (buffer-local-value 'doom-real-buffer-p buf)
+             (provided-mode-derived-p (buffer-local-value 'major-mode buf)
+                                      doom-real-buffer-modes)
              (run-hook-with-args-until-success 'doom-real-buffer-functions buf)
              (not (run-hook-with-args-until-success 'doom-unreal-buffer-functions buf))))))
 
