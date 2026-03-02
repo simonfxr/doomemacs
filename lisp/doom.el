@@ -224,7 +224,7 @@
   "Current version of Doom Emacs core.")
 
 ;; DEPRECATED: Remove these when the modules are moved out of core.
-(defconst doom-modules-version "26.03.0-pre"
+(defconst doom-modules-version "26.04.0-pre"
   "Current version of Doom Emacs.")
 
 (defvar doom-init-time nil
@@ -885,7 +885,7 @@ appropriately against `noninteractive' or the `cli' context."
     ;; Remember these variables' initial values, so they can be safely reset
     ;; later (e.g. by `doom/reload'), or compared against for change heuristics.
     (dolist (var '(exec-path load-path process-environment))
-      (put var 'initial-value (default-toplevel-value var)))
+      (put var 'initial-value (copy-sequence (default-toplevel-value var))))
 
     t))
 

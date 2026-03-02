@@ -472,28 +472,28 @@ windows, switch to `doom-fallback-buffer'. Otherwise, delegate to original
                    ((eq (car global-hl-line-modes) 'not)
                     (not (derived-mode-p global-hl-line-modes)))
                    ((apply #'derived-mode-p global-hl-line-modes)))
-             (hl-line-mode +1))))
+             (hl-line-mode +1)))))
 
-    ;; Temporarily disable `hl-line-mode' when selection is active, since it
-    ;; doesn't serve much purpose when the selection is so much more visible.
-    (defvar doom--hl-line-mode nil)
+  ;; Temporarily disable `hl-line-mode' when selection is active, since it
+  ;; doesn't serve much purpose when the selection is so much more visible.
+  (defvar doom--hl-line-mode nil)
 
-    (add-hook! 'hl-line-mode-hook
-      (defun doom-truly-disable-hl-line-h ()
-        (unless hl-line-mode
-          (setq-local doom--hl-line-mode nil))))
+  (add-hook! 'hl-line-mode-hook
+    (defun doom-truly-disable-hl-line-h ()
+      (unless hl-line-mode
+        (setq-local doom--hl-line-mode nil))))
 
-    ;; TODO: Use (de)activate-mark-hook in the absence of evil
-    (add-hook! 'evil-visual-state-entry-hook
-      (defun doom-disable-hl-line-h ()
-        (when hl-line-mode
-          (hl-line-mode -1)
-          (setq-local doom--hl-line-mode t))))
+  ;; TODO: Use (de)activate-mark-hook in the absence of evil
+  (add-hook! 'evil-visual-state-entry-hook
+    (defun doom-disable-hl-line-h ()
+      (when hl-line-mode
+        (hl-line-mode -1)
+        (setq-local doom--hl-line-mode t))))
 
-    (add-hook! 'evil-visual-state-exit-hook
-      (defun doom-enable-hl-line-maybe-h ()
-        (when doom--hl-line-mode
-          (hl-line-mode +1))))))
+  (add-hook! 'evil-visual-state-exit-hook
+    (defun doom-enable-hl-line-maybe-h ()
+      (when doom--hl-line-mode
+        (hl-line-mode +1)))))
 
 
 (use-package! winner

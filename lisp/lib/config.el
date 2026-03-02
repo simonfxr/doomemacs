@@ -1,7 +1,7 @@
 ;;; lisp/lib/config.el -*- lexical-binding: t; -*-
 
 ;;;###autoload
-(defvar doom-after-reload-hook nil
+(defvar doom-after-reload-hook '(doom-kill-childframes-h)
   "A list of hooks to run after `doom/reload' has reloaded Doom.")
 
 ;;;###autoload

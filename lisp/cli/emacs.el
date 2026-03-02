@@ -70,9 +70,10 @@ performance, it is best to run Doom out of ~/.config/emacs or ~/.emacs.d."
                   (setq early-init-file ,(doom-path doom-emacs-dir "early-init.el"))
                   (load early-init-file nil (not ,init-file-debug) 'nosuffix))
                (current-buffer)))
-      (exit! (format "HOME=%S %s %s"
-                     tempdir
-                     invocation-name
+      (setenv "HOME" tempdir)
+      (exit! (format "%s %s"
+                     (or (getenv "EMACS")
+                         (doom-path invocation-directory invocation-name))
                      (combine-and-quote-strings args))))))
 
 

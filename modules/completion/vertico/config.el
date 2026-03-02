@@ -13,6 +13,7 @@ overrides `completion-styles' during company completion sessions.")
 (defvar +vertico-consult-dir-container-args nil
   "Command to call for listing container hosts.")
 
+
 ;;
 ;;; Packages
 
@@ -31,6 +32,7 @@ overrides `completion-styles' during company completion sessions.")
   (setq vertico-resize nil
         vertico-count 17
         vertico-cycle t)
+
   (setq-default completion-in-region-function
                 (lambda (&rest args)
                   (apply (if vertico-mode
@@ -66,14 +68,6 @@ overrides `completion-styles' during company completion sessions.")
 (use-package! orderless
   :after-call doom-first-input-hook
   :config
-  (defadvice! +vertico--company-capf--candidates-a (fn &rest args)
-    "Highlight company matches correctly, and try default completion styles before
-orderless."
-    :around #'company-capf--candidates
-    (let ((orderless-match-faces [completions-common-part])
-          (completion-styles +vertico-company-completion-styles))
-      (apply fn args)))
-
   (setq orderless-affix-dispatch-alist
         '((?! . orderless-without-literal)
           (?& . orderless-annotation)
@@ -98,7 +92,15 @@ orderless."
         completion-category-overrides '((file (styles orderless partial-completion)))
         orderless-component-separator #'orderless-escapable-split-on-space)
   ;; ...otherwise find-file gets different highlighting than other commands
-  (set-face-attribute 'completions-first-difference nil :inherit nil))
+  (set-face-attribute 'completions-first-difference nil :inherit nil)
+
+  (defadvice! +vertico--company-capf--candidates-a (fn &rest args)
+    "Highlight company matches correctly and try default styles before
+orderless."
+    :around #'company-capf--candidates
+    (let ((orderless-match-faces [completions-common-part])
+          (completion-styles +vertico-company-completion-styles))
+      (apply fn args))))
 
 
 (use-package! consult
@@ -121,21 +123,6 @@ orderless."
     [remap yank-pop]                      #'consult-yank-pop
     [remap persp-switch-to-buffer]        #'+vertico/switch-workspace-buffer)
   :config
-  (defadvice! +vertico--consult-recentf-a (&rest _args)
-    "`consult-recent-file' needs to have `recentf-mode' on to work correctly.
-`consult-buffer' needs `recentf-mode' to show file candidates."
-    :before (list #'consult-recent-file #'consult-buffer)
-    (recentf-mode +1))
-
-  (defadvice! +vertico--use-evil-registers-a (fn &rest args)
-    "Use `evil-register-list' if `evil-mode' is active."
-    :around #'consult-register--alist
-    (let ((register-alist
-           (if (bound-and-true-p evil-local-mode)
-               (evil-register-list)
-             register-alist)))
-      (apply fn args)))
-
   (setq consult-project-function #'doom-project-root
         consult-narrow-key "<"
         consult-line-numbers-widen t
@@ -166,7 +153,8 @@ orderless."
      :preview-key "C-SPC"))
   (consult-customize
    consult-theme
-   :preview-key (list "C-SPC" :debounce 0.5 'any))
+   :preview-key '("C-SPC" :debounce 0.5 any))
+
   (when (modulep! :lang org)
     (defvar +vertico--consult-org-source
       (list :name     "Org Buffer"
@@ -191,7 +179,18 @@ orderless."
                          (lambda (x)
                            (eq (buffer-local-value 'major-mode x) 'org-mode))
                          (buffer-list)))))))
-    (add-to-list 'consult-buffer-sources '+vertico--consult-org-source 'append)))
+    (add-to-list 'consult-buffer-sources '+vertico--consult-org-source 'append))
+
+  (defadvice! +vertico--consult-recentf-a (&rest _args)
+    "`consult-recent-file' needs to have `recentf-mode' on to work correctly.
+`consult-buffer' needs `recentf-mode' to show file candidates."
+    :before #'consult-recent-file
+    :before #'consult-buffer
+    (recentf-mode +1))
+
+  ;; HACK: Merge Evil's registers into `consult-register' register list.
+  (when (modulep! :editor evil +everywhere)
+    (advice-add #'consult-register--alist :around #'+evil--propagate-registers-a)))
 
 
 (use-package! consult-dir
@@ -250,9 +249,11 @@ orderless."
   (add-to-list 'consult-dir-sources 'consult-dir--source-tramp-ssh t)
   (add-to-list 'consult-dir-sources 'consult-dir--source-tramp-local t))
 
+
 (use-package! consult-flycheck
   :when (modulep! :checkers syntax -flymake)
   :after (consult flycheck))
+
 
 (use-package! consult-yasnippet
   :when (modulep! :editor snippets)
@@ -291,29 +292,26 @@ orderless."
 
   ;; add the package! target finder before the file target finder,
   ;; so we don't get a false positive match.
-  (let ((pos (or (cl-position
-                  'embark-target-file-at-point
-                  embark-target-finders)
-                 (length embark-target-finders))))
-    (cl-callf2
-        cons
-        '+vertico-embark-target-package-fn
-        (nthcdr pos embark-target-finders)))
-  (defvar-keymap +vertico/embark-doom-package-map
+  (cl-callf2 cons
+      '+vertico-embark-target-package-fn
+      (nthcdr (or (cl-position 'embark-target-file-at-point embark-target-finders)
+                  (length embark-target-finders))
+              embark-target-finders))
+  (defvar-keymap +vertico-embark-doom-package-map
     :doc "Keymap for Embark package actions for packages installed by Doom."
     :parent embark-general-map
     "h" #'doom/help-packages
     "b" #'doom/bump-package
     "c" #'doom/help-package-config
     "u" #'doom/help-package-homepage)
-  (setf (alist-get 'package embark-keymap-alist) #'+vertico/embark-doom-package-map)
+  (setf (alist-get 'package embark-keymap-alist) #'+vertico-embark-doom-package-map)
   (map! (:map embark-file-map
-         :desc "Open target with sudo"        "s"   #'doom/sudo-find-file
+         :desc "Open target with sudo"         "s"   #'doom/sudo-find-file
          (:when (modulep! :tools magit)
            :desc "Open magit-status of target" "g"   #'+vertico/embark-magit-status)
          (:when (modulep! :ui workspaces)
            :desc "Open in new workspace"       "TAB" #'+vertico/embark-open-in-new-workspace
-           :desc "Open in new workspace"       "<tab>" #'+vertico/embark-open-in-new-workspace))))
+           :desc "Open in new workspace"       [tab] #'+vertico/embark-open-in-new-workspace))))
 
 
 (use-package! marginalia
@@ -322,21 +320,38 @@ orderless."
   (map! :map minibuffer-local-map
         :desc "Cycle marginalia views" "M-A" #'marginalia-cycle)
   :config
+  (dolist (cat '((+default/find-file-under-here . file)
+                 (doom/find-file-in-emacsd . project-file)
+                 (doom/find-file-in-other-project . project-file)
+                 (doom/find-file-in-private-config . file)
+                 (doom/describe-active-minor-mode . minor-mode)
+                 (flycheck-error-list-set-filter . builtin)
+                 (persp-switch-to-buffer . buffer)
+                 (projectile-find-file . project-file)
+                 (projectile-recentf . project-file)
+                 (projectile-switch-to-buffer . buffer)
+                 (projectile-switch-project . project-file)))
+    (add-to-list 'marginalia-command-categories cat))
+
   (when (modulep! +icons)
     (add-hook 'marginalia-mode-hook #'nerd-icons-completion-marginalia-setup))
-  (advice-add #'marginalia--project-root :override #'doom-project-root)
-  (pushnew! marginalia-command-categories
-            '(+default/find-file-under-here . file)
-            '(doom/find-file-in-emacsd . project-file)
-            '(doom/find-file-in-other-project . project-file)
-            '(doom/find-file-in-private-config . file)
-            '(doom/describe-active-minor-mode . minor-mode)
-            '(flycheck-error-list-set-filter . builtin)
-            '(persp-switch-to-buffer . buffer)
-            '(projectile-find-file . project-file)
-            '(projectile-recentf . project-file)
-            '(projectile-switch-to-buffer . buffer)
-            '(projectile-switch-project . project-file)))
+
+  ;; HACK: Use `doom-project-root' (insert of `project-root') without
+  ;;   circumventing marginalia's project root cache.
+  (defadvice! +vertico--marginalia-project-root-a (&rest _)
+    :override #'marginalia--project-root
+    (marginalia--in-minibuffer
+      (when (eq marginalia--project-root 'unset)
+        (setq marginalia--project-root
+              (or (let ((prompt (minibuffer-prompt))
+                        case-fold-search)
+                    (and (string-match
+                          "\\`\\(?:Dired\\|Find file\\) in \\(.*\\): \\'"
+                          prompt)
+                         (match-string 1 prompt)))
+                  (and (doom-project-p)
+                       (doom-project-root)))))
+      marginalia--project-root)))
 
 
 (use-package! wgrep
@@ -346,15 +361,14 @@ orderless."
 
 (use-package! vertico-posframe
   :when (modulep! +childframe)
-  :hook (vertico-mode . vertico-posframe-mode)
-  :config
-  (add-hook 'doom-after-reload-hook #'posframe-delete-all))
+  :hook (vertico-mode . vertico-posframe-mode))
+
 
 ;; From https://github.com/minad/vertico/wiki#candidate-display-transformations-custom-candidate-highlighting
 ;;
-;; Uses `add-face-text-property' instead of `propertize' unlike the above snippet
-;; because `'append' is necessary to not override the match font lock
-;; See: https://github.com/minad/vertico/issues/389
+;; Uses `add-face-text-property' instead of `propertize' unlike the above
+;; snippet because `append' is necessary to not override the match font lock.
+;; See: minad/vertico#389
 (use-package! vertico-multiform
   :hook (vertico-mode . vertico-multiform-mode)
   :config
@@ -366,13 +380,13 @@ orderless."
       (setq cand (funcall fun cand)))
     (cl-call-next-method cand prefix suffix index start))
 
-  (defun +vertico-highlight-directory (file)
+  (defun +vertico-highlight-directory-fn (file)
     "If FILE ends with a slash, highlight it as a directory."
     (when (string-suffix-p "/" file)
       (add-face-text-property 0 (length file) 'marginalia-file-priv-dir 'append file))
     file)
 
-  (defun +vertico-highlight-enabled-mode (cmd)
+  (defun +vertico-highlight-enabled-mode-fn (cmd)
     "If MODE is enabled, highlight it as font-lock-constant-face."
     (let ((sym (intern cmd)))
       (with-current-buffer (nth 1 (buffer-list))
@@ -386,7 +400,7 @@ orderless."
 
   (add-to-list 'vertico-multiform-categories
                '(file
-                 (+vertico-transform-functions . +vertico-highlight-directory)))
+                 (+vertico-transform-functions . +vertico-highlight-directory-fn)))
   (add-to-list 'vertico-multiform-commands
                '(execute-extended-command
-                 (+vertico-transform-functions . +vertico-highlight-enabled-mode))))
+                 (+vertico-transform-functions . +vertico-highlight-enabled-mode-fn))))
