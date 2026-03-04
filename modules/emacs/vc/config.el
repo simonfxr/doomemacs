@@ -88,7 +88,7 @@
   ;; `header-line-format', which has better visibility.
   (setq git-timemachine-show-minibuffer-details t)
 
-  ;; TODO PR this to `git-timemachine'
+  ;; REVIEW: PR this to `git-timemachine'
   (defadvice! +vc-support-git-timemachine-a (fn)
     "Allow `browse-at-remote' commands in git-timemachine buffers to open that
 file in your browser at the visited revision."
@@ -155,38 +155,20 @@ info in the `header-line-format' is a more visible indicator."
   ;; numbers, users can request them by making a selection first. Otherwise
   ;; omitting them.
   (setq browse-at-remote-add-line-number-if-no-region-selected nil)
-  ;; Opt to produce permanent links with `browse-at-remote' by default,
-  ;; using commit hashes rather than branch names.
+  ;; Opt to produce permanent links with `browse-at-remote' by default, using
+  ;; commit hashes rather than branch names.
   (setq browse-at-remote-prefer-symbolic nil)
 
-  ;; Add codeberg.org support
-  ;; TODO: PR this upstream?
+  ;; Expand recognition for more forges (like self-hosted gitlab.* subdomains
+  ;; and codeberg).
+  ;; REVIEW: PR these upstream?
   (add-to-list 'browse-at-remote-remote-type-regexps '(:host "^codeberg\\.org$" :type "codeberg"))
-  ;; Expand recognition for gitlab hosts besides gitlab.org or gitlab.gnome.org
-  ;; which are presumably hosted in a gitlab.* subdomain.
-  ;; TODO: PR this upstream?
   (add-to-list 'browse-at-remote-remote-type-regexps '(:host "^gitlab\\." :type "gitlab") 'append)
 
-  ;; HACK `browse-at-remote' produces urls with `nil' in them, when the repo is
-  ;;      detached. This creates broken links. I think it is more sensible to
-  ;;      fall back to master in those cases.
+  ;; HACK: `browse-at-remote' produces urls with `nil' in them, when the repo is
+  ;;   detached. This creates broken links. I think it is more sensible to fall
+  ;;   back to master in those cases.
   (defadvice! +vc--fallback-to-master-branch-a ()
     "Return 'master' in detached state."
     :after-until #'browse-at-remote--get-local-branch
-    "master")
-
-  ;; HACK: `vc-git--call's signature changed in 31+, breaking all uses of it in
-  ;;   `browse-at-remote'. This tides over the issue until it is addressed
-  ;;   upstream or we switch to git-link.
-  ;; REVIEW: Address this upstream or switch to git-link!
-  (when (> emacs-major-version 30)
-    (defadvice! +vc--compat-31-a (fn &rest args)
-      :around #'browse-at-remote--get-local-branch
-      :around #'browse-at-remote--get-remote-url
-      :around #'browse-at-remote--get-remotes
-      :around #'browse-at-remote--get-from-config
-      (if (< 2 (car (subr-arity (symbol-function #'vc-git--call))))
-          (letf! (defun vc-git--call (first &rest args)
-                   (apply vc-git--call nil first args))
-            (apply fn args))
-        (apply fn args)))))
+    "master"))

@@ -54,29 +54,17 @@ in."
 
   (print! (start "Checking your Emacs version..."))
   (print-group!
-    (cond ((or (> emacs-major-version 30)
-               (string-match-p ".\\([56]0\\|9[0-9]\\)$" emacs-version))
-           (warn! "Detected a development version of Emacs (%s)" emacs-version)
-           (if (> emacs-major-version 30)
-               (explain! "This is the bleeding edge of Emacs. As it is constantly changing, Doom will not "
-                         "(officially) support it. If you've found a stable commit, great! But be cautious "
-                         "about updating Emacs too eagerly!\n")
-             (explain! "A version that ends in .50, .60, or .9X indicates a build of Emacs in between "
-                       "stable releases (i.e. development builds). Doom does not support these well.\n"))
-           (explain! "Because development (or bleeding edge) builds are prone to random breakage, "
-                     "there will be a greater burden on you to investigate and deal with issues. "
-                     "Please make extra sure that your issue is reproducible on a stable version "
-                     "(between 27.1 and 30.2) before reporting them to Doom's issue tracker!\n"
-                     "\n"
-                     "If this doesn't phase you, read the \"Why does Doom not support Emacs HEAD\" QnA "
-                     "in Doom's FAQ. It offers some advice for debugging and surviving issues on the "
-                     "bleeding edge. Failing that, the latest stable release of Emacs will always be "
-                     "Doom's best supported version of Emacs."))
-          ((= emacs-major-version 27)
-           (warn! "Emacs 27 is supported, but not for long!")
-           (explain! "Doom will drop 27.x support sometime mid-2025. It's recommended that you upgrade "
-                     "to the latest stable release (currently 30.2). It is better supported, faster, and "
-                     "more stable.")))
+    (when (or (> emacs-major-version 30)
+              (string-match-p ".\\([56]0\\|9[0-9]\\)$" emacs-version))
+      (warn! "Detected a development build of Emacs (%s)" emacs-version)
+      (if (> emacs-major-version 30)
+          (explain! "This is the bleeding edge of Emacs and is inherently unstable.\n")
+        (explain! "A version that ends in .50, .60, or .9X indicates a pre-release build of Emacs "
+                  "in between stable releases. Doom does not officially support them.\n"))
+      (explain! "If you encounter issues, make extra sure that your issue is reproducible on "
+                "a stable version of Emacs (between 27.1–30.2) before reporting them to Doom's "
+                "issue tracker! Check out the \"Why does Doom not support Emacs HEAD\" QnA "
+                "in Doom's FAQ for common issues and debugging."))
 
     (when (and (version= emacs-version "29.4") (featurep 'pgtk))
       (warn! "Detected emacs-pgtk 29.4!")
@@ -273,15 +261,31 @@ in."
           (unless (ignore-errors (executable-find doom-fd-executable))
             (warn! "Couldn't find the `fd' binary; project file searches will be slightly slower"))
 
-          (require 'projectile)
-          (when (projectile-project-root "~")
+          (require 'projectile nil t)
+          (when (projectile-project-p "~")
             (warn! "Your $HOME is recognized as a project root")
-            (explain! "Emacs will assume $HOME is the root of any project living under $HOME. If this isn't\n"
-                      "desired, you will need to remove \".git\" from `projectile-project-root-files-bottom-up'\n"
-                      "(a variable), e.g.\n\n"
-                      "  (after! projectile\n"
-                      "    (setq projectile-project-root-files-bottom-up\n"
-                      "          (remove \".git\" projectile-project-root-files-bottom-up)))"))
+            (let ((files
+                   (let ((default-directory (expand-file-name "~")))
+                     (append (seq-filter #'file-exists-p projectile-project-root-files-bottom-up)
+                             (seq-filter #'file-exists-p projectile-project-root-files)))))
+              (explain! "The following files will interfere with projectile's project root detection "
+                        "for any project that lives under $HOME:\n\n"
+                        "  - " (mapconcat #'expand-file-name files "\n - ") "\n\n"
+                        "To fix this, these files must be deleted (recommended), or removed from the "
+                        "`projectile-project-root-files-bottom-up' or `projectile-project-root-files' "
+                        "variables in your Doom config (not recommended). For example:\n\n"
+                        "    ;; Add to $DOOMDIR/config.el\n"
+                        "    (after! projectile\n"
+                        "      (setq projectile-project-root-files-bottom-up\n"
+                        "            (remove \".git\" projectile-project-root-files-bottom-up)))\n")))
+
+          ;; REVIEW: When projectile is replaced with project...
+          ;; (require 'project)
+          ;; (when (project-current nil doom-emacs-dir)
+          ;;   (let ((file (or (seq-find #'file-exists-p project-vc-extra-root-markers)
+          ;;                   (seq-find #'file-directory-p (mapcar #'cdr project-vc-backend-markers-alist)))))
+          ;;     ;; ...
+          ;;     ))
 
           ;; There should only be one
           (when (and (file-equal-p doom-user-dir "~/.config/doom")

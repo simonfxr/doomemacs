@@ -262,11 +262,11 @@
 (use-package! pip-requirements
   :defer t
   :config
-  ;; HACK `pip-requirements-mode' performs a sudden HTTP request to
+  ;; HACK: `pip-requirements-mode' performs a sudden HTTP request to
   ;;   https://pypi.org/simple, which causes unexpected hangs (see #5998). This
   ;;   advice defers this behavior until the first time completion is invoked.
-  ;; REVIEW More sensible behavior should be PRed upstream.
-  (defadvice! +python--init-completion-a (&rest args)
+  ;; REVIEW: More sensible behavior should be PRed upstream.
+  (defadvice! +python--init-completion-a (&rest _)
     "Call `pip-requirements-fetch-packages' first time completion is invoked."
     :before #'pip-requirements-complete-at-point
     (unless pip-packages (pip-requirements-fetch-packages)))

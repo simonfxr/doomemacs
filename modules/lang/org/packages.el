@@ -54,7 +54,7 @@
 (package! toc-org :pin "6d3ae0fc47ce79b1ea06cabe21a3c596395409cd")
 (package! org-cliplink :pin "13e0940b65d22bec34e2de4bc8cba1412a7abfbc")
 
-;; TODO Adjust when this is added to GNU ELPA
+;; TODO: Adjust when this is added to GNU ELPA
 (when (modulep! +contacts)
   (package! org-contacts
     :recipe (:host github :repo "doomelpa/org-contacts")
@@ -74,19 +74,13 @@
   (package! evil-org
     :recipe (:host github :repo "doomelpa/evil-org-mode")
     :pin "06518c65ff4f7aea2ea51149d701549dcbccce5d"))
-(when (modulep! :tools pdf)
-  (package! org-pdftools :pin "2b3357828a4c2dfba8f87c906d64035d8bf221f2"))
-(when (modulep! :tools magit)
-  (package! orgit :pin "24c8fe48c477d561c2ce1720223f8c5aec664f4e") ; v2.1.1
-  (when (modulep! :tools magit +forge)
-    (package! orgit-forge :pin "c2116b8701498bd11d8674065a5429d844985e46"))) ; v1.1.1
 (when (modulep! +dragndrop)
   (package! org-download :pin "c8be2611786d1d8d666b7b4f73582de1093f25ac"))
 (when (modulep! +gnuplot)
   (package! gnuplot :pin "4c6b18f71ff7604e2640033207f5a882ddce78af")
   (package! gnuplot-mode :pin "601f6392986f0cba332c87678d31ae0d0a496ce7"))
 (when (modulep! +jupyter)
-  (package! jupyter :pin "de89cbeca890db51ba84aee956658f89aaa0b642"))
+  (package! jupyter :pin "242fdc709ce0faa3b9ee81dcc48cfd791898e6b8"))
 (when (modulep! +journal)
   (package! org-journal :pin "831ecfd50a29057c239b9fa55ebc02d402a6d4a7"))
 (when (modulep! +noter)
@@ -108,7 +102,7 @@
     :pin "0753c057773ed3e3ec68a558e9af38d8fce728b8"))
 (when (or (modulep! +roam)
           (modulep! +roam2))
-  (package! org-roam :pin "b4857fd7a140361883dfb95e1193ee42698a4afb"))
+  (package! org-roam :pin "7cd906b6f8b18a21766228f074aff24586770934"))
 
 ;;; Babel
 (package! ob-async :pin "9aac486073f5c356ada20e716571be33a350a982")
