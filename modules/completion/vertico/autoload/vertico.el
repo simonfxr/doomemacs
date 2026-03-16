@@ -1,8 +1,8 @@
 ;;; completion/vertico/autoload/vertico.el -*- lexical-binding: t; -*-
 
-;; To prevent "Defining as dynamic an already lexical var" from +vertico/embark-preview
-;;;###autoload
+(defvar consult-ripgrep-args)
 (defvar embark-quit-after-action)
+(defvar embark-after-export-hook)
 
 ;;;###autoload
 (cl-defun +vertico-file-search (&key query in all-files (recursive t) prompt args)
@@ -11,7 +11,8 @@
 :query STRING
   Determines the initial input to search for.
 :in PATH
-  Sets what directory to base the search out of. Defaults to the current project's root.
+  Sets what directory to base the search out of. Defaults to the current
+  project's root.
 :recursive BOOL
   Whether or not to search files recursively from the base directory.
 :args LIST
@@ -35,27 +36,32 @@
          (prompt (if (stringp prompt) (string-trim prompt) "Search"))
          (query (or query
                     (when (doom-region-active-p)
-                      (regexp-quote (doom-thing-at-point-or-region)))))
+                      (regexp-quote (doom-region)))))
          (consult-async-split-style consult-async-split-style)
-         (consult-async-split-styles-alist consult-async-split-styles-alist))
+         (consult-async-split-styles-alist
+          (copy-sequence consult-async-split-styles-alist)))
     ;; Change the split style if the initial query contains the separator.
     (when query
-      (cl-destructuring-bind (&key type separator initial _function)
+      (cl-destructuring-bind (&key separator initial function)
           (alist-get consult-async-split-style consult-async-split-styles-alist)
-        (pcase type
-          (`separator
-           (replace-regexp-in-string (regexp-quote (char-to-string separator))
-                                     (concat "\\" (char-to-string separator))
-                                     query t t))
-          (`perl
-           (when (string-match-p initial query)
-             (setf (alist-get 'perlalt consult-async-split-styles-alist)
-                   `(:initial ,(or (cl-loop for char in (list "%" "@" "!" "&" "/" ";")
-                                            unless (string-match-p char query)
-                                            return char)
-                                   "%")
-                     :type perl)
-                   consult-async-split-style 'perlalt))))))
+        ;; Perl async split style starts with an #. If the query contains #,
+        ;; then use oneof the alternative delimiters instead.
+        (if (eq consult-async-split-style 'perl)
+            (when (string-match-p (char-to-string initial) query)
+              (setf (alist-get 'perlalt consult-async-split-styles-alist)
+                    `(:initial ,(or (cl-loop for char in (list "%" "@" "!" "&" "/" ";")
+                                             unless (string-match-p char query)
+                                             return char)
+                                    "%")
+                      :seperator ,separator
+                      :function ,function)
+                    consult-async-split-style 'perlalt))
+          ;; If the separator character is present *in* the query, escape them.
+          (when separator
+            (setq query
+                  (replace-regexp-in-string (regexp-quote (char-to-string separator))
+                                            (concat "\\" (char-to-string separator))
+                                            query t t))))))
     (consult--grep prompt #'consult--ripgrep-make-builder directory query)))
 
 ;;;###autoload
@@ -94,12 +100,13 @@ If ARG (universal argument), include all files, even hidden or compressed ones."
 (defun +vertico/embark-export-write ()
   "Export the current vertico results to a writable buffer if possible.
 
-Supports exporting consult-grep to wgrep, file to wdeired, and consult-location to occur-edit"
+Supports exporting consult-grep to wgrep, file to wdired, and consult-location
+to occur-edit"
   (interactive)
   (require 'embark)
   (require 'wgrep)
   (let* ((edit-command
-          (pcase-let ((`(,type . ,candidates)
+          (pcase-let ((`(,type . _)
                        (run-hook-with-args-until-success 'embark-candidate-collectors)))
             (pcase type
               ('consult-grep #'wgrep-change-to-wgrep-mode)
@@ -114,11 +121,11 @@ Supports exporting consult-grep to wgrep, file to wdeired, and consult-location 
   "Previews candidate in vertico buffer, unless it's a consult command"
   (interactive)
   (unless (bound-and-true-p consult--preview-function)
-    (if (fboundp 'embark-dwim)
-        (save-selected-window
-          (let (embark-quit-after-action)
-            (embark-dwim)))
-      (user-error "Embark not installed, aborting..."))))
+    (unless (require 'embark nil t)
+      (user-error "Embark not installed, aborting..."))
+    (save-selected-window
+      (let (embark-quit-after-action)
+        (embark-dwim)))))
 
 ;;;###autoload
 (defun +vertico/enter-or-preview ()
@@ -253,12 +260,12 @@ See minad/consult#770."
        ;; Ignore single dispatcher character
        ((and (= len 1) (alist-get (aref pattern 0) alist)) #'ignore)
        ;; Prefix
-       ((when-let ((style (alist-get (aref pattern 0) alist))
-                   ((not (char-equal (aref pattern (max (1- len) 1)) ?\\))))
+       ((when-let* ((style (alist-get (aref pattern 0) alist))
+                    ((not (char-equal (aref pattern (max (1- len) 1)) ?\\))))
           (cons style (substring pattern 1))))
        ;; Suffix
-       ((when-let ((style (alist-get (aref pattern (1- len)) alist))
-                   ((not (char-equal (aref pattern (max 0 (- len 2))) ?\\))))
+       ((when-let* ((style (alist-get (aref pattern (1- len)) alist))
+                    ((not (char-equal (aref pattern (max 0 (- len 2))) ?\\))))
           (cons style (substring pattern 0 -1))))))))
 
 ;;;###autoload
@@ -268,3 +275,5 @@ See minad/consult#770."
     (when (and (> len 0)
                (char-equal (aref pattern (1- len)) ?$))
       `(orderless-regexp . ,(concat (substring pattern 0 -1) "[\x200000-\x300000]*$")))))
+
+;;; vertico.el ends here

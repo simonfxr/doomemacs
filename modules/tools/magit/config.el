@@ -48,7 +48,7 @@ FUNCTION
         transient-values-file  (file-name-concat doom-profile-data-dir "transient" "values")
         transient-history-file (file-name-concat doom-profile-data-dir "transient" "history"))
   :config
-  (set-debug-variable! 'magit-refresh-verbose)
+  (set-debug-var! 'magit-refresh-verbose)
 
   (setq transient-default-level 5
         magit-diff-refine-hunk t ; show granular diffs in selected hunk
@@ -59,26 +59,20 @@ FUNCTION
         ;; Don't display parent/related refs in commit buffers; they are rarely
         ;; helpful and only add to runtime costs.
         magit-revision-insert-related-refs nil
-        ;; If two projects have the same project name (e.g. A/src and B/src will
-        ;; both resolve to the name "src"), Magit will treat them as the same
-        ;; project and destructively hijack each other's magit buffers. This is
-        ;; especially problematic if you use workspaces and have magit open in
-        ;; each, and the two projects happen to have the same name! By unsetting
-        ;; `magit-uniquify-buffer-names', magit uses the project's full path as
-        ;; its name, preventing such naming collisions.
+        ;; HACK: If two projects have the same project name (e.g. A/src and
+        ;;   B/src will both resolve to the name "src"), Magit will treat them
+        ;;   as the same project and destructively hijack each other's magit
+        ;;   buffers. This is especially problematic if you use workspaces and
+        ;;   have magit open in each, and the two projects happen to have the
+        ;;   same name! By unsetting `magit-uniquify-buffer-names', magit uses
+        ;;   the project's full path as its name, preventing such naming
+        ;;   collisions.
         magit-uniquify-buffer-names nil
-        ;; PERF: Magit calls (and resolves) `magit-git-executable' frequently
-        ;;   enough that a non-absolute path can notably slow it down,
-        ;;   especially on MacOS and Windows, so I resolve it once, the first
-        ;;   time it's needed.
-        magit-git-executable (or
-                              ;; PERF: Inexplicably, the built-in git on MacOS
-                              ;;   is much faster than the one provided by
-                              ;;   homebrew, so use that instead there.
-                              (and (featurep :system 'macos)
-                                   (file-exists-p! "/usr/bin/git"))
-                              (executable-find magit-git-executable)
-                              "git"))
+        ;; PERF: Magit resolves `magit-git-executable' to an absolute path on
+        ;;   Windows and MacOS, but not Linux. The $PATH lookup is much faster
+        ;;   on Linux, so this is not strictly necessary, but Magit needs all
+        ;;   the help it can get:
+        magit-git-executable (or (executable-find magit-git-executable) "git"))
 
   ;; Turn ref links into clickable buttons.
   (add-hook 'magit-process-mode-hook #'goto-address-mode)
@@ -190,7 +184,12 @@ FUNCTION
       (if (derived-mode-p 'org-mode)
           (org-reveal '(4))
         (require 'reveal)
-        (reveal-post-command)))))
+        (reveal-post-command))))
+
+  ;; HACK: See magit/magit#5320: large/long status buffers can change the
+  ;;   behavior of motions and TAB in obscure ways.
+  ;; REVIEW: REmove when magit/magit#5320 is addressed.
+  (setq-hook! 'magit-status-mode-hook long-line-threshold nil))
 
 
 (use-package! forge
@@ -292,7 +291,7 @@ FUNCTION
 
   (after! git-rebase
     (dolist (key '(("M-k" . "gk") ("M-j" . "gj")))
-      (when-let (desc (assoc (car key) evil-collection-magit-rebase-commands-w-descriptions))
+      (when-let* ((desc (assoc (car key) evil-collection-magit-rebase-commands-w-descriptions)))
         (setcar desc (cdr key))))
     (evil-define-key* evil-collection-magit-state git-rebase-mode-map
       "gj" #'git-rebase-move-line-down

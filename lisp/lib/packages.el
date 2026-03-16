@@ -115,7 +115,7 @@ package's name as a symbol, and whose CDR is the plist supplied to its
                     ;;   < 2.28. `git symbolic-ref' is a portable alternative
                     ;;   that works on all git versions. See #8538.
                     (funcall call "git" "symbolic-ref" "HEAD"
-                             (format "refs/heads/%s" straight-repository-branch))
+                             (format "refs/heads/%s" branch))
                     (funcall call "git" "remote" "add" "origin" repo-url
                              "--master" straight-repository-branch)
                     (funcall call "git" "fetch" "origin" pin
@@ -148,9 +148,9 @@ package's name as a symbol, and whose CDR is the plist supplied to its
   (dolist (package packages)
     (let* ((name (car package))
            (repo (symbol-name name)))
-      (when-let (recipe (plist-get (cdr package) :recipe))
+      (when-let* ((recipe (plist-get (cdr package) :recipe)))
         (straight-override-recipe (cons name recipe))
-        (when-let (local-repo (plist-get recipe :local-repo))
+        (when-let* ((local-repo (plist-get recipe :local-repo)))
           (setq repo local-repo)))
       (print-group!
         ;; Only clone the package, don't build them. Straight hasn't been fully
@@ -267,7 +267,7 @@ processed."
       plist)))
 
 ;;;###autoload
-(defun doom-package-dependencies (package &optional recursive noerror)
+(defun doom-package-dependencies (package &optional recursive _noerror)
   "Return a list of dependencies for a package.
 
 If RECURSIVE is `tree', return a tree of dependencies.
@@ -313,14 +313,14 @@ non-nil."
 ;;;###autoload
 (defun doom-package-in-module-p (package category &optional module)
   "Return non-nil if PACKAGE was installed by the user's private config."
-  (when-let (modules (doom-package-get package :modules))
+  (when-let* ((modules (doom-package-get package :modules)))
     (or (and (not module) (assq :user modules))
         (member (cons category module) modules))))
 
 ;;;###autoload
 (defun doom-package-backend (package)
-  "Return 'straight, 'builtin, 'elpa or 'other, depending on how PACKAGE is
-installed."
+  "Return \\='straight, \\='builtin, \\='elpa or \\='other, depending on how
+PACKAGE is installed."
   (cond ((gethash (symbol-name package) straight--build-cache)
          'straight)
         ((or (doom-package-built-in-p package)
@@ -374,13 +374,12 @@ also be a list of module keys."
   (let ((module-list (cond ((null module-list) (doom-module-list))
                            ((symbolp module-list) (doom-module-list 'all))
                            (module-list)))
-        (packages-file doom-module-packages-file)
         doom-disabled-packages
         doom-packages)
     (letf! (defun read-packages (key)
              (with-doom-module key
-               (when-let (file (doom-module-locate-path
-                                key doom-module-packages-file))
+               (when-let* ((file (doom-module-locate-path
+                                  key doom-module-packages-file)))
                  (doom-packages--read file nil 'noerror))))
       (with-doom-context 'package
         (let ((user? (assq :user module-list)))
@@ -430,7 +429,7 @@ also be a list of module keys."
   (doom-initialize-packages)
   (or (get package 'homepage)
       (put package 'homepage
-           (cond ((when-let (location (locate-library (symbol-name package)))
+           (cond ((when-let* ((location (locate-library (symbol-name package))))
                     (with-temp-buffer
                       (if (string-match-p "\\.gz$" location)
                           (jka-compr-insert-file-contents location)
@@ -439,7 +438,7 @@ also be a list of module keys."
                       (let ((case-fold-search t))
                         (when (re-search-forward " \\(?:url\\|homepage\\|website\\): \\(http[^\n]+\\)\n" nil t)
                           (match-string-no-properties 1))))))
-                 ((when-let ((recipe (straight-recipes-retrieve package)))
+                 ((when-let* ((recipe (straight-recipes-retrieve package)))
                     (straight--with-plist (straight--convert-recipe recipe)
                         (host repo)
                       (pcase host
@@ -493,7 +492,7 @@ also be a list of module keys."
          (cdr recipe))))))
 
 (defun doom--package-to-bump-string (package plist)
-  "Return a PACKAGE and its PLIST in 'username/repo@commit' format."
+  "Return a PACKAGE and its PLIST in \\='username/repo@commit' format."
   (format "%s@%s"
           (plist-get (doom--package-merge-recipes package plist) :repo)
           (substring-no-properties (plist-get plist :pin) 0 12)))
@@ -528,7 +527,7 @@ also be a list of module keys."
   (interactive)
   (cl-destructuring-bind (&key package plist beg end)
       (doom--package-at-point)
-    (when-let (str (doom--package-to-bump-string package plist))
+    (when-let* ((str (doom--package-to-bump-string package plist)))
       (goto-char beg)
       (delete-region beg end)
       (insert str))))
@@ -546,10 +545,10 @@ also be a list of module keys."
 ;;;###autoload
 (defun doom/bump-package-at-point (&optional select)
   "Inserts or updates a `:pin' for the `package!' statement at point.
-Grabs the latest commit id of the package using 'git'."
+Grabs the latest commit id of the package using git."
   (interactive "P")
   (doom-initialize-packages)
-  (cl-destructuring-bind (&key package plist beg end)
+  (cl-destructuring-bind (&key package plist _beg end)
       (or (doom--package-at-point)
           (user-error "Not on a `package!' call"))
     (let* ((recipe (doom--package-merge-recipes package plist))
@@ -693,11 +692,11 @@ Must be run from a magit diff buffer."
                         :test #'equal)))
         (save-excursion
           (while (re-search-forward "^-" nil t)
-            (when-let (pkg (read-package))
+            (when-let* ((pkg (read-package)))
               (cl-pushnew pkg before :test #'equal))))
         (save-excursion
           (while (re-search-forward "^+" nil t)
-            (when-let (pkg (read-package))
+            (when-let* ((pkg (read-package)))
               (cl-pushnew pkg after :test #'equal))))
         (unless (= (length before) (length after))
           (user-error "Uneven number of packages being bumped"))

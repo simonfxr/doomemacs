@@ -74,7 +74,7 @@ PT defaults to the current position."
               ;; starters and enders, because `syntax-ppss' does not yet know if
               ;; we are inside a comment or not (e.g. / can be a division or
               ;; comment starter...).
-              (when-let ((s (car (syntax-after pt))))
+              (when-let* ((s (car (syntax-after pt))))
                 (or (and (/= 0 (logand (ash 1 16) s))
                          (nth 4 (syntax-ppss (+ pt 2))))
                     (and (/= 0 (logand (ash 1 17) s))
@@ -136,17 +136,28 @@ Uses `evil-visual-end' if available."
       (region-end)))
 
 ;;;###autoload
-(defun doom-region (&optional as-list)
-  "Return the bounds of the current seelction.
+(defun doom-region-bounds (&optional as-list)
+  "Return the bounds of the active selection.
 
-If AS-LIST is non-nil, returns (BEG END). Otherwise returns a cons cell (BEG .
-END)."
+If AS-LIST is non-nil, returns (BEG END) instead of (BEG . END). If nothing is
+selected, returns (nil . nil)."
   (let* ((active (doom-region-active-p))
          (beg (if active (doom-region-beginning)))
          (end (if active (doom-region-end))))
     (if as-list
         (list beg end)
       (cons beg end))))
+
+;;;###autoload
+(defun doom-region (&optional preserve-properties?)
+  "Return the contents of the active selection.
+
+Return nil if nothing is selected."
+  (when (doom-region-active-p)
+    (let* ((bounds (doom-region-bounds)))
+      (if preserve-properties?
+          (buffer-substring-no-properties (car bounds) (cdr bounds))
+        (buffer-substring (car bounds) (cdr bounds))))))
 
 ;;;###autoload
 (defun doom-thing-at-point-or-region (&optional thing prompt)
@@ -282,49 +293,6 @@ line to beginning of line. Same as `evil-delete-back-to-indentation'."
     (ignore-errors (backward-kill-word arg))))
 
 ;;;###autoload
-(defun doom/dumb-indent ()
-  "Inserts a tab character (or spaces x tab-width)."
-  (interactive)
-  (if indent-tabs-mode
-      (insert "\t")
-    (let* ((movement (% (current-column) tab-width))
-           (spaces (if (= 0 movement) tab-width (- tab-width movement))))
-      (insert (make-string spaces ? )))))
-
-;;;###autoload
-(defun doom/dumb-dedent ()
-  "Dedents the current line."
-  (interactive)
-  (if indent-tabs-mode
-      (call-interactively #'backward-delete-char)
-    (unless (bolp)
-      (save-excursion
-        (when (> (current-column) (current-indentation))
-          (back-to-indentation))
-        (let ((movement (% (current-column) tab-width)))
-          (delete-char
-           (- (if (= 0 movement)
-                  tab-width
-                (- tab-width movement)))))))))
-
-;;;###autoload
-(defun doom/retab (arg &optional beg end)
-  "Converts tabs-to-spaces or spaces-to-tabs within BEG and END (defaults to
-buffer start and end, to make indentation consistent. Which it does depends on
-the value of `indent-tab-mode'.
-
-If ARG (universal argument) is non-nil, retab the current buffer using the
-opposite indentation style."
-  (interactive "P\nr")
-  (unless (and beg end)
-    (setq beg (point-min)
-          end (point-max)))
-  (let ((indent-tabs-mode (if arg (not indent-tabs-mode) indent-tabs-mode)))
-    (if indent-tabs-mode
-        (tabify beg end)
-      (untabify beg end))))
-
-;;;###autoload
 (defun doom/delete-trailing-newlines ()
   "Trim trailing newlines.
 
@@ -345,47 +313,6 @@ Respects `require-final-newline'."
   "Convert the current buffer to a DOS file encoding."
   (interactive)
   (set-buffer-file-coding-system 'undecided-dos nil))
-
-;;;###autoload
-(defun doom/toggle-indent-style ()
-  "Switch between tabs and spaces indentation style in the current buffer."
-  (interactive)
-  (setq indent-tabs-mode (not indent-tabs-mode))
-  (message "Indent style changed to %s" (if indent-tabs-mode "tabs" "spaces")))
-
-(defvar editorconfig-lisp-use-default-indent)
-;;;###autoload
-(defun doom/set-indent-width (width)
-  "Change the indentation size to WIDTH of the current buffer.
-
-The effectiveness of this command is significantly improved if you have
-editorconfig installed."
-  (interactive
-   (list (if (integerp current-prefix-arg)
-             current-prefix-arg
-           (read-number "New indent size: "))))
-  (setq tab-width width)
-  (setq-local standard-indent width)
-  (when (boundp 'evil-shift-width)
-    (setq evil-shift-width width))
-  ;; REVIEW: Only use `editorconfig' once we drop 29.x support.
-  (cond ((let ((load-path (get 'load-path 'initial-value)))
-           ;; A built-in `editorconfig' package was added in Emacs 30.x, but
-           ;; with a different API. Since it's built in, prefer it over the
-           ;; upstream one, but we still need to adapt:
-           (if (require 'editorconfig nil t)
-               (fboundp #'editorconfig--default-indent-size-function)))
-         (pcase-dolist (`(,var . ,val) (editorconfig--default-indent-size-function width))
-           (set (make-local-variable var) val)))
-        ((require 'editorconfig nil t)
-         (let (editorconfig-lisp-use-default-indent)
-           (editorconfig-set-indentation nil width)))
-        ((require 'dtrt-indent nil t)
-         (when-let (vars (nth 2 (assq major-mode dtrt-indent-hook-mapping-list)))
-           (dolist (var (ensure-list vars))
-             (doom-log "Updated %s = %d" var width)
-             (set var width)))))
-  (message "Changed buffer's indent-size to %d" width))
 
 
 ;;

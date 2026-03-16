@@ -2,8 +2,7 @@
 
 (defgroup +dashboard nil
   "Manage how Doom's dashboard is coloured and themed."
-  :prefix "+dashboard"
-  :group 'doom-themes)
+  :group 'doom+)
 
 (defcustom +dashboard-name "*doom*"
   "The name to use for the dashboard buffer."
@@ -228,9 +227,7 @@ dashboard reloading is inhibited.")
       (setq fancy-splash-image
             (expand-file-name +dashboard-banner-file
                               +dashboard-banner-dir)))
-    (when (equal (buffer-name) "*scratch*")
-      (set-window-buffer nil (doom-fallback-buffer))
-      (+dashboard-reload))
+    (+dashboard-reload)
     (add-hook 'doom-load-theme-hook #'+dashboard-reload-on-theme-change-h)
     ;; Ensure the dashboard is up-to-date whenever it is switched to or resized.
     (add-hook 'window-size-change-functions #'+dashboard-resize-h)
@@ -246,6 +243,13 @@ dashboard reloading is inhibited.")
     (add-hook 'persp-before-switch-functions #'+dashboard--persp-record-project-h)))
 
 (add-hook 'doom-init-ui-hook #'+dashboard-init-h 'append)
+
+;; PERF: Make sure the dashboard is ready early, so as to avoid triggering
+;;   `doom-first-buffer-hook' later, when switching to it.
+(when (equal (buffer-name) "*scratch*")
+  (let (buffer-list-update-hook
+        doom-first-buffer-hook)
+    (switch-to-buffer +dashboard-name)))
 
 
 ;;
@@ -324,7 +328,7 @@ This and `+dashboard--persp-record-project-h' provides `persp-mode'
 integration with the Doom dashboard. It ensures that the dashboard is always in
 the correct project (which may be different across perspective)."
   (when (bound-and-true-p persp-mode)
-    (when-let (pwd (persp-parameter 'last-project-root))
+    (when-let* ((pwd (persp-parameter 'last-project-root)))
       (+dashboard-update-pwd-h pwd))))
 
 (defun +dashboard--persp-record-project-h (&optional persp &rest _)

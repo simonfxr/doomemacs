@@ -63,7 +63,7 @@
             (if (equal status "finished\n")
                 (progn
                   (delete-window w)
-                  ,on-success)
+                  (with-current-buffer "*scratch*" ,on-success))
               ,on-failure))
           nil 'local)))))
 
@@ -95,8 +95,8 @@ Runs `doom-after-reload-hook' afterwards."
           (general-auto-unbind-keys)
           (unwind-protect
               (startup--load-user-init-file nil)
-            (general-auto-unbind-keys t)))
-        (doom-run-hooks 'doom-after-reload-hook)
+            (general-auto-unbind-keys t)
+            (doom-run-hooks 'doom-after-reload-hook)))
         (message "Config successfully reloaded!"))
     (user-error "Failed to reload your config")))
 
@@ -108,14 +108,14 @@ This is much faster and safer than `doom/reload', but not as comprehensive. This
 reloads your package and module visibility, but does not install new packages or
 remove orphaned ones. It also doesn't reload your private config.
 
-It is useful to only pull in changes performed by 'doom sync' on the command
+It is useful to only pull in changes performed by \\='doom sync' on the command
 line."
   (interactive)
   (doom-require 'doom-lib 'profiles)
   ;; TODO: Make this more robust
   (with-doom-context 'reload
     (dolist (file (mapcar #'car doom-profile-generators))
-      (when (string-match-p "/[0-9]+-loaddefs[.-]" file)
+      (when (string-match-p "^[0-9]+-loaddefs[.-]" file)
         (load (doom-path doom-profile-dir doom-profile-init-dir-name file)
               'noerror)))))
 
@@ -123,8 +123,8 @@ line."
 (defun doom/reload-env ()
   "Reloads your envvar file.
 
-DOES NOT REGENERATE IT. You must run 'doom env' in your shell OUTSIDE of Emacs.
-Doing so from within Emacs will taint your shell environment.
+DOES NOT REGENERATE IT. You must run \\='doom env' in your shell OUTSIDE of
+Emacs. Doing so from within Emacs will taint your shell environment.
 
 An envvar file contains a snapshot of your shell environment, which can be
 imported into Emacs."

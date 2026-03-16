@@ -47,7 +47,7 @@
      epa-file-encrypt-to
      (or (default-value 'epa-file-encrypt-to)
          (unless (string-empty-p user-full-name)
-           (when-let (context (ignore-errors (epg-make-context)))
+           (when-let* ((context (ignore-errors (epg-make-context))))
              (cl-loop for key in (epg-list-keys context user-full-name 'public)
                       for subkey = (car (epg-key-sub-key-list key))
                       if (not (memq 'disabled (epg-sub-key-capability subkey)))
@@ -459,12 +459,12 @@ Continues comments if executed from a commented line."
 
   ;; A Doom convention where C-s on popups and interactive searches will invoke
   ;; ivy/helm/vertico for their superior filtering.
-  (when-let (command (cond ((modulep! :completion ivy)
-                            #'counsel-minibuffer-history)
-                           ((modulep! :completion helm)
-                            #'helm-minibuffer-history)
-                           ((modulep! :completion vertico)
-                            #'consult-history)))
+  (when-let* ((command (cond ((modulep! :completion ivy)
+                              #'counsel-minibuffer-history)
+                             ((modulep! :completion helm)
+                              #'helm-minibuffer-history)
+                             ((modulep! :completion vertico)
+                              #'consult-history))))
     (define-key!
       :keymaps (append +default-minibuffer-maps
                        (when (modulep! :editor evil +everywhere)
@@ -591,8 +591,9 @@ Continues comments if executed from a commented line."
         :prefix doom-leader-key     "u" #'universal-argument-more
         :prefix doom-leader-alt-key "u" #'universal-argument-more)
 
-  (when (modulep! +bindings)
-    (load! "+evil-bindings")))
+  (unless (doom-context-p 'reload)
+    (when (modulep! +bindings)
+      (load! "+evil-bindings"))))
 
  (t
   (add-hook 'doom-first-buffer-hook #'delete-selection-mode)
@@ -615,6 +616,7 @@ Continues comments if executed from a commented line."
       (when (memq last-command '(er/expand-region er/contract-region))
         (er/contract-region 0))))
 
-  (when (modulep! +bindings)
-    (require 'projectile nil t) ; we need its keybinds immediately
-    (load! "+emacs-bindings"))))
+  (unless (doom-context-p 'reload)
+    (when (modulep! +bindings)
+      (require 'projectile nil t) ; we need its keybinds immediately
+      (load! "+emacs-bindings")))))

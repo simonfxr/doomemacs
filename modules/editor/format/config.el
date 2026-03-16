@@ -11,7 +11,7 @@
 If it is t, it is disabled in all modes, the same as if the +onsave flag wasn't
   used at all.
 If nil, formatting is enabled in all modes."
-  :type '(list symbol))
+  :type '(repeat symbol))
 
 (defvaralias '+format-with 'apheleia-formatter)
 (defvaralias '+format-inhibit 'apheleia-inhibit)
@@ -42,8 +42,8 @@ This is controlled by `+format-on-save-disabled-modes'."
     (add-hook 'lsp-managed-mode-hook #'+format-with-lsp-toggle-h))
 
   :config
-  (set-debug-variable! 'apheleia-log-only-errors nil)
-  (set-debug-variable! 'apheleia-log-debug-info t 2)
+  (set-debug-var! 'apheleia-log-only-errors nil)
+  (set-debug-var! 'apheleia-log-debug-info t 2)
 
   ;; UX: Use prefix-arg on `save-buffer' or `basic-save-buffer' to inhibit
   ;;   format-on-save behavior.
@@ -122,7 +122,7 @@ This is controlled by `+format-on-save-disabled-modes'."
                                                 ".prettierrc.toml")
                                            if (locate-dominating-file default-directory file)
                                            return t)
-                                  (when-let ((pkg (locate-dominating-file default-directory "package.json")))
+                                  (when-let* ((pkg (locate-dominating-file default-directory "package.json")))
                                     (require 'json)
                                     (let ((json-key-type 'alist))
                                       (assq 'prettier

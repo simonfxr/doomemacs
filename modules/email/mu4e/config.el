@@ -21,7 +21,7 @@
     (setq mu4e-maildir "~/.mail"
           mu4e-user-mail-address-list nil))
   :config
-  (set-debug-variable! 'mu4e-debug)
+  (set-debug-var! 'mu4e-debug)
   ;; mu4e now uses `display-buffer-alist' so we need to add some rules of our own
   (set-popup-rule! "^\\*mu4e-\\(main\\|headers\\)\\*" :ignore t)
   (set-popup-rule! "^\\*mu4e-log\\*" :select nil)
@@ -44,7 +44,7 @@
                (concat "mbsync --all"
                        ;; XDG support was added to isync 1.5, but this lets
                        ;; users on older benefit from it sooner.
-                       (when-let (file (file-exists-p! "isyncrc" (or (getenv "XDG_CONFIG_HOME") "~/.config")))
+                       (when-let* ((file (file-exists-p! "isyncrc" (or (getenv "XDG_CONFIG_HOME") "~/.config"))))
                          (format " --config %S" file)))
                mu4e-change-filenames-when-moving t))
         ((or (modulep! +offlineimap)

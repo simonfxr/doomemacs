@@ -125,7 +125,7 @@ If CONSIDER-MODE? is non-nil, returns non-nil if BUF's mode is derived from
 
 ;;;###autoload
 (defun doom-real-buffer-p (buffer-or-name)
-  "Returns t if BUFFER-OR-NAME is a 'real' buffer.
+  "Returns t if BUFFER-OR-NAME is a \\='real' buffer.
 
 A real buffer is a useful buffer; a first class citizen in Doom. Real ones
 should get special treatment, because we will be spending most of our time in
@@ -144,8 +144,8 @@ If BUFFER-OR-NAME is omitted or nil, the current buffer is tested."
   (or (bufferp buffer-or-name)
       (stringp buffer-or-name)
       (signal 'wrong-type-argument (list '(bufferp stringp) buffer-or-name)))
-  (when-let (buf (get-buffer buffer-or-name))
-    (when-let (basebuf (buffer-base-buffer buf))
+  (when-let* ((buf (get-buffer buffer-or-name)))
+    (when-let* ((basebuf (buffer-base-buffer buf)))
       (setq buf basebuf))
     (and (buffer-live-p buf)
          (not (doom-temp-buffer-p buf))
@@ -157,7 +157,7 @@ If BUFFER-OR-NAME is omitted or nil, the current buffer is tested."
 
 ;;;###autoload
 (defun doom-unreal-buffer-p (buffer-or-name)
-  "Return t if BUFFER-OR-NAME is an 'unreal' buffer.
+  "Return t if BUFFER-OR-NAME is an \\='unreal' buffer.
 
 See `doom-real-buffer-p' for details on what that means."
   (not (doom-real-buffer-p buffer-or-name)))

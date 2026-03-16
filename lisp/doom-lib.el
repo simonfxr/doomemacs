@@ -206,7 +206,7 @@ Return non-nil if loading the file succeeds."
 (defun doom-require (feature &optional filename noerror)
   "Like `require', but handles and enhances Doom errors.
 
-Can also load Doom's subfeatures, e.g. (doom-require 'doom-lib 'files)"
+Can also load Doom's subfeatures, e.g. (doom-require \\='doom-lib \\='files)"
   (let ((subfeature (if (symbolp filename) filename)))
     (or (featurep feature subfeature)
         (doom-load
@@ -227,7 +227,7 @@ unreadable. Returns the names of envvars that were changed."
         (signal 'file-error (list "No envvar file exists" file)))
     (with-temp-buffer
       (insert-file-contents file)
-      (when-let (env (read (current-buffer)))
+      (when-let* ((env (read (current-buffer))))
         (let ((tz (getenv-internal "TZ")))
           (setq-default
            process-environment
@@ -238,7 +238,7 @@ unreadable. Returns the names of envvars that were changed."
            shell-file-name
            (or (getenv "SHELL")
                (default-value 'shell-file-name)))
-          (when-let (newtz (getenv-internal "TZ"))
+          (when-let* ((newtz (getenv-internal "TZ")))
             (unless (equal tz newtz)
               (set-time-zone-rule newtz))))
         env))))
@@ -270,7 +270,7 @@ Meant to be used with `run-hook-wrapped'."
                 (caddr e)))
        (signal 'doom-hook-error (cons hook (cdr e)))))))
 
-(defun doom-run-hook-on (hook-var trigger-hooks)
+(defun doom-run-hook-on (hook-var trigger-hooks &optional predicate)
   "Configure HOOK-VAR to be invoked exactly once when any of the TRIGGER-HOOKS
 are invoked *after* Emacs has initialized (to reduce false positives). Once
 HOOK-VAR is triggered, it is reset to nil.
@@ -292,7 +292,9 @@ TRIGGER-HOOK is a list of quoted hooks and/or sharp-quoted functions."
                            ;; internally). In that case assume this hook was
                            ;; invoked non-interactively.
                            (and (boundp hook)
-                                (symbol-value hook))))
+                                (symbol-value hook)))
+                       (or (null predicate)
+                           (funcall predicate)))
               (setq running? t)  ; prevent infinite recursion
               (doom-run-hooks hook-var)
               (set hook-var nil))))
@@ -313,7 +315,7 @@ TRIGGER-HOOK is a list of quoted hooks and/or sharp-quoted functions."
   "Queue FNS to be byte/natively-compiled after a brief delay."
   (with-memoization (get 'doom-compile-function 'timer)
     (run-with-idle-timer
-     1.5 t (fn! (when-let (fn (pop fns))
+     1.5 t (fn! (when-let* ((fn (pop fns)))
                   (doom-log 3 "compile-functions: %s" fn)
                   (or (if (featurep 'native-compile)
                           (or (subr-native-elisp-p (indirect-function fn))
@@ -345,7 +347,7 @@ TRIGGER-HOOK is a list of quoted hooks and/or sharp-quoted functions."
   (if (stringp val)
       (if deep? val (purecopy val))
     (if deep?
-        (when-let ((newval (mapcar (doom-rpartial #'doom-copy t) val)))
+        (when-let* ((newval (mapcar (doom-rpartial #'doom-copy t) val)))
           (if (vectorp val)
               (apply #'vector newval)
             newval))
@@ -424,7 +426,7 @@ The def* forms accepted are:
               (`defadvice
                (if (keywordp (cadr rest))
                    (cl-destructuring-bind (target where fn) rest
-                     `(when-let (fn ,fn)
+                     `(when-let* ((fn ,fn))
                         (advice-add ,target ,where fn)
                         (unwind-protect ,body (advice-remove ,target fn))))
                  (let* ((fn (pop rest))
@@ -620,14 +622,15 @@ or aliases."
   (declare (doc-string 1))
   `(lambda (&rest _) (interactive) ,@body))
 
-(defmacro cmd!! (command &optional prefix-arg &rest args)
+(defmacro cmd!! (command &optional arg &rest args)
   "Returns a closure that interactively calls COMMAND with ARGS and PREFIX-ARG.
+
 Like `cmd!', but allows you to change `current-prefix-arg' or pass arguments to
 COMMAND. This macro is meant to be used as a target for keybinds (e.g. with
 `define-key' or `map!')."
   (declare (doc-string 1) (pure t) (side-effect-free t))
   `(lambda (arg &rest _) (interactive "P")
-     (let ((current-prefix-arg (or ,prefix-arg arg)))
+     (let ((current-prefix-arg (or ,arg arg)))
        (,(if args
              #'funcall-interactively
            #'call-interactively)
@@ -1254,7 +1257,7 @@ one of CONTEXTS isn't active."
         (push context removed))
       (when removed
         (setq doom-context current-context)
-        (doom-log 3 ":context: +%s %s" removed doom-context)
+        (doom-log 3 ":context: -%s %s" removed doom-context)
         removed))))
 
 (defmacro with-doom-context (contexts &rest body)
@@ -1318,7 +1321,7 @@ cell."
 
 Return its PROPERTY, if specified."
   (declare (side-effect-free t))
-  (when-let ((context (get group name)))
+  (when-let* ((context (get group name)))
     (if property
         (aref
          context
@@ -1371,9 +1374,9 @@ duplicates."
     (while flags
       (let* ((flag (car flags))
              (flagstr (symbol-name flag)))
-        (when-let ((sym (intern-soft
-                         (concat (if (eq ?- (aref flagstr 0)) "+" "-")
-                                 (substring flagstr 1)))))
+        (when-let* ((sym (intern-soft
+                          (concat (if (eq ?- (aref flagstr 0)) "+" "-")
+                                  (substring flagstr 1)))))
           (setq newflags (delq sym newflags)))
         (cl-pushnew flag newflags :test 'eq))
       (setq flags (cdr flags)))
@@ -1382,7 +1385,7 @@ duplicates."
 (defun doom-module-get (key &optional property)
   "Returns the plist for GROUP MODULE. Gets PROPERTY, specifically, if set."
   (declare (side-effect-free t))
-  (when-let ((m (gethash key doom-modules)))
+  (when-let* ((m (gethash key doom-modules)))
     (if property
         (aref
          m (or (plist-get
@@ -1398,7 +1401,7 @@ duplicates."
 (defun doom-module-active-p (group module &optional flags)
   "Return t if GROUP MODULE is active, and with FLAGS (if given)."
   (declare (side-effect-free t))
-  (when-let ((val (doom-module-get (cons group module) (if flags :flags))))
+  (when-let* ((val (doom-module-get (cons group module) (if flags :flags))))
     (or (null flags)
         (doom-module--has-flag-p flags val))))
 
@@ -1453,7 +1456,7 @@ If INITORDER? is non-nil, sort modules by the CAR of that module's :depth."
 GROUP is a keyword. MODULE is a symbol. FILE is an optional string path.
 If the group isn't enabled this returns nil. For finding disabled modules use
 `doom-module-locate-path' instead."
-  (when-let ((path (doom-module-get key :path)))
+  (when-let* ((path (doom-module-get key :path)))
     (if file
         (file-name-concat path file)
       path)))
@@ -1631,11 +1634,11 @@ Accepts the following properties:
  :built-in BOOL|'prefer
    Same as :ignore if the package is a built-in Emacs package. This is more to
    inform help commands like `doom/help-packages' that this is a built-in
-   package. If set to 'prefer, the package will not be installed if it is
+   package. If set to \\='prefer, the package will not be installed if it is
    already provided by Emacs.
  :env ALIST
    Parameters and envvars to set while the package is building. If these values
-   change, the package will be rebuilt on next 'doom sync'.
+   change, the package will be rebuilt on next \\='doom sync'.
 
 Returns t if package is successfully registered, and nil if it was disabled
 elsewhere."
@@ -1671,7 +1674,7 @@ elsewhere."
               do (cl-callf plist-put plist key value))
      ;; Some basic key validation; throws an error on invalid properties
      (condition-case e
-         (when-let (recipe (plist-get plist :recipe))
+         (when-let* ((recipe (plist-get plist :recipe)))
            (cl-destructuring-bind
                (&key local-repo _files _flavor _build _pre-build _post-build
                      _includes _type _repo _host _branch _protocol _remote

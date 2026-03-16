@@ -27,7 +27,7 @@
 
 ;;;###autoload
 (progn
-  (cl-defun set-debug-variable! (var &optional (debug-val t) (level 1))
+  (cl-defun set-debug-var! (var &optional (debug-val t) (level 1))
     "Set VAR to DEBUG-VAL (or `t') when `doom-debug-mode' is active at >=LEVEL."
     (setf (alist-get var doom-debug--variables) (cons debug-val level))))
 
@@ -57,10 +57,7 @@
         ((add-to-list 'doom-debug--unbound-variables (cons spec t)))))
 
 (defun doom-debug--timestamped-message-a (format-string &rest _args)
-  "Advice to run before `message' that prepends a timestamp to each message.
-
-Activate this advice with:
-(advice-add 'message :before 'doom-debug--timestamped-message-a)"
+  "Advice to run before `message' that prepends a timestamp to each message."
   (when (and (stringp format-string)
              message-log-max  ; if nil, logging is disabled
              (not (equal format-string "%s%s"))
@@ -83,6 +80,7 @@ Activate this advice with:
 (define-minor-mode doom-debug-mode
   "Toggle `debug-on-error' and `init-file-debug' for verbose logging."
   :global t
+  :group 'doom
   (when (or doom-debug-mode
             (and (integerp current-prefix-arg)
                  (> current-prefix-arg 0)))

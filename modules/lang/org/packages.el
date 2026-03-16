@@ -46,7 +46,7 @@
 (package! org-contrib
   :recipe (:host github
            :repo "emacsmirror/org-contrib")
-  :pin "90e1d6bd6288615233dae273f0525a43a9d8779d")
+  :pin "b840bdabd1867f9d51ee36bef7bac4be7073288c")  ; release_0.8
 
 (package! avy)
 (package! htmlize :pin "fa644880699adea3770504f913e6dddbec90c076")
@@ -88,7 +88,7 @@
 (when (modulep! +pomodoro)
   (package! org-pomodoro :pin "3f5bcfb80d61556d35fc29e5ddb09750df962cc6"))
 (when (modulep! +pretty)
-  (package! org-modern :pin "b4b5b1c864f1fdf240d1bbd7093529f5a75e8a06")
+  (package! org-modern :pin "f514a2570da0f7a8ff0d72641458dbcf96ccf702")
   (package! org-appear :pin "32ee50f8fdfa449bbc235617549c1bccb503cb09"))
 (when (modulep! +present)
   (package! centered-window
@@ -99,16 +99,13 @@
   (package! revealjs
     :recipe (:host github :repo "hakimel/reveal.js"
              :files ("css" "dist" "js" "plugin"))
-    :pin "0753c057773ed3e3ec68a558e9af38d8fce728b8"))
+    :pin "8d9120f8abf159670e9ddcb1e802ce29c0aea6eb"))
 (when (or (modulep! +roam)
           (modulep! +roam2))
   (package! org-roam :pin "7cd906b6f8b18a21766228f074aff24586770934"))
 
 ;;; Babel
 (package! ob-async :pin "9aac486073f5c356ada20e716571be33a350a982")
-(when (modulep! :lang clojure)
-  (package! ob-clojure-literate
-    :pin "18c3ea15b872a43e67c899a9914182c35b00b7ee"))
 (when (modulep! :lang crystal)
   (package! ob-crystal :pin "d84c1adee4b269cdba06a97caedb8071561a09af"))
 (when (modulep! :lang elixir)

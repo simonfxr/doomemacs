@@ -93,7 +93,13 @@ the current major-modea.")
   "Get information on an active minor mode. Use `describe-minor-mode' for a
 selection of all minor-modes, active or not."
   (interactive
-   (list (completing-read "Describe active mode: " (doom-active-minor-modes))))
+   (list
+    (completing-read
+     "Describe active mode: "
+     (lambda (str pred action)
+       (if (eq action 'metadata) ; for embark/marginalia
+           `(metadata (category . minor-mode))
+         (complete-with-action action (doom-active-minor-modes) str pred))))))
   (let ((symbol
          (cond ((stringp mode) (intern mode))
                ((symbolp mode) mode)
@@ -109,7 +115,7 @@ selection of all minor-modes, active or not."
    (list (if current-prefix-arg
              (save-window-excursion
                (message "Click what to describe...")
-               (or (when-let ((evt (read--potential-mouse-event)))
+               (or (when-let* ((evt (read--potential-mouse-event)))
                      ;; Discard mouse release event
                      (read--potential-mouse-event)
                      (cadr evt))
@@ -170,7 +176,7 @@ selection of all minor-modes, active or not."
 (defvar ivy-sort-functions-alist)
 ;;;###autoload
 (cl-defun doom-completing-read-org-headings
-    (prompt files &rest plist &key depth mindepth include-files initial-input extra-candidates action)
+    (prompt files &rest plist &key _depth _mindepth _include-files initial-input extra-candidates action)
   "TODO"
   (let ((alist
          (append (apply #'doom--org-headings files plist)
@@ -383,10 +389,10 @@ without needing to check if they are available."
                (when (memq (car-safe sexp) '(featurep! modulep! require!))
                  (format "%s %s" (nth 1 sexp) (nth 2 sexp)))))))
         ((when buffer-file-name
-           (when-let (mod (doom-module-from-path buffer-file-name))
+           (when-let* ((mod (doom-module-from-path buffer-file-name)))
              (unless (memq (car mod) '(:doom :user))
                (format "%s %s" (car mod) (cdr mod))))))
-        ((when-let (mod (cdr (assq major-mode doom--help-major-mode-module-alist)))
+        ((when-let* ((mod (cdr (assq major-mode doom--help-major-mode-module-alist))))
            (format "%s %s"
                    (symbol-name (car mod))
                    (symbol-name (cadr mod)))))))
@@ -395,7 +401,7 @@ without needing to check if they are available."
 (defun doom/help-modules (category module &optional visit-dir)
   "Open the documentation for a Doom module.
 
-CATEGORY is a keyword and MODULE is a symbol. e.g. :editor and 'evil.
+CATEGORY is a keyword and MODULE is a symbol. e.g. :editor and \\='evil.
 
 If VISIT-DIR is non-nil, visit the module's directory rather than its
 documentation.

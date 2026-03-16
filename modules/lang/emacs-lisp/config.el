@@ -1,11 +1,19 @@
 ;;; lang/emacs-lisp/config.el -*- lexical-binding: t; -*-
 
-(defvar +emacs-lisp-enable-extra-fontification t
-  "If non-nil, highlight special forms, and defined functions and variables.")
+(defgroup +emacs-lisp nil
+  "Enhances support for Emacs Lisp in Emacs."
+  :group 'doom+)
 
-(defvar +emacs-lisp-outline-regexp "[ \t]*;;;\\(;*\\**\\) [^ \t\n]"
+(defcustom +emacs-lisp-enable-extra-fontification t
+  "If non-nil, highlight special forms, and defined functions and variables."
+  :type 'boolean
+  :group '+emacs-lisp)
+
+(defcustom +emacs-lisp-outline-regexp "[ \t]*;;;\\(;*\\**\\) [^ \t\n]"
   "Regexp to use for `outline-regexp' in `emacs-lisp-mode'.
-This marks a foldable marker for `outline-minor-mode' in elisp buffers.")
+This marks a foldable marker for `outline-minor-mode' in elisp buffers."
+  :type 'regexp
+  :group '+emacs-lisp)
 
 (defvar +emacs-lisp-linter-warnings
   '(not free-vars    ; don't complain about unknown variables
@@ -18,6 +26,13 @@ so stateful that the deluge of false positives (from the byte-compiler,
 package-lint, and checkdoc) can be more overwhelming than helpful.
 
 See `+emacs-lisp-non-package-mode' for details.")
+
+(defvar +emacs-lisp-working-buffer nil
+  "What buffer to evaluate elisp from.
+
+Use `+emacs-lisp/change-working-buffer' to change this. Only applies to
+`+emacs-lisp-eval-fn', which is the eval handler for `emacs-lisp-mode',
+`lisp-interaction-mode', and `lisp-data-mode', by default.")
 
 
 ;; `elisp-mode' is loaded at startup. In order to lazy load its config we need
@@ -33,7 +48,7 @@ See `+emacs-lisp-non-package-mode' for details.")
   :config
   (let ((modes '(emacs-lisp-mode lisp-interaction-mode lisp-data-mode)))
     (set-repl-handler! modes #'+emacs-lisp/open-repl)
-    (set-eval-handler! modes #'+emacs-lisp-eval)
+    (set-eval-handler! modes #'+emacs-lisp-eval-fn)
     (set-lookup-handlers! `(,@modes helpful-mode)
       :definition    #'+emacs-lisp-lookup-definition
       :documentation #'+emacs-lisp-lookup-documentation)
@@ -61,20 +76,6 @@ See `+emacs-lisp-non-package-mode' for details.")
     ;; hideshow for that.
     outline-regexp +emacs-lisp-outline-regexp
     outline-level #'+emacs-lisp-outline-level)
-
-  ;; DEPRECATED: Remove when 27.x support is dropped.
-  (when (< emacs-major-version 28)
-    ;; As of Emacs 28+, `emacs-lisp-mode' uses a shorter label in the mode-line
-    ;; ("ELisp/X", where X = l or d, depending on `lexical-binding'). In <=27,
-    ;; it uses "Emacs-Lisp". The former is more useful, so I backport it:
-    (setq-hook! 'emacs-lisp-mode-local-vars-hook
-      mode-name `("ELisp"
-                  (lexical-binding (:propertize "/l"
-                                    help-echo "Using lexical-binding mode")
-                                   (:propertize "/d"
-                                    help-echo "Using old dynamic scoping mode"
-                                    face warning
-                                    mouse-face mode-line-highlight)))))
 
   ;; Introduces logic to improve plist indentation in emacs-lisp-mode.
   (advice-add #'calculate-lisp-indent :override #'+emacs-lisp--calculate-lisp-indent-a)
@@ -116,7 +117,7 @@ See `+emacs-lisp-non-package-mode' for details.")
   (defadvice! +emacs-lisp-append-value-to-eldoc-a (fn sym)
     "Display variable value next to documentation in eldoc."
     :around #'elisp-get-var-docstring
-    (when-let (ret (funcall fn sym))
+    (when-let* ((ret (funcall fn sym)))
       (if (boundp sym)
           (concat ret " "
                   (let* ((truncated " [...]")
@@ -146,6 +147,7 @@ See `+emacs-lisp-non-package-mode' for details.")
           "f" #'find-function
           "v" #'find-variable
           "l" #'find-library)))
+
 
 (use-package! ielm
   :defer t
@@ -297,8 +299,6 @@ current buffer."
             (when (buffer-live-p buf)
               (with-current-buffer buf (goto-char pos))))))))
   :config
-  (setq helpful-set-variable-function #'setq!)
-
   (setq-hook! 'helpful-mode-hook
     ;; Elisp code using tab indentation always use a tab-width of 8. C source
     ;; code from Emacs also use a tab-width of 8. Therefore Helpful needs a
