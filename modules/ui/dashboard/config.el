@@ -161,7 +161,7 @@ dashboard reloading is inhibited.")
   :syntax-table nil
   :abbrev-table nil
   (buffer-disable-undo)
-  (setq-local revert-buffer-function #'+dashboard-reload)
+  (setq-local revert-buffer-function #'+dashboard-revert-buffer-fn)
   (setq truncate-lines t)
   (setq-local whitespace-style nil)
   (setq-local show-trailing-whitespace nil)
@@ -224,13 +224,10 @@ dashboard reloading is inhibited.")
   (unless noninteractive
     ;; Ensure the dashboard becomes Emacs' go-to buffer when there's nothing
     ;; else to show.
-    (setq doom-fallback-buffer-name +dashboard-name
-          initial-buffer-choice #'doom-fallback-buffer)
     (unless fancy-splash-image
       (setq fancy-splash-image
             (expand-file-name +dashboard-banner-file
                               +dashboard-banner-dir)))
-    (+dashboard-reload)
     (add-hook 'doom-load-theme-hook #'+dashboard-reload-on-theme-change-h)
     ;; Ensure the dashboard is up-to-date whenever it is switched to or resized.
     (add-hook 'window-size-change-functions #'+dashboard-resize-h)
@@ -245,6 +242,8 @@ dashboard reloading is inhibited.")
       (add-hook 'persp-activated-functions #'+dashboard-reload-maybe-h))
     (add-hook 'persp-before-switch-functions #'+dashboard--persp-record-project-h)))
 
+(setq doom-fallback-buffer-name +dashboard-name
+      initial-buffer-choice #'doom-fallback-buffer)
 (add-hook 'doom-init-ui-hook #'+dashboard-init-h 'append)
 
 ;; PERF: Make sure the dashboard is ready early, so as to avoid triggering
@@ -257,6 +256,10 @@ dashboard reloading is inhibited.")
 
 ;;
 ;;; Hooks
+
+(defun +dashboard-revert-buffer-fn (&optional _ignore-auto _no-confirm)
+  "`revert-buffer-function' for `+dashboard-mode'."
+  (+dashboard-reload t))
 
 (defun +dashboard-reposition-point-h ()
   "Trap the point in the buttons."
