@@ -220,11 +220,11 @@
   :link '(url-link :tag "Website" "https://doomemacs.org")
   :group 'emacs)
 
-(defconst doom-version "3.0.0-pre"
+(defconst doom-version "2.1.0"
   "Current version of Doom Emacs core.")
 
 ;; DEPRECATED: Remove these when the modules are moved out of core.
-(defconst doom-modules-version "26.04.0-pre"
+(defconst doom-modules-version "26.05.0-pre"
   "Current version of Doom Emacs.")
 
 (defvar doom-init-time nil
@@ -602,8 +602,9 @@ Otherwise, `en/disable-command' (in novice.el.gz) is hardcoded to write them to
 (when (boundp 'native-comp-eln-load-path)
   ;; Don't store eln files in ~/.emacs.d/eln-cache (where they can easily be
   ;; deleted by 'doom upgrade').
-  ;; REVIEW: Advise `startup-redirect-eln-cache' when 28 support is dropped.
-  (add-to-list 'native-comp-eln-load-path (expand-file-name "eln/" doom-profile-cache-dir))
+  (setq native-comp-eln-load-path
+        (cons (expand-file-name "eln/" doom-profile-cache-dir)
+              (cdr native-comp-eln-load-path)))
 
   ;; UX: Suppress compiler warnings and don't inundate users with their popups.
   ;;   They are rarely more than warnings, so are safe to ignore.
