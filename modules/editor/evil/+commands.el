@@ -4,7 +4,6 @@
 ;;; Custom commands
 ;; Editing
 (evil-ex-define-cmd "@"            #'+evil:macro-on-all-lines)
-(evil-ex-define-cmd "R[ead]"       #'+evil:read)
 (evil-ex-define-cmd "al[ign]"      #'+evil:align)
 (evil-ex-define-cmd "ral[ign]"     #'+evil:align-right)
 (evil-ex-define-cmd "enhtml"       #'+web:encode-html-entities)
@@ -14,7 +13,7 @@
 (evil-ex-define-cmd "na[rrow]"     #'+evil:narrow-buffer)
 (evil-ex-define-cmd "retab"        #'+evil:retab)
 (evil-ex-define-cmd "rev[erse]"    #'+evil:reverse-lines)
-(evil-ex-define-cmd "l[ine]diff"   #'evil-quick-diff)
+(evil-ex-define-cmd "ldiff"        #'evil-quick-diff)
 
 ;;; External resources
 ;; TODO: (evil-ex-define-cmd "db"          #'doom:db)
@@ -22,7 +21,6 @@
 ;; TODO: (evil-ex-define-cmd "go[ogle]"    #'doom:google-search)
 (evil-ex-define-cmd "lo[okup]"    #'+lookup:online)
 (evil-ex-define-cmd "dash"        #'+lookup:dash)
-(evil-ex-define-cmd "http"        #'httpd-start)            ; start http server
 (evil-ex-define-cmd "repl"        #'+eval:repl)             ; invoke or send to repl
 (evil-ex-define-cmd "h[elp]"      #'+evil:help)
 
@@ -30,47 +28,30 @@
 (evil-ex-define-cmd "sh[ell]"     #'+eshell:run)
 (evil-ex-define-cmd "pad"         #'+evil:open-scratch-buffer)
 
-;;; GIT
-(evil-ex-define-cmd "gist"        #'+gist:send)  ; send current buffer/region to gist
-(evil-ex-define-cmd "gistl"       #'+gist:list)  ; list gists by user
-(evil-ex-define-cmd "gbrowse"     #'+vc/browse-at-remote) ; show file/region in github/gitlab
-(evil-ex-define-cmd "gissues"     #'forge-browse-issues)  ; show github issues
-(evil-ex-define-cmd "git"         #'magit-status)         ; open magit status window
-(evil-ex-define-cmd "gstage"      #'magit-stage)
-(evil-ex-define-cmd "gunstage"    #'magit-unstage)
-(evil-ex-define-cmd "gblame"      #'magit-blame)
-(evil-ex-define-cmd "grevert"     #'+vc-gutter/revert-hunk)
-
 ;;; Dealing with buffers
-(evil-ex-define-cmd "k[ill]"      #'kill-current-buffer)
-(evil-ex-define-cmd "k[ill]all"   #'+evil:kill-all-buffers)
-(evil-ex-define-cmd "k[ill]m"     #'+evil:kill-matching-buffers)
-(evil-ex-define-cmd "k[ill]o"     #'doom/kill-other-buffers)
-(evil-ex-define-cmd "k[ill]b"     #'doom/kill-buried-buffers)
-(evil-ex-define-cmd "l[ast]"      #'+popup/restore)
-(evil-ex-define-cmd "messages"    #'view-echo-area-messages)
-(evil-ex-define-cmd "pop[up]"     #'+popup/buffer)
+(evil-ex-define-cmd "kill"         #'kill-current-buffer)
+(evil-ex-define-cmd "killa[ll]"    #'+evil:kill-all-buffers)
+(evil-ex-define-cmd "killm[atch]"  #'+evil:kill-matching-buffers)
+(evil-ex-define-cmd "killo[ther]"  #'doom/kill-other-buffers)
+(evil-ex-define-cmd "killb[uried]" #'doom/kill-buried-buffers)
+(evil-ex-define-cmd "l[ast]"       #'+popup/restore)
+(evil-ex-define-cmd "msg"          #'view-echo-area-messages)
+(evil-ex-define-cmd "pop[up]"      #'+popup/buffer)
 
 ;;; Project navigation
 (evil-ex-define-cmd "a"           #'find-sibling-file)
 (evil-ex-define-cmd "cd"          #'+evil:cd)
 (evil-ex-define-cmd "pwd"         #'+evil:pwd)
 
-(evil-define-command +evil:swiper (&optional search)
-  "Invoke `swiper' with SEARCH, otherwise with the symbol at point."
-  (interactive "<a>")
-  (swiper-isearch search))
-(evil-ex-define-cmd "sw[iper]" #'+evil:swiper)
-
 (cond ((modulep! :completion ivy)
-       (evil-ex-define-cmd "pg[rep]"   #'+ivy:project-search)
-       (evil-ex-define-cmd "pg[grep]d" #'+ivy:project-search-from-cwd))
+       (evil-ex-define-cmd "pg[rep]"  #'+ivy:project-search)
+       (evil-ex-define-cmd "pdg[rep]" #'+ivy:project-search-from-cwd))
       ((modulep! :completion helm)
-       (evil-ex-define-cmd "pg[rep]"   #'+helm:project-search)
-       (evil-ex-define-cmd "pg[grep]d" #'+helm:project-search-from-cwd))
+       (evil-ex-define-cmd "pg[rep]"  #'+helm:project-search)
+       (evil-ex-define-cmd "pdg[rep]" #'+helm:project-search-from-cwd))
       ((modulep! :completion vertico)
-       (evil-ex-define-cmd "pg[rep]"   #'+vertico:project-search)
-       (evil-ex-define-cmd "pg[grep]d" #'+vertico:project-search-from-cwd)))
+       (evil-ex-define-cmd "pg[rep]"  #'+vertico:project-search)
+       (evil-ex-define-cmd "pdg[rep]" #'+vertico:project-search-from-cwd)))
 
 ;;; Project tools
 (evil-ex-define-cmd "com[pile]"   #'+evil:compile)
@@ -100,7 +81,7 @@
 (evil-ex-define-cmd "tabsave"     #'+workspace:save)
 
 ;;; Org-mode
-(evil-ex-define-cmd "cap[ture]"   #'org-capture)
+(evil-ex-define-cmd "cap[ture]"   #'org-capture)  ; TODO: better Ex support
 
 ;;; ibuffer
 (when (modulep! :emacs ibuffer)
