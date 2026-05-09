@@ -255,6 +255,12 @@ tell you about it. Very annoying. This prevents that."
 (setq bookmark-default-file (file-name-concat doom-profile-data-dir "bookmarks"))
 
 
+;;;###package ffap
+;; REVIEW: This is already the default as of 30.2, but it defaults to `ping' on
+;;   older versions of Emacs.
+(setq ffap-machine-p-known 'accept) ; don't ping domains
+
+
 (use-package! recentf
   ;; Keep track of recently opened files
   :defer-incrementally easymenu tree-widget timer

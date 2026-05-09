@@ -101,8 +101,8 @@ Check out [the FAQ][FAQ] for answers to common questions about the project.
 - **Required:**
   - GNU Emacs 27.1–30.2 (30.2 is recommended)
     - If only using Doom's core, 27.1+ is required.
-    - If using Doom's modules, 28.1+ is required.
-    - Tree-sitter support requires 29.1+, but much improved in 30.1+.
+    - If using Doom's modules (especially tree-sitter support), 29.1+ is
+      required.
   - Git >= 2.23
   - [ripgrep] >= 11.0
 - **Optional, but recommended:**

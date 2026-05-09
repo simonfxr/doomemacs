@@ -557,6 +557,12 @@ windows, switch to `doom-fallback-buffer'. Otherwise, delegate to original
         show-paren-when-point-in-periphery t))
 
 
+;; Hide the mode line in completion popups and MAN pages because they serve
+;; little purpose there, and is better hidden.
+(add-hook 'completion-list-mode-hook #'mode-line-invisible-mode)
+(add-hook 'Man-mode-hook #'mode-line-invisible-mode)
+
+
 ;;
 ;;; Third party packages
 
@@ -571,12 +577,6 @@ windows, switch to `doom-fallback-buffer'. Otherwise, delegate to original
              nerd-icons-ipsicon
              nerd-icons-pomicon
              nerd-icons-powerline))
-
-;; Hide the mode line in completion popups and MAN pages because they serve
-;; little purpose there, and is better hidden.
-;;;###package hide-mode-line-mode
-(add-hook! '(completion-list-mode-hook Man-mode-hook)
-           #'hide-mode-line-mode)
 
 ;;;###package image
 (setq image-animate-loop t)

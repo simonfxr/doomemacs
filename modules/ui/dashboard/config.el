@@ -37,7 +37,7 @@ relative to `+dashboard-banner-dir'. If nil, always use the ASCII banner."
   :type 'function
   :group '+dashboard)
 
-(defcustom +dashboard-banner-vertical-padding '(2 . 3)
+(defcustom +dashboard-banner-vertical-padding '(2 . 2)
   "Number of newlines to pad the banner with, above and below, respectively."
   :type '(cons integer integer)
   :group '+dashboard)
@@ -287,9 +287,11 @@ dashboard reloading is inhibited.")
       (ignore-errors
         (goto-char (point-min))
         (forward-button 1)))
+  ;; Hide the cursor if there are no buttons
   (unless (button-at (point))
     (setq-local cursor-type nil
-                evil-normal-state-cursor nil)))
+                ;; We need (list nil) as a workaround for emacs-evil/evil#2016.
+                evil-normal-state-cursor (list nil))))
 
 (defun +dashboard-reload-maybe-h (&rest _)
   "Reload the dashboard or its state.
@@ -537,7 +539,7 @@ Applies line-prefix and indent-prefix text properties to respect
            (bot-pad (or (cdr-safe +dashboard-banner-vertical-padding) 0))
            (beg (point)))
       (when (> top-pad 0)
-        (insert "\n" (propertize " " 'display `(space :height ,top-pad))))
+        (insert (propertize "\n" 'display `(space :height ,top-pad))))
 
       (insert banner)
       (if-let* (((stringp fancy-splash-image))
@@ -558,8 +560,12 @@ Applies line-prefix and indent-prefix text properties to respect
         (add-text-properties
          beg (point) `(line-prefix ,text-prefix indent-prefix ,text-prefix)))
 
+      ;; If the user's ASCII banner doesn't end in a newline, the last line
+      ;; could be inflated by the following display property.
+      (unless (and (bolp) (eolp)) (insert "\n"))
+
       (when (> bot-pad 0)
-        (insert "\n" (propertize " " 'display `(space :height ,bot-pad)))))))
+        (insert (propertize "\n" 'display `(space :height ,bot-pad)))))))
 
 (defun +dashboard-widget-loaded ()
   "Draw number of modules and packages loaded, and the session's startup time."

@@ -89,8 +89,8 @@
       (or (load (let ((windows? (memq system-type '(ms-dos windows-nt cygwin))))
                   (expand-file-name
                    (format (or (getenv-internal "DOOMPROFILELOADFILE")
-                               (file-name-concat (if windows? "doomemacs/data" "doom")
-                                                 "profiles.%d"))
+                               (concat (if windows? "doomemacs/data/" "doom/")
+                                       "profiles.%d"))
                            emacs-major-version)
                    (or (if windows? (getenv-internal "LOCALAPPDATA"))
                        (getenv-internal "XDG_DATA_HOME")

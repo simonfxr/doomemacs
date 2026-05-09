@@ -6,7 +6,7 @@
   :pin "17cfa1b54800fdef2975c0c0531dad34846a5065")
 (package! compat
   :recipe (:host github :repo "emacs-compat/compat")
-  :pin "38df650dce9f862c6b523de5b683573df590ab85")
+  :pin "b5b48183689b536f72b1214106afeabc465da9d4")  ; 31.0.0.1
 (unless (fboundp 'igc-info)
   (package! gcmh
     :pin "0089f9c3a6d4e9a310d0791cf6fa8f35642ecfd9"))
@@ -19,19 +19,18 @@
             :branch "develop"
             :local-repo "straight.el"
             :files ("straight*.el"))
-  :pin "09b789a8596cacca6bbff866500373541a85ffa2")
+  :pin "e40a5b7f8b0c1bb2cde0e7e477b5f81303e34b95")
 
 ;; doom-ui.el
-(package! nerd-icons :pin "1db0b0b9203cf293b38ac278273efcfc3581a05f")
-(package! hide-mode-line :pin "ddd154f1e04d666cd004bf8212ead8684429350d")
+(package! nerd-icons :pin "ae1b85c487c2b0bb1efb8bc0edc23af74282eec2")
 
 ;; doom-editor.el
 (package! better-jumper :pin "b1bf7a3c8cb820d942a0305e0e6412ef369f819c")
 (package! smartparens :pin "82d2cf084a19b0c2c3812e0550721f8a61996056")
 
 ;; doom-projects.el
-(package! projectile :pin "f8be23b266aec7108fb4b80410623cd50ba8ded9")
-(package! project :pin "041a69d062a5442e2b0fee125c3228225f894ce1")
+(package! projectile :pin "957d808849e317d2f412ab8e844da48727df3917")
+(package! project :pin "f4ec26c30a08663e93449317a5f765032ab84f28")
 
 ;; doom-keybinds.el
 (package! general :pin "a48768f85a655fe77b5f45c2880b420da1b1b9c3")

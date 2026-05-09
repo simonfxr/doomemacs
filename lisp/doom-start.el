@@ -90,6 +90,24 @@
         gcmh-high-cons-threshold (* 64 1024 1024))  ; 64mb
   (add-hook 'doom-first-buffer-hook #'gcmh-mode))
 
+;; Background native compilation consumes several CPU cores and takes minutes to
+;; complete. Not worth the extra stress when on battery power.
+(setq native-comp-async-on-battery-power nil)
+
+;;; Trust & Safety
+;; Trust the contents of $EMACSDIR and $DOOMDIR, because the user will likely be
+;; working with either/both.
+(when (boundp 'trusted-content)
+  (add-to-list 'trusted-content (file-truename doom-emacs-dir))
+  (add-to-list 'trusted-content (file-truename doom-user-dir)))
+
+;; Ensure .dir-locals.el in $EMACSDIR and $DOOMDIR are always respected
+(add-to-list 'safe-local-variable-directories doom-emacs-dir)
+(add-to-list 'safe-local-variable-directories doom-user-dir)
+
+;;; Support for Doom-specific dotfiles
+(add-to-list 'auto-mode-alist '("/\\.doom\\(?:module\\|profile\\)?\\'" . lisp-data-mode))
+
 
 ;;; Disable UI elements early
 ;; PERF,UI: Doom strives to be keyboard-centric, so I consider these UI elements
