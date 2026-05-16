@@ -98,6 +98,7 @@ In tty Emacs, messages are suppressed completely."
 ;;
 ;;; Commands
 
+(defvar display-line-numbers-type)
 ;;;###autoload
 (defun doom/toggle-line-numbers ()
   "Toggle line numbers.
@@ -116,7 +117,8 @@ See `display-line-numbers' for what these values mean."
                    (car order)
                  (car (cdr queue)))))
     (setq doom--line-number-style next)
-    (setq display-line-numbers next)
+    (let ((display-line-numbers-type next))
+      (display-line-numbers-mode +1))
     (message "Switched to %s line numbers"
              (pcase next
                (`t "normal")
