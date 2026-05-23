@@ -826,7 +826,7 @@ issues"
                                     (directory-file-name (file-name-directory path))))
                                (eval `(backquote ,f) t))))))))
             (puthash path rc doom-rcfile--cache)
-            (cond ((null keys) rc)
+            (cond ((null keys) (cdr rc))
                   ((symbolp keys) (cdr (assq keys (cdr rc))))
                   ((listp keys) (map-nested-elt (cdr rc) keys))))))))
 
