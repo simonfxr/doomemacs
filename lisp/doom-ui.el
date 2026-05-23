@@ -511,8 +511,8 @@ windows, switch to `doom-fallback-buffer'. Otherwise, delegate to original
                      ((null global-hl-line-modes) nil)
                      ((eq global-hl-line-modes t))
                      ((eq (car global-hl-line-modes) 'not)
-                      (not (derived-mode-p (cdr global-hl-line-modes))))
-                     ((derived-mode-p global-hl-line-modes)))
+                      (not (apply #'derived-mode-p (cdr global-hl-line-modes))))
+                     ((apply #'derived-mode-p global-hl-line-modes)))
                (hl-line-mode +1)))
         :group 'hl-line)))
 
