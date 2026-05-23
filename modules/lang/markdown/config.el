@@ -1,19 +1,84 @@
 ;;; lang/markdown/config.el -*- lexical-binding: t; -*-
 
-(defvar +markdown-compile-functions
+(defgroup +markddown nil
+  "Enhances support for Markdown in Emacs."
+  :group 'doom+)
+
+(defcustom +markdown-compile-functions
   '(+markdown-compile-marked
     +markdown-compile-pandoc
     +markdown-compile-markdown
     +markdown-compile-multimarkdown)
-  "A list of commands to try when attempting to build a markdown file with
-`markdown-open' or `markdown-preview', stopping at the first one to return non-nil.
+  "A list of functions for `markdown-open' or `markdown-preview' to execute.
 
-Each function takes three argument. The beginning position of the region to
-capture, the end position, and the output buffer.")
+Stops at the first one to return non-nil. Each function takes three argument.
+The beginning position of the region to capture, the end position, and the
+output buffer."
+  :type '(repeat function)
+  :group '+markdown)
 
 
 ;;
 ;;; Packages
+
+(defun +markdown-common-config (mode &rest extra-modes)
+  (set-flyspell-predicate! (cons mode extra-modes) #'+markdown-flyspell-word-p)
+  (set-lookup-handlers! (cons mode extra-modes)
+    ;; `markdown-follow-thing-at-point' may open an external program or a
+    ;; buffer. No good way to tell, so pretend it's async.
+    :file '(markdown-follow-thing-at-point :async t))
+
+  (sp-local-pair (cons mode extra-modes) "`" "`"
+                 :unless '(:add sp-point-before-word-p sp-point-before-same-p))
+
+  (when (modulep! +lsp)
+    (dolist (m (cons mode extra-modes))
+      (add-hook (intern (format "%s-local-vars-hook" m)) #'lsp! 'append)))
+
+  (map! :map ,(intern (format "%s-map" mode))
+        :localleader
+        "'" #'markdown-edit-code-block
+        "o" #'markdown-open
+        "p" #'markdown-preview
+        "e" #'markdown-export
+        (:when (modulep! +grip)
+          "p" #'grip-mode)
+        (:prefix ("i" . "insert")
+         :desc "Table Of Content"  "T" #'markdown-toc-generate-toc
+         :desc "Image"             "i" #'markdown-insert-image
+         :desc "Link"              "l" #'markdown-insert-link
+         :desc "<hr>"              "-" #'markdown-insert-hr
+         :desc "Heading 1"         "1" #'markdown-insert-header-atx-1
+         :desc "Heading 2"         "2" #'markdown-insert-header-atx-2
+         :desc "Heading 3"         "3" #'markdown-insert-header-atx-3
+         :desc "Heading 4"         "4" #'markdown-insert-header-atx-4
+         :desc "Heading 5"         "5" #'markdown-insert-header-atx-5
+         :desc "Heading 6"         "6" #'markdown-insert-header-atx-6
+         :desc "Code block"        "C" #'markdown-insert-gfm-code-block
+         :desc "Pre region"        "P" #'markdown-pre-region
+         :desc "Blockquote region" "Q" #'markdown-blockquote-region
+         :desc "Checkbox"          "[" #'markdown-insert-gfm-checkbox
+         :desc "Bold"              "b" #'markdown-insert-bold
+         :desc "Inline code"       "c" #'markdown-insert-code
+         :desc "Italic"            "e" #'markdown-insert-italic
+         :desc "Footnote"          "f" #'markdown-insert-footnote
+         :desc "Header dwim"       "h" #'markdown-insert-header-dwim
+         :desc "Italic"            "i" #'markdown-insert-italic
+         :desc "Kbd"               "k" #'markdown-insert-kbd
+         :desc "Pre"               "p" #'markdown-insert-pre
+         :desc "New blockquote"    "q" #'markdown-insert-blockquote
+         :desc "Strike through"    "s" #'markdown-insert-strike-through
+         :desc "Table"             "t" #'markdown-insert-table
+         :desc "Wiki link"         "w" #'markdown-insert-wiki-link)
+        (:prefix ("t" . "toggle")
+         :desc "Inline LaTeX"      "e" #'markdown-toggle-math
+         :desc "Code highlights"   "f" #'markdown-toggle-fontify-code-blocks-natively
+         :desc "Inline images"     "i" #'markdown-toggle-inline-images
+         :desc "URL hiding"        "l" #'markdown-toggle-url-hiding
+         :desc "Markup hiding"     "m" #'markdown-toggle-markup-hiding
+         :desc "Wiki links"        "w" #'markdown-toggle-wiki-links
+         :desc "GFM checkbox"      "x" #'markdown-toggle-gfm-checkbox)))
+
 
 (use-package! markdown-mode
   :mode ("/README\\(?:\\.md\\)?\\'" . gfm-mode)
@@ -52,15 +117,7 @@ capture, the end position, and the output buffer.")
         markdown-mouse-follow-link nil)
 
   :config
-  (set-flyspell-predicate! '(markdown-mode gfm-mode)
-    #'+markdown-flyspell-word-p)
-  (set-lookup-handlers! '(markdown-mode gfm-mode)
-    ;; `markdown-follow-thing-at-point' may open an external program or a
-    ;; buffer. No good way to tell, so pretend it's async.
-    :file '(markdown-follow-thing-at-point :async t))
-
-  (sp-local-pair '(markdown-mode gfm-mode) "`" "`"
-                 :unless '(:add sp-point-before-word-p sp-point-before-same-p))
+  (+markdown-common-config 'markdown-mode 'gfm-mode)
 
   ;; Highly rust blocks correctly
   (when (modulep! :lang rust)
@@ -83,51 +140,7 @@ capture, the end position, and the output buffer.")
   ;;   fontification.
   (defadvice! +markdown-optimize-src-buffer-modes-a (fn &rest args)
     :around #'markdown-fontify-code-block-natively
-    (delay-mode-hooks (apply fn args)))
-
-  (map! :map markdown-mode-map
-        :localleader
-        "'" #'markdown-edit-code-block
-        "o" #'markdown-open
-        "p" #'markdown-preview
-        "e" #'markdown-export
-        (:when (modulep! +grip)
-         "p" #'grip-mode)
-        (:prefix ("i" . "insert")
-         :desc "Table Of Content"  "T" #'markdown-toc-generate-toc
-         :desc "Image"             "i" #'markdown-insert-image
-         :desc "Link"              "l" #'markdown-insert-link
-         :desc "<hr>"              "-" #'markdown-insert-hr
-         :desc "Heading 1"         "1" #'markdown-insert-header-atx-1
-         :desc "Heading 2"         "2" #'markdown-insert-header-atx-2
-         :desc "Heading 3"         "3" #'markdown-insert-header-atx-3
-         :desc "Heading 4"         "4" #'markdown-insert-header-atx-4
-         :desc "Heading 5"         "5" #'markdown-insert-header-atx-5
-         :desc "Heading 6"         "6" #'markdown-insert-header-atx-6
-         :desc "Code block"        "C" #'markdown-insert-gfm-code-block
-         :desc "Pre region"        "P" #'markdown-pre-region
-         :desc "Blockquote region" "Q" #'markdown-blockquote-region
-         :desc "Checkbox"          "[" #'markdown-insert-gfm-checkbox
-         :desc "Bold"              "b" #'markdown-insert-bold
-         :desc "Inline code"       "c" #'markdown-insert-code
-         :desc "Italic"            "e" #'markdown-insert-italic
-         :desc "Footnote"          "f" #'markdown-insert-footnote
-         :desc "Header dwim"       "h" #'markdown-insert-header-dwim
-         :desc "Italic"            "i" #'markdown-insert-italic
-         :desc "Kbd"               "k" #'markdown-insert-kbd
-         :desc "Pre"               "p" #'markdown-insert-pre
-         :desc "New blockquote"    "q" #'markdown-insert-blockquote
-         :desc "Strike through"    "s" #'markdown-insert-strike-through
-         :desc "Table"             "t" #'markdown-insert-table
-         :desc "Wiki link"         "w" #'markdown-insert-wiki-link)
-        (:prefix ("t" . "toggle")
-         :desc "Inline LaTeX"      "e" #'markdown-toggle-math
-         :desc "Code highlights"   "f" #'markdown-toggle-fontify-code-blocks-natively
-         :desc "Inline images"     "i" #'markdown-toggle-inline-images
-         :desc "URL hiding"        "l" #'markdown-toggle-url-hiding
-         :desc "Markup hiding"     "m" #'markdown-toggle-markup-hiding
-         :desc "Wiki links"        "w" #'markdown-toggle-wiki-links
-         :desc "GFM checkbox"      "x" #'markdown-toggle-gfm-checkbox)))
+    (delay-mode-hooks (apply fn args))))
 
 
 (use-package! markdown-ts-mode  ; 31+ only
@@ -144,12 +157,15 @@ capture, the end position, and the output buffer.")
                 :source-dir "tree-sitter-markdown/src")
       (markdown-inline :url "https://github.com/tree-sitter-grammars/tree-sitter-markdown"
                        :rev ,(if (< (treesit-library-abi-version) 15) "v0.4.1" "v0.5.3")
-                       :source-dir "tree-sitter-markdown-inline/src"))))
+                       :source-dir "tree-sitter-markdown-inline/src")))
+  :config
+  (+markdown-common-config 'markdown-ts-mode))
 
 
 (use-package! evil-markdown
   :when (modulep! :editor evil +everywhere)
   :hook (markdown-mode . evil-markdown-mode)
+  :hook (markdown-ts-mode . evil-markdown-mode)
   :config
   (add-hook 'evil-markdown-mode-hook #'evil-normalize-keymaps)
   (map! :map evil-markdown-mode-map
