@@ -122,10 +122,8 @@ cannot bootload from an arbitrary location."
                                      `(,val)
                                    `(,(abbreviate-file-name path) ,val))))
                        (cons `(user-emacs-directory :path ,@val)
-                             (if-let* ((profile-file (file-exists-p! doom-profile-rcfile path)))
-                                 (car (doom-file-read profile-file :by 'read*))
-                               (when (file-exists-p (doom-path path subdir "lisp/doom.el"))
-                                 '((doom-user-dir :path ,@val)))))))
+                             (doom-rcfile-read
+                              'profile (doom-path path subdir)))))
                profiles
                :test #'eq
                :key #'car)))))
