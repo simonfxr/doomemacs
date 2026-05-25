@@ -72,7 +72,7 @@ OPTIONS:
     (add-hook 'kill-emacs-hook #'doom-sync--abort-warning-h)
     (print! (item "Using Emacs %s @ %s") emacs-version (path invocation-directory invocation-name))
     (when (doom-profiles-bootloadable-p)
-      (call! '(profile sync "--all" "--reload")))
+      (call! '(profile sync "--all")))
     (run-hooks 'doom-before-sync-hook)
 
     (print! (start "Synchronizing %S profile..." ) (or (car doom-profile) "default"))
