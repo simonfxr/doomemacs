@@ -16,7 +16,6 @@
     "C-a"    #'move-beginning-of-line
     "C-r"    #'evil-paste-from-register
     "C-u"    #'evil-delete-back-to-indentation
-    "C-v"    #'yank
     "C-w"    #'doom/delete-backward-word
     "C-z"    (cmd! (ignore-errors (call-interactively #'undo))))
 
@@ -229,8 +228,7 @@
        (:after ivy
         :map ivy-minibuffer-map
         "C-SPC" #'ivy-call-and-recenter  ; preview file
-        "C-l"   #'ivy-alt-done
-        "C-v"   #'yank)
+        "C-l"   #'ivy-alt-done)
        (:after counsel
         :map counsel-ag-map
         "C-SPC"    #'ivy-call-and-recenter ; preview
@@ -585,7 +583,7 @@
          :desc "Emoji"                       "e"   #'emojify-insert-emoji)
        :desc "Current file name"             "f"   #'+default/insert-file-path
        :desc "Current file path"             "F"   (cmd!! #'+default/insert-file-path t)
-       :desc "Evil ex path"                  "p"   (cmd! (evil-ex "R!echo "))
+       :desc "Evil ex path"                  "p"   (cmd! (evil-ex "r!echo "))
        :desc "From evil register"            "r"   #'evil-show-registers
        :desc "Snippet"                       "s"   #'yas-insert-snippet
        :desc "Unicode"                       "u"   #'insert-char

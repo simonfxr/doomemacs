@@ -293,9 +293,12 @@ tell you about it. Very annoying. This prevents that."
       "Add dired directories to recentf file list."
       (recentf-add-file default-directory)))
 
-  ;; The most sensible time to clean up your recent files list is when you quit
-  ;; Emacs (unless this is a long-running daemon session).
-  (setq recentf-auto-cleanup (if (daemonp) 300 'never))
+  ;; The most sensible time to clean and save your recent files list is when you
+  ;; quit Emacs (unless this is a long-running daemon session).
+  (setq recentf-auto-cleanup 'never)
+  (when (daemonp)
+    (setq recentf-auto-cleanup 600
+          recentf-autosave-interval 1200))
   ;; Use a negative depth value because we need `recentf-cleanup' to run before
   ;; `recentf-save-list' to be effective, which `recentf-mode' will only add to
   ;; `kill-emacs-hook' once it is enabled.

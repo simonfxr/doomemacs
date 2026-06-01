@@ -3,7 +3,8 @@
 (use-package! vterm
   :when (bound-and-true-p module-file-suffix)  ; requires dynamic-modules support
   :commands vterm-mode
-  :hook (vterm-mode . mode-line-invisible-mode) ; modeline serves no purpose in vterm
+  :hook ((vterm-mode . mode-line-invisible-mode) ; modeline serves no purpose in vterm
+         (vterm-mode . doom-disable-line-numbers-h))
   :preface
   ;; HACK: Because vterm clusmily forces vterm-module.so's compilation on us
   ;;   when the package is loaded, this is necessary to prevent it when
@@ -16,7 +17,10 @@
   :config
   (set-popup-rule! "^\\*vterm" :size 0.25 :vslot -4 :select t :quit nil :ttl 0)
 
-  (map! :map vterm-mode-map "C-q" #'vterm-send-next-key)
+  (map! :map vterm-mode-map
+        "C-q"   #'vterm-send-next-key
+        :n "0"  #'+vterm/beginning-of-line
+        :n "dd" #'+vterm/delete-line)
 
   ;; Once vterm is dead, the vterm buffer is useless. Why keep it around? We can
   ;; spawn another if want one.

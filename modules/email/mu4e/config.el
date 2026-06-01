@@ -30,6 +30,12 @@
   ;; back to when killing other buffers.
   (add-hook 'mu4e-main-mode-hook #'doom-mark-buffer-as-real-h)
 
+  ;; Line numbers add nothing to mu4e's read-only views (excluding compose).
+  (add-hook! '(mu4e-main-mode-hook
+               mu4e-headers-mode-hook
+               mu4e-view-mode-hook)
+             #'doom-disable-line-numbers-h)
+
   ;; Ensures backward/forward compatibility for mu4e, which is prone to breaking
   ;; updates, and also cannot be pinned, because it's bundled with mu (which you
   ;; must install via your OS package manager).
@@ -443,11 +449,13 @@ This should already be the case yet it does not always seem to be."
       (org-msg-mode (if org-msg-mode -1 1))
       (cl-callf not +mu4e-compose-org-msg-toggle-next)))
 
-  ;; HACK: ...
-  (defadvice! +mu4e-draft-open-signature-a (fn &rest args)
-    "Prevent `mu4e-compose-signature' from being used with `org-msg-mode'."
-    :around #'mu4e-draft-open
-    (let ((mu4e-compose-signature (unless org-msg-mode mu4e-compose-signature)))
+  ;; HACK: Suppress `message-signature' while a draft is being prepared with
+  ;;   `org-msg-mode' active, so it doesn't get inserted alongside
+  ;;   `org-msg-signature' and produce two signatures in the buffer.
+  (defadvice! +mu4e--draft-signature-a (fn &rest args)
+    "Prevent `message-signature' from being used with `org-msg-mode'."
+    :around #'mu4e--draft
+    (let ((message-signature (unless org-msg-mode message-signature)))
       (apply fn args)))
 
   (defvar +org-msg-accent-color "#c01c28"

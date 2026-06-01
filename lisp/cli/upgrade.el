@@ -35,6 +35,10 @@ libraries. It is the equivalent of the following shell commands:
   (let ((force? (doom-cli-context-suppress-prompts-p context)))
     (cond
      (packages?
+      (or (zerop (car (sh! "git" "-C" doom-emacs-dir
+                           "submodule" "update" "--init" "--recursive")))
+          (error "Failed to update submodules"))
+
       ;; HACK: It's messy to use straight to upgrade straight, due to the
       ;;   potential for backwards incompatibility, so we staticly check if
       ;;   Doom's `package!' declaration for straight has changed. If it has,
