@@ -82,7 +82,7 @@ libraries. It is the equivalent of the following shell commands:
            ;; but the branch name is necessary. git symbolic-ref (or
            ;; `vc-git--symbolic-ref') won't work; it can't deal with submodules.
            (branch (replace-regexp-in-string
-                    "^\\(?:[^/]+/[^/]+/\\)?\\(.+\\)\\(?:~[0-9]+\\)?$" "\\1"
+                    "^\\(?:[^/]+/[^/]+/\\)?\\(.+?\\)\\(?:~[0-9]+\\)?$" "\\1"
                     (cdr (sh! "git" "name-rev" "--name-only" "--refs=refs/heads/*" "HEAD"))))
            (target-remote (format "%s_%s" doom-upgrade-remote branch)))
       (unless branch
