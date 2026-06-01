@@ -74,11 +74,13 @@ In tty Emacs, messages are suppressed completely."
 
 ;;;###autoload
 (defun doom-enable-line-numbers-h ()
-  (display-line-numbers-mode +1))
+  (unless (bound-and-true-p display-line-numbers-mode)
+    (display-line-numbers-mode +1)))
 
 ;;;###autoload
-(defun doom-disable-line-numbers-h ()
-  (display-line-numbers-mode -1))
+  (defun doom-disable-line-numbers-h ()
+    (when (bound-and-true-p display-line-numbers)
+      (display-line-numbers-mode -1)))
 
 ;;;###autoload
 (defun doom-kill-childframes-h (&rest _)
