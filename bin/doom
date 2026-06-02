@@ -210,7 +210,7 @@ SEE ALSO:
     (setq doom-cli-benchmark-threshold 'always))
   (unless init-file-debug ; debug-mode implies verbose
     (when verbose?
-      (setq doom-print-minimum-level 'info)))
+      (setq doom-print-level 'info)))
   (when color?
     (setq doom-print-backend (if (eq color? :yes) 'ansi)))
   (when pager
@@ -224,7 +224,7 @@ SEE ALSO:
             doomdir)
     (let (omit)
       (when debug?
-        (setenv "DEBUG" "1")
+        (setenv "DEBUG" "3")
         (setq init-file-debug t)
         (push "--debug" omit)
         (push "-D" omit))
