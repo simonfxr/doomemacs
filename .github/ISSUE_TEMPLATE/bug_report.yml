@@ -1,7 +1,8 @@
 ---
 name: 📝 Bug Report
 description: Report something that isn't working as intended
-labels: ["is:bug", "needs-triage"]
+type: bug
+labels: ["needs-triage"]
 projects: ["doomemacs/2"]
 body:
 - type: markdown
