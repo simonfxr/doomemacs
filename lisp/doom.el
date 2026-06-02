@@ -857,6 +857,7 @@ appropriately against `noninteractive' or the `cli' context."
 
         ;; Ensure the CLI framework is ready.
         (require 'doom-cli)
+        (doom-cli-initialize)
         (add-hook 'doom-cli-initialize-hook #'doom-finalize 100)
 
         ;; HACK: site-lisp files can be obnoxiously noisy (emitting output that

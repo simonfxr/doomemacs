@@ -39,13 +39,17 @@ TYPE should be a keyword of any of the known doom-*-error errors (e.g. :font,
   "If non-nil, suppress `doom-log' output completely.")
 
 (defvar doom-log-level
-  (if init-file-debug
-      (if-let* ((level (getenv-internal "DEBUG"))
-                (level (if (string-empty-p level) 1 (string-to-number level)))
-                ((not (zerop level))))
-          level
-        2)
-    0)
+  (if noninteractive
+      ;; Without debug mode, logs won't be emitted to stdout, but will be
+      ;; written to log files.
+      3
+    (if init-file-debug
+        (if-let* ((level (getenv-internal "DEBUG"))
+                  (level (if (string-empty-p level) 1 (string-to-number level)))
+                  ((not (zerop level))))
+            level
+          2)
+      0))
   "How verbosely to log from `doom-log' calls.
 
 0 -- No logging at all.

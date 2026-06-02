@@ -8,8 +8,8 @@
 ;;;###autoload
 (defvar doom-debug--variables
   `(;; Doom variables
-    (doom-print-minimum-level . debug)
-    (doom-inhibit-log . nil)
+    (doom-print-level debug)
+    (doom-inhibit-log nil)
 
     ;; Emacs variables
     (async-debug t 2)
@@ -42,12 +42,12 @@
   (cond ((listp spec)
          (pcase-let ((`(,var ,val ,level) spec))
            (if (boundp var)
-               (set-default
+               (set-default-toplevel-value
                 var (if (or (not doom-debug-mode)
                             (> (or level 1) doom-log-level))
                         (prog1 (get var 'initial-value)
                           (put var 'initial-value nil))
-                      (doom-log 3 "debug:vars: %s = %S" var (default-toplevel-value var))
+                      (doom-log 3 "debug:vars: %s = %S" var val)
                       (put var 'initial-value (default-toplevel-value var))
                       val))
              (add-to-list 'doom-debug--unbound-variables spec))))
@@ -81,22 +81,19 @@
   "Toggle `debug-on-error' and `init-file-debug' for verbose logging."
   :global t
   :group 'doom
-  (when (or doom-debug-mode
-            (and (integerp current-prefix-arg)
-                 (> current-prefix-arg 0)))
-    (setq doom-debug-mode t)
-    (let ((level (max 1 (min 3 (or current-prefix-arg 1)))))
-      (put 'doom-log-level 'initial-value doom-log-level)
-      (setq doom-log-level level)))
-  (doom-log "debug: enabled! (log-level=%d)" doom-log-level)
-  (mapc #'doom-debug--set-var doom-debug--variables)
   ;; Watch for changes in `doom-debug--variables', or when packages load (and
   ;; potentially define one of `doom-debug--variables'), in case some of them
   ;; aren't defined when `doom-debug-mode' is first loaded.
   (cond (doom-debug-mode
-         (unless noninteractive
-           (message "Debug mode level %d enabled! (Run 'M-x view-echo-area-messages' to open the log buffer)"
+         (when (called-interactively-p 'any)
+           (message "Debug mode level %d enabled! (Run 'M-x view-echo-area-messages' to see logs)"
                     doom-log-level))
+         (when-let* ((level (and (integerp current-prefix-arg)
+                                 (> current-prefix-arg 0)
+                                 (max 1 (min 3 (or current-prefix-arg 1))))))
+           (setf (alist-get 'doom-log-level doom-debug--variables)
+                 (list level)))
+         (doom-log "debug: enabled! (log-level=%d)" doom-log-level)
          ;; Produce more helpful (and visible) error messages from errors
          ;; emitted from hooks (particularly mode hooks), that usually go
          ;; unnoticed otherwise.
@@ -109,16 +106,14 @@
          (add-variable-watcher 'doom-debug--variables #'doom-debug--watch-vars-h)
          (add-hook 'after-load-functions #'doom-debug--watch-vars-h))
         (t
-         (when-let* ((last-level (get 'doom-log-level 'initial-value)))
-           (put 'doom-log-level 'initial-value nil)
-           (setq doom-log-level last-level))
          (advice-remove #'run-hooks #'doom-run-hooks)
          (advice-remove #'message #'doom-debug--timestamped-message-a)
          (advice-remove #'gcmh-idle-garbage-collect #'doom-debug-shut-up-a)
          (remove-variable-watcher 'doom-debug--variables #'doom-debug--watch-vars-h)
          (remove-hook 'after-load-functions #'doom-debug--watch-vars-h)
          (doom-log "debug: disabled")
-         (message "Debug mode disabled!"))))
+         (message "Debug mode disabled!")))
+  (mapc #'doom-debug--set-var doom-debug--variables))
 
 (defun doom-debug-shut-up-a (fn &rest args)
   "Suppress output from FN, even in debug mode."

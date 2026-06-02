@@ -125,10 +125,10 @@ If non-nil, this is used instead of `standard-output' because changes to that
 variable don't survive translation units.")
 
 (defvar doom-print-level 'notice
-  "The current, default logging level.")
+  "The current level to output logs at.")
 
-(defvar doom-print-minimum-level 'notice
-  "The minimum logging level for a message to be output.")
+(defvar doom-print-default-level 'notice
+  "The logging level to use for `doom-print' calls, if unspecified.")
 
 ;; Record print levels in these symbols for easy, quasi-read-only access later.
 (let ((levels '(debug    ; the system is thinking out loud
@@ -147,7 +147,7 @@ variable don't survive translation units.")
 (cl-defun doom-print
     (output &key
             (format nil)
-            (level doom-print-level)
+            (level doom-print-default-level)
             (newline t)
             (stream (or doom-print-stream standard-output)))
   "Print OUTPUT to stdout.
@@ -164,9 +164,9 @@ Returns OUTPUT."
   (when (and (stringp output)
              (or (eq level t)
                  (if (listp level)
-                     (memq doom-print-minimum-level level)
+                     (memq doom-print-level level)
                    (>= (get level 'print-level)
-                       (or (get doom-print-minimum-level 'print-level)
+                       (or (get doom-print-level 'print-level)
                            9999)))))
     (when format
       (setq output (doom-print--format "%s" output)))
@@ -193,7 +193,7 @@ Returns OUTPUT."
     (if verbose (setq level ''info))
     `(progn
        ,@(if title `((print! (start ,title))))
-       (let ((doom-print-level (or ,level doom-print-level))
+       (let ((doom-print-default-level (or ,level doom-print-default-level))
              (doom-print-indent
               (+ (if ,(or if t) (or ,indent doom-print-indent-increment) 0)
                  doom-print-indent)))
