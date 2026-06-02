@@ -478,7 +478,7 @@ windows, switch to `doom-fallback-buffer'. Otherwise, delegate to original
 
 (use-package! hl-line
   ;; Highlights the current line
-  :hook (doom-first-buffer . global-hl-line-mode)
+  :hook (doom-first-input . global-hl-line-mode)
   :init
   (defvar global-hl-line-modes
     '(prog-mode text-mode conf-mode special-mode
