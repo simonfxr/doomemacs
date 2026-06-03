@@ -1033,7 +1033,7 @@ considered as well."
   (declare (indent 1))
   (let ((contextsym (make-symbol "doomctxt")))
     `(let* ((,contextsym ,context)
-            ;; Emit more user-friendly backtraces
+            ;; Emit user-friendly backtraces
             (debugger (doom-rpartial #'doom-cli-debugger ,contextsym))
             (debug-on-error t))
        (with-output-to! `((>= notice ,(doom-cli-context-stdout ,contextsym))
@@ -1105,12 +1105,10 @@ benchmark be shown."
 
 (defun doom-cli-initialize ()
   "TODO"
-  (let* ((context (make-doom-cli-context))
-         (write-logs-fn (apply-partially #'doom-cli--output-write-logs-h context))
-         (show-benchmark-fn (apply-partially #'doom-cli--output-benchmark-h context)))
+  (let ((context (make-doom-cli-context)))
     (setq doom-cli--context context)
-    (add-hook 'kill-emacs-hook show-benchmark-fn 94)
-    (add-hook 'kill-emacs-hook write-logs-fn 95)
+    (add-hook 'kill-emacs-hook (apply-partially #'doom-cli--output-benchmark-h context) 94)
+    (add-hook 'kill-emacs-hook (apply-partially #'doom-cli--output-write-logs-h context) 95)
 
     (when (doom-cli-context-pipe-p context :out t)
       (setq doom-print-backend nil))
@@ -1120,14 +1118,16 @@ benchmark be shown."
                    (insert in "\n")
                  (ignore-errors (delete-char -1))))))
 
-    ;; Emit more user-friendly backtraces
+    ;; Output control. Pipes stdout + stderr to log files (without showing
+    ;; stderr). `message' out is treated a stderr.
     (let ((spec `((>= notice ,(doom-cli-context-stdout context))
                   (t . ,(doom-cli-context-stderr context)))))
-      (setq-default debugger (doom-rpartial #'doom-cli-debugger context)
+      (setq-default standard-output (doom-print--redirect-standard-output spec t)
+                    doom-print-stream standard-output
+                    ;; Emit more user-friendly backtraces
+                    debugger (doom-rpartial #'doom-cli-debugger context)
                     debug-on-error t
-                    doom-log-level 3
-                    standard-output (doom-print--redirect-standard-output spec t)
-                    doom-print-stream standard-output)
+                    doom-log-level 3)
       (advice-add #'message :override (doom-print--redirect-message spec 'debug)))
 
     (doom-log 3 ":cli:initialize: %s" doom-context)))
