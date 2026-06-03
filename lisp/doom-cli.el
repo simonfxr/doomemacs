@@ -1413,6 +1413,65 @@ ARGS are options passed to less. If DOOMPAGER is set, ARGS are ignored."
   (dolist (key (hash-table-keys doom-cli--table))
     (doom-cli-load (gethash key doom-cli--table))))
 
+(cl-defgeneric doom-cli-handle-error (_context e)
+  (when (eq (car e) 'user-error)
+    (print! (red "Error: %s") (cadr e))
+    (print! "\nAborting...")
+    3))
+
+(cl-defmethod doom-cli-handle-error (context (e (head 'doom-cli-wrong-number-of-arguments-error)))
+  (pcase-let ((`(,command ,flag ,args ,min ,max) (cdr e)))
+    (print! (red "Error: %S expected %s argument%s, but got %d")
+            (or flag (doom-cli-command-string
+                      (if (keywordp (car command))
+                          command
+                        (cdr command))))
+            (if (or (= min max)
+                    (= max most-positive-fixnum))
+                min
+              (format "%d-%d" min max))
+            (if (or (= min 0) (> min 1)) "s" "")
+            (length args))
+    (doom-cli-call `(:help "--synopsis" "--postamble" ,@(cdr (doom-cli--command context))) context e)
+    5))
+
+(cl-defmethod doom-cli-handle-error (context (e (head 'doom-cli-unrecognized-option-error)))
+  (print! (red "Error: unknown option %s") (cadr e))
+  (doom-cli-call `(:help "--synopsis" "--postamble" ,@(cdr (doom-cli--command context))) context e)
+  5)
+
+(cl-defmethod doom-cli-handle-error (context (e (head 'doom-cli-invalid-option-error)))
+  (pcase-let ((`(,_types ,option ,value ,errors) (cdr e)))
+    (print! (red "Error: %s received invalid value %S")
+            (string-join (doom-cli-option-switches option) "/")
+            value)
+    (print! (bold "\nValidation errors:"))
+    (dolist (err errors) (print! (item "%s." (fill err))))
+    (doom-cli-call `(:help "--postamble" ,@(cdr (doom-cli--command context))) context e)
+    5))
+
+(cl-defmethod doom-cli-handle-error (context (e (head 'doom-cli-command-not-found-error)))
+  (let* ((command (cdr e))
+         (cli (doom-cli-get command)))
+    (cond ((null cli)
+           (print! (red "Error: unrecognized command: %s")
+                   (doom-cli-command-string command))
+           (doom-cli-call `(:help "--similar" "--postamble" ,@(cdr command)) context e))
+          ((null (doom-cli-fn cli))
+           (print! (red "Error: a subcommand is required"))
+           (doom-cli-call `(:help "--subcommands" "--postamble" ,@(cdr command)) context e)))
+    4))
+
+(cl-defmethod doom-cli-handle-error (_context (e (head 'doom-cli-invalid-prefix-error)))
+  (let ((prefix (cadr e)))
+    (print! (red "Error: `run!' called with invalid prefix %S") prefix)
+    (if-let* ((suggested (cl-loop for cli being the hash-value of doom-cli--table
+                                  unless (doom-cli-type cli)
+                                  return (car (doom-cli-command cli)))))
+        (print! "Did you mean %S?" suggested)
+      (print! "There are no commands defined under %S." prefix))
+    4))
+
 
 ;;
 ;;; DSL
@@ -1872,13 +1931,6 @@ errors to `doom-cli-error-file')."
             (doom-cli-context-whole context) args)
       ;; Clone output to stdout/stderr buffers for logging.
       (doom-log "run!: %s %s" prefix (combine-and-quote-strings args))
-      (when (doom-cli-context-pipe-p context :out t)
-        (setq doom-print-backend nil))
-      (when (doom-cli-context-pipe-p context :in)
-        (with-current-buffer (doom-cli-context-stdin context)
-          (while (if-let* ((in (ignore-errors (read-from-minibuffer ""))))
-                     (insert in "\n")
-                   (ignore-errors (delete-char -1))))))
       (doom-cli--exit
        (catch 'exit
          (condition-case-unless-debug e
@@ -1889,58 +1941,9 @@ errors to `doom-cli-error-file')."
                (let ((result (doom-cli-context-execute context)))
                  (run-hook-with-args 'doom-cli-after-run-functions context result))
                0)
-           (doom-cli-wrong-number-of-arguments-error
-            (pcase-let ((`(,command ,flag ,args ,min ,max) (cdr e)))
-              (print! (red "Error: %S expected %s argument%s, but got %d")
-                      (or flag (doom-cli-command-string
-                                (if (keywordp (car command))
-                                    command
-                                  (cdr command))))
-                      (if (or (= min max)
-                              (= max most-positive-fixnum))
-                          min
-                        (format "%d-%d" min max))
-                      (if (or (= min 0) (> min 1)) "s" "")
-                      (length args))
-              (doom-cli-call `(:help "--synopsis" "--postamble" ,@(cdr (doom-cli--command context))) context e))
-            5)
-           (doom-cli-unrecognized-option-error
-            (print! (red "Error: unknown option %s") (cadr e))
-            (doom-cli-call `(:help "--synopsis" "--postamble" ,@(cdr (doom-cli--command context))) context e)
-            5)
-           (doom-cli-invalid-option-error
-            (pcase-let ((`(,_types ,option ,value ,errors) (cdr e)))
-              (print! (red "Error: %s received invalid value %S")
-                      (string-join (doom-cli-option-switches option) "/")
-                      value)
-              (print! (bold "\nValidation errors:"))
-              (dolist (err errors) (print! (item "%s." (fill err)))))
-            (doom-cli-call `(:help "--postamble" ,@(cdr (doom-cli--command context))) context e)
-            5)
-           (doom-cli-command-not-found-error
-            (let* ((command (cdr e))
-                   (cli (doom-cli-get command)))
-              (cond ((null cli)
-                     (print! (red "Error: unrecognized command: %s")
-                             (doom-cli-command-string command))
-                     (doom-cli-call `(:help "--similar" "--postamble" ,@(cdr command)) context e))
-                    ((null (doom-cli-fn cli))
-                     (print! (red "Error: a subcommand is required"))
-                     (doom-cli-call `(:help "--subcommands" "--postamble" ,@(cdr command)) context e))))
-            4)
-           (doom-cli-invalid-prefix-error
-            (let ((prefix (cadr e)))
-              (print! (red "Error: `run!' called with invalid prefix %S") prefix)
-              (if-let* ((suggested (cl-loop for cli being the hash-value of doom-cli--table
-                                            unless (doom-cli-type cli)
-                                            return (car (doom-cli-command cli)))))
-                  (print! "Did you mean %S?" suggested)
-                (print! "There are no commands defined under %S." prefix)))
-            4)
            (error
-            (print! (red "Error: %s") (cadr e))
-            (print! "\nAborting...")
-            3)))
+            (or (doom-cli-handler-error context e)
+                (signal (car e) (cdr e))))))
        context))))
 
 (defalias 'sh! #'doom-call-process)
