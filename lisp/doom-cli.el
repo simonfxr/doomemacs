@@ -1931,13 +1931,6 @@ errors to `doom-cli-error-file')."
             (doom-cli-context-whole context) args)
       ;; Clone output to stdout/stderr buffers for logging.
       (doom-log "run!: %s %s" prefix (combine-and-quote-strings args))
-      (when (doom-cli-context-pipe-p context :out t)
-        (setq doom-print-backend nil))
-      (when (doom-cli-context-pipe-p context :in)
-        (with-current-buffer (doom-cli-context-stdin context)
-          (while (if-let* ((in (ignore-errors (read-from-minibuffer ""))))
-                     (insert in "\n")
-                   (ignore-errors (delete-char -1))))))
       (doom-cli--exit
        (catch 'exit
          (condition-case-unless-debug e
