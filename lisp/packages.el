@@ -22,14 +22,14 @@
   :pin "e40a5b7f8b0c1bb2cde0e7e477b5f81303e34b95")
 
 ;; doom-ui.el
-(package! nerd-icons :pin "ae1b85c487c2b0bb1efb8bc0edc23af74282eec2")
+(package! nerd-icons :pin "d33d12f5dcb6bf2fb23c3f75df5de85beb4afd95")
 
 ;; doom-editor.el
 (package! better-jumper :pin "b1bf7a3c8cb820d942a0305e0e6412ef369f819c")
 (package! smartparens :pin "82d2cf084a19b0c2c3812e0550721f8a61996056")
 
 ;; doom-projects.el
-(package! projectile :pin "957d808849e317d2f412ab8e844da48727df3917")
+(package! projectile :pin "4c72d6767de9aef1182d72ddfc0482cc98b0b8fd")
 (package! project :pin "f4ec26c30a08663e93449317a5f765032ab84f28")
 
 ;; doom-keybinds.el

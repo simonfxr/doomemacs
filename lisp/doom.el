@@ -791,16 +791,6 @@ appropriately against `noninteractive' or the `cli' context."
 (defun doom-initialize (&optional interactive?)
   "Bootstrap the Doom session ahead."
   (when (doom-context-push 'startup)
-    (when (daemonp)
-      (message "Starting Doom Emacs in daemon mode...")
-      (unless doom-inhibit-log
-        (add-hook! 'doom-after-init-hook :depth 106
-          (unless doom-inhibit-log
-            (setq doom-inhibit-log (not (or noninteractive init-file-debug))))
-          (message "Disabling verbose mode. Have fun!"))
-        (add-hook! 'kill-emacs-hook :depth 110
-          (message "Killing Emacs. Sayonara!"))))
-
     (if interactive?
         (when (doom-context-push 'emacs)
           (add-hook 'doom-after-init-hook #'doom-load-packages-incrementally-h 100)
