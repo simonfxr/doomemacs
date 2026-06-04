@@ -1175,7 +1175,7 @@ Emacs' batch library lacks an implementation of the exec system call."
                   `(("DOOMPROFILE" . ,(ignore-errors (doom-profile->id doom-profile)))
                     ("EMACSDIR" . ,doom-emacs-dir)
                     ("DOOMDIR" . ,doom-user-dir)
-                    ("DEBUG" . ,(if (> doom-log-level 0) (number-to-string doom-log-level)))
+                    ("DEBUG" . ,(if doom-debug-mode (number-to-string doom-log-level)))
                     ("__DOOMPID" . ,(number-to-string (doom-cli-context-pid context)))
                     ("__DOOMSTEP" . ,(number-to-string (doom-cli-context-step context)))
                     ("__DOOMCONTEXT" . ,context-file))
