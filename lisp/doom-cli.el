@@ -1941,7 +1941,7 @@ errors to `doom-cli-error-file')."
                  (run-hook-with-args 'doom-cli-after-run-functions context result))
                0)
            (error
-            (or (doom-cli-handler-error context e)
+            (or (doom-cli-handle-error context e)
                 (signal (car e) (cdr e))))))
        context))))
 
