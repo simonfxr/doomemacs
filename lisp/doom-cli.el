@@ -1175,16 +1175,15 @@ Emacs' batch library lacks an implementation of the exec system call."
                   `(("DOOMPROFILE" . ,(ignore-errors (doom-profile->id doom-profile)))
                     ("EMACSDIR" . ,doom-emacs-dir)
                     ("DOOMDIR" . ,doom-user-dir)
-                    ("DEBUG" . ,(if (> doom-log-level 0) (number-to-string doom-log-level)))
+                    ("DEBUG" . ,(if doom-debug-mode (number-to-string doom-log-level)))
                     ("__DOOMPID" . ,(number-to-string (doom-cli-context-pid context)))
-                    ("__DOOMSTEP" . ,(number-to-string (doom-cli-context-step context)))
+                    ("__DOOMSTEP" . ,(number-to-string (cl-incf (doom-cli-context-step context))))
                     ("__DOOMCONTEXT" . ,context-file))
                   (save-match-data
                     (cl-loop with initial-env = (get 'process-environment 'initial-value)
                              for env in (seq-difference process-environment initial-env)
                              if (string-match "^\\([a-zA-Z0-9_][^=]+\\)=\\(.+\\)$" env)
                              collect (cons (match-string 1 env) (match-string 2 env))))))))
-    (cl-incf (doom-cli-context-step context))
     (with-file-modes #o600
       (doom-log "restart: writing context to %s" context-file)
       (doom-file-write
@@ -1942,7 +1941,7 @@ errors to `doom-cli-error-file')."
                  (run-hook-with-args 'doom-cli-after-run-functions context result))
                0)
            (error
-            (or (doom-cli-handler-error context e)
+            (or (doom-cli-handle-error context e)
                 (signal (car e) (cdr e))))))
        context))))
 

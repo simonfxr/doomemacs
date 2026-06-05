@@ -29,7 +29,7 @@
 (package! smartparens :pin "82d2cf084a19b0c2c3812e0550721f8a61996056")
 
 ;; doom-projects.el
-(package! projectile :pin "4c72d6767de9aef1182d72ddfc0482cc98b0b8fd")
+(package! projectile :pin "6449fb0465587c757c1fbf1a64bb4ba420a78bfa")
 (package! project :pin "f4ec26c30a08663e93449317a5f765032ab84f28")
 
 ;; doom-keybinds.el
