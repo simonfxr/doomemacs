@@ -424,7 +424,7 @@ current file is in, or d) the module associated with the current major mode (see
            (doom-project-browse path))
           ((y-or-n-p (format "The %S module has no README file. Explore its directory?"
                              module-string))
-           (doom-project-browse (file-name-directory path)))
+           (doom-project-browse (file-name-as-directory path)))
           ((user-error "Aborted module lookup")))))
 
 (defun doom--help-variable-p (sym)
