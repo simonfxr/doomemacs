@@ -143,18 +143,6 @@
 (push :system features)
 (put :system 'subfeatures doom-system)
 
-;;; DEPRECATED: Remove in v3
-;; Emacs needs a more consistent way to detect build features, and the docs
-;; claim `system-configuration-features' is not da way. Some features (that
-;; don't represent packages) can be found in `features' (which `featurep'
-;; consults), but aren't consistent, so I'll impose some consistency:
-(if (bound-and-true-p module-file-suffix)
-    (push 'dynamic-modules features))
-(if (fboundp #'json-parse-string)
-    (push 'jansson features))
-(if (string-match-p "HARFBUZZ" system-configuration-features) ; no alternative
-    (push 'harfbuzz features))
-
 ;; The `native-compile' feature exists whether or not it is functional (e.g.
 ;; libgcc is available or not). This seems silly, as some packages will blindly
 ;; use the native-comp API if it's present but non-functional, so let's pretend
@@ -162,29 +150,6 @@
 (if (featurep 'native-compile)
     (if (not (native-comp-available-p))
         (delq 'native-compile features)))
-
-;; DEPRECATED: Remove in v3
-(with-no-warnings
-  (defconst IS-MAC      doom--system-macos-p)
-  (defconst IS-LINUX    doom--system-linux-p)
-  (defconst IS-WINDOWS  doom--system-windows-p)
-  (defconst IS-BSD      (memq 'bsd doom-system))
-  (defconst EMACS28+    (> emacs-major-version 27))
-  (defconst EMACS29+    (> emacs-major-version 28))
-  (defconst MODULES     (featurep 'dynamic-modules))
-  (defconst NATIVECOMP  (featurep 'native-compile))
-
-  (make-obsolete-variable 'IS-MAC     "Use (featurep :system 'macos) instead" "2.1.0")
-  (make-obsolete-variable 'IS-LINUX   "Use (featurep :system 'linux) instead" "2.1.0")
-  (make-obsolete-variable 'IS-WINDOWS "Use (featurep :system 'windows) instead" "2.1.0")
-  (make-obsolete-variable 'IS-BSD     "Use (featurep :system 'bsd) instead" "2.1.0")
-  (make-obsolete-variable 'EMACS28+   "Use (>= emacs-major-version 28) instead" "2.1.0")
-  (make-obsolete-variable 'EMACS29+   "Use (>= emacs-major-version 29) instead" "2.1.0")
-  (make-obsolete-variable 'MODULES    "Use (featurep 'dynamic-modules) instead" "2.1.0")
-  (make-obsolete-variable 'NATIVECOMP "Use (featurep 'native-compile) instead" "2.1.0")
-
-  (define-obsolete-variable-alias 'doom-private-dir 'doom-user-dir "2.1.0")
-  (define-obsolete-variable-alias 'doom-etc-dir 'doom-data-dir "2.1.0"))
 
 ;; HACK: Silence obnoxious obsoletion warnings about (if|when)-let in >=31.
 ;;   These warnings are unhelpful to end-users, and many packages use these
