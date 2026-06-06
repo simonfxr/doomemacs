@@ -412,19 +412,25 @@ FILL-COLUMN determines the column at which lines will be broken."
 
 ;;;###autoload
 (defun doom/info ()
-  "Collects some debug information about your Emacs session, formats it and
-copies it to your clipboard, ready to be pasted into bug reports!"
+  "Collects some formatted information about your Doom environment.
+
+Please include it anytime you make a bug report or ask for help with Doom
+anywhere!"
   (interactive)
   (let ((buffer (get-buffer-create "*doom info*")))
     (with-current-buffer buffer
       (setq buffer-read-only t)
-      (with-silent-modifications
+      (setq default-directory "~/")
+      (when (eq major-mode 'fundamental-mode)
+        (text-mode))
+      (let ((inhibit-read-only t))
         (erase-buffer)
         (insert (doom-info-string 86)))
       (pop-to-buffer buffer)
       (kill-new (buffer-string))
-      (when (y-or-n-p "Your doom-info was copied to the clipboard.\n\nOpen pastebin.com?")
-        (browse-url "https://pastebin.com")))))
+      (setq-local header-line-format
+                  (substitute-command-keys
+                   "Type \\[save-buffer] to save this to a file")))))
 
 
 ;;
