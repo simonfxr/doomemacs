@@ -6,19 +6,11 @@
 ;;; Deprecated variables/constants/features
 
 (with-no-warnings
-  (defconst IS-MAC      doom--system-macos-p)
-  (defconst IS-LINUX    doom--system-linux-p)
-  (defconst IS-WINDOWS  doom--system-windows-p)
-  (defconst IS-BSD      (memq 'bsd doom-system))
   (defconst EMACS28+    (> emacs-major-version 27))
   (defconst EMACS29+    (> emacs-major-version 28))
   (defconst MODULES     (bound-and-true-p module-file-suffix))
   (defconst NATIVECOMP  (featurep 'native-compile))
 
-  (make-obsolete-variable 'IS-MAC     "Use (featurep :system 'macos) instead" "2.1.0")
-  (make-obsolete-variable 'IS-LINUX   "Use (featurep :system 'linux) instead" "2.1.0")
-  (make-obsolete-variable 'IS-WINDOWS "Use (featurep :system 'windows) instead" "2.1.0")
-  (make-obsolete-variable 'IS-BSD     "Use (featurep :system 'bsd) instead" "2.1.0")
   (make-obsolete-variable 'EMACS28+   "Use (>= emacs-major-version 28) instead" "2.1.0")
   (make-obsolete-variable 'EMACS29+   "Use (>= emacs-major-version 29) instead" "2.1.0")
   (make-obsolete-variable 'MODULES    "Use (bound-and-true-p module-file-suffix) instead" "2.1.0")

@@ -151,6 +151,18 @@
     (if (not (native-comp-available-p))
         (delq 'native-compile features)))
 
+;; DEPRECATED: Remove in v3
+(with-no-warnings
+  (defconst IS-MAC      doom--system-macos-p)
+  (defconst IS-LINUX    doom--system-linux-p)
+  (defconst IS-WINDOWS  doom--system-windows-p)
+  (defconst IS-BSD      (memq 'bsd doom-system))
+
+  (make-obsolete-variable 'IS-MAC     "Use (featurep :system 'macos) instead" "2.1.0")
+  (make-obsolete-variable 'IS-LINUX   "Use (featurep :system 'linux) instead" "2.1.0")
+  (make-obsolete-variable 'IS-WINDOWS "Use (featurep :system 'windows) instead" "2.1.0")
+  (make-obsolete-variable 'IS-BSD     "Use (featurep :system 'bsd) instead" "2.1.0"))
+
 ;; HACK: Silence obnoxious obsoletion warnings about (if|when)-let in >=31.
 ;;   These warnings are unhelpful to end-users, and many packages use these
 ;;   macros, so I silence these warnings to spare users the unactionable spam.
