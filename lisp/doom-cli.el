@@ -2453,14 +2453,14 @@ OPTIONS:
                               " or ")))))))))
 
 (defcli! (:root :version)
-    ((verbose? ("-v" "--verbose"))
+    ((short? ("-s" "--short"))
      &context _)
-  "Show installed versions of Doom core.
+  "Show versions of Emacs, Doom core, and installed module sources.
 
 OPTIONS:
-  -v, --verbose
-    Also show version (and git info) for GNU Emacs and installed module sources."
-  (if (not verbose?)
+  -s, --short
+    Only show the version number for Doom Core."
+  (if short?
       (print! "%s" doom-version)
     (doom/version)
     (terpri)
