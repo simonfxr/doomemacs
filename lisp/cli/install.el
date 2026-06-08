@@ -95,19 +95,6 @@ Change `$DOOMDIR' with the `--doomdir' option, e.g.
       (after! straight
         (setq straight--native-comp-available t)))
 
-    ;; Install Doom packages
-    (if (eq install? :no)
-        (print! (warn "Not installing plugins, as requested"))
-      (print! (start "Installing plugins"))
-      (print-group! (doom-packages-ensure)))
-
-    (when (doom-profiles-bootloadable-p)
-      (print! (start "Initializing profile bootstrapper..."))
-      (call! '(profile sync "--all" "--reload")))
-
-    (print! (start "Synchronizing default profile..."))
-    (print-group! (doom-profile-generate))
-
     (if (eq hooks? :no)
         (print! (warn "Not deploying commit-msg and pre-push git hooks, as requested"))
       (print! (start "Deploying commit-msg and pre-push git hooks"))
@@ -117,13 +104,16 @@ Change `$DOOMDIR' with the `--doomdir' option, e.g.
           ('user-error
            (print! (warn "%s") (error-message-string e))))))
 
-    (when (file-exists-p "~/.emacs")
-      (print! (warn "A ~/.emacs file was detected. This conflicts with Doom and should be deleted!")))
+    (if (eq install? :no)
+        (print! (warn "Not installing plugins, as requested"))
+      (when (file-exists-p "~/.emacs")
+        (print! (warn "~/.emacs file detected. Delete it or Emacs won't load Doom correctly!")))
 
-    (print! (success "Finished! Doom is ready to go!\n"))
-    (with-temp-buffer
-      (insert-file-contents (doom-path doom-emacs-dir "static/QUICKSTART_INTRO"))
-      (print! "%s" (buffer-string)))))
+      ;; Ensure module sources are initialized
+      (or (zerop (car (sh! "git" "submodule" "update" "-f" "--init" "--recursive")))
+          (error "Failed to update submodules"))
+      (doom-cli-context-put context 'installing t)
+      (exit! "doom" "sync" (if aot? "--aot")))))
 
 (provide 'doom-cli-install)
 ;;; install.el ends here

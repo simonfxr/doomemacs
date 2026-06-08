@@ -36,8 +36,8 @@ libraries. It is the equivalent of the following shell commands:
     (cond
      (packages?
       (or (zerop (car (sh! "git" "-C" doom-emacs-dir
-                           "submodule" "update" "--init" "--recursive")))
-          (error "Failed to update submodules"))
+                           "submodule" "update" "-f" "--init" "--recursive")))
+          (error "Failed to update submodules. Run `doom upgrade -p` again"))
 
       ;; HACK: It's messy to use straight to upgrade straight, due to the
       ;;   potential for backwards incompatibility, so we staticly check if
@@ -50,11 +50,11 @@ libraries. It is the equivalent of the following shell commands:
           (print! (item "Preparing straight for an update"))
           (delete-directory (doom-path straight-base-dir "straight/repos/straight.el")
                             'recursive)))
-      (call! (append '("sync" "-u")
-                     (if aot? '("--aot"))
-                     (if nobuild? '("-B"))
-                     (if jobs `("-j" ,jobs))))
-      (print! (success "Finished upgrading Doom Emacs")))
+
+      (exit! "doom" "sync" "-u"
+             (if aot? '("--aot"))
+             (if nobuild? '("-B"))
+             (if jobs `("-j" ,jobs))))
 
      ((doom-cli-upgrade context force? force?)
       ;; Reload Doom's CLI & libraries, in case there were any upstream changes.
