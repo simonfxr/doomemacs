@@ -314,23 +314,6 @@ TRIGGER-HOOK is a list of quoted hooks and/or sharp-quoted functions."
         (add-hook hook fn -101))
       fn)))
 
-;;; DEPRECATED: Remove in v3
-(defun doom-compile-functions (&rest fns)
-  "Queue FNS to be byte/natively-compiled after a brief delay."
-  (with-memoization (get 'doom-compile-function 'timer)
-    (run-with-idle-timer
-     1.5 t (fn! (when-let* ((fn (pop fns)))
-                  (doom-log 3 "compile-functions: %s" fn)
-                  (or (if (featurep 'native-compile)
-                          (or (subr-native-elisp-p (indirect-function fn))
-                              (ignore-errors (native-compile fn))))
-                      (byte-code-function-p fn)
-                      (let (byte-compile-warnings)
-                        (byte-compile fn))))
-                (unless fns
-                  (cancel-timer (get 'doom-compile-function 'timer))
-                  (put 'doom-compile-function 'timer nil))))))
-
 
 ;;
 ;;; Deep copying
@@ -833,43 +816,6 @@ issues"
             (cond ((null keys) (cdr rc))
                   ((symbolp keys) (cdr (assq keys (cdr rc))))
                   ((listp keys) (map-nested-elt (cdr rc) keys))))))))
-
-
-;;; Mutation
-;; DEPRECATED: Remove in v3.0
-(defmacro appendq! (sym &rest lists)
-  "Append LISTS to SYM in place."
-  (declare (obsolete "Use `cl-callf2' instead" "2.1.0"))
-  `(setq ,sym (append ,sym ,@lists)))
-
-;; DEPRECATED: Remove in v3
-(define-obsolete-function-alias 'setq! 'setopt "2.1.0")
-
-;; DEPRECATED: Remove in v3.0
-(defmacro delq! (elt list &optional fetcher)
-  "`delq' ELT from LIST in-place.
-
-If FETCHER is a function, ELT is used as the key in LIST (an alist)."
-  (declare (obsolete "Use `cl-callf2' or `alist-get' instead" "2.1.0"))
-  `(setq ,list (delq ,(if fetcher
-                          `(funcall ,fetcher ,elt ,list)
-                        elt)
-                     ,list)))
-
-;; DEPRECATED: Remove in v3
-(defmacro pushnew! (place &rest values)
-  "Push VALUES sequentially into PLACE, if they aren't already present.
-This is a variadic `cl-pushnew'."
-  (declare (obsolete "Use a loop with `add-to-list' or `cl-pushnew' instead" "2.1.0"))
-  (let ((var (make-symbol "result")))
-    `(dolist (,var (list ,@values) (with-no-warnings ,place))
-       (cl-pushnew ,var ,place :test #'equal))))
-
-;; DEPRECATED: Remove in v3.0
-(defmacro prependq! (sym &rest lists)
-  "Prepend LISTS to SYM in place."
-  (declare (obsolete "Use `cl-callf2' instead" "2.1.0"))
-  `(setq ,sym (append ,@lists ,sym)))
 
 
 ;;; Loading
@@ -1549,9 +1495,6 @@ in these blocks dictates their load order (unless given an explicit :depth)."
               (list (list 'quote modules))
             modules)))
      t))
-
-;; DEPRECATED: Remove in v3
-(define-obsolete-function-alias 'featurep! 'modulep! "2.1.0")
 
 (defmacro modulep! (group &optional module &rest flags)
   "Return t if :GROUP MODULE (and +FLAGS) are enabled.
