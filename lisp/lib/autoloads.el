@@ -163,7 +163,7 @@ hoist buggy forms into autoloads.")
          (module-enabled-p
           (and (doom-module-active-p (car module) (cdr module))
                (doom-file-cookie-p file "if" t)))
-         ;; (load-path (cons doom-modules-dir load-path))
+         ;; (load-path (append doom-module-load-path load-path))
          )
     (save-excursion
       (when module-enabled-p

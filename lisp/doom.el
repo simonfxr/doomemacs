@@ -199,10 +199,6 @@
 (defconst doom-version "2.1.1"
   "Current version of Doom Emacs core.")
 
-;; DEPRECATED: Remove these when the modules are moved out of core.
-(defconst doom-modules-version "26.07.0-pre"
-  "Current version of Doom Emacs.")
-
 (defvar doom-init-time nil
   "The time it took, in seconds (as a float), for Doom Emacs to start up.")
 
@@ -225,9 +221,6 @@
 (defconst doom-core-dir (file-name-directory load-file-name)
   "The root directory of Doom's core files. Must end with a slash.")
 
-(defvar doom-modules-dir (expand-file-name "modules/" doom-emacs-dir)
-  "The root directory for Doom's modules. Must end with a slash.")
-
 (defvar doom-user-dir
   (expand-file-name
    (if-let* ((doomdir (getenv-internal "DOOMDIR")))
@@ -247,10 +240,12 @@ whichever is found first. Must end in a slash.")
 ;; DEPRECATED: Will be replaced in v3
 (defvar doom-module-load-path
   (list (file-name-concat doom-user-dir "modules")
-        (file-name-concat doom-emacs-dir "modules"))
+        (file-name-concat doom-emacs-dir "modules")
+        (file-name-concat doom-emacs-dir "sources/doom+/modules"))
   "A list of paths where Doom should search for modules.
 
-Order determines priority (from highest to lowest).
+Order determines priority (from highest to lowest). The first entry should
+always be the user's module directory (under `doom-user-dir').
 
 Each entry is a string; an absolute path to the root directory of a module tree.
 In other words, they should contain a two-level nested directory structure,

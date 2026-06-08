@@ -5,50 +5,6 @@
 (defvar doom-modules nil
   "A table of enabled modules and metadata. See `doom-modules-initialize'.")
 
-;; DEPRECATED: Remove in v3, as it will be handled in the CLI
-(make-obsolete-variable 'doom-obsolete-modules nil "2.1.0")
-(defconst doom-obsolete-modules
-  '((:feature (version-control  (:emacs vc) (:ui vc-gutter))
-              (spellcheck       (:checkers spell))
-              (syntax-checker   (:checkers syntax))
-              (evil             (:editor evil))
-              (snippets         (:editor snippets))
-              (file-templates   (:editor file-templates))
-              (workspaces       (:ui workspaces))
-              (eval             (:tools eval))
-              (lookup           (:tools lookup))
-              (debugger         (:tools debugger)))
-    (:tools   (rotate-text      (:editor rotate-text))
-              (vterm            (:term vterm))
-              (password-store   (:tools pass))
-              (flycheck         (:checkers syntax))
-              (flyspell         (:checkers spell))
-              (macos            (:os macos)))
-    (:emacs   (electric-indent  (:emacs electric))
-              (hideshow         (:editor fold))
-              (eshell           (:term eshell))
-              (term             (:term term)))
-    (:ui      (doom-modeline    (:ui modeline))
-              (fci              (:ui fill-column))
-              (evil-goggles     (:ui ophints))
-              (tabbar           (:ui tabs))
-              (pretty-code      (:ui ligatures)))
-    (:app     (email            (:email mu4e))
-              (notmuch          (:email notmuch)))
-    (:lang    (perl             (:lang raku))))
-  "A tree alist that maps deprecated modules to their replacement(s).
-
-Each entry is a three-level tree. For example:
-
-  (:feature (version-control (:emacs vc) (:ui vc-gutter))
-            (spellcheck (:checkers spell))
-            (syntax-checker (:tools flycheck)))
-
-This marks :feature version-control, :feature spellcheck and :feature
-syntax-checker modules obsolete. e.g. If :feature version-control is found in
-your `doom!' block, a warning is emitted before replacing it with :emacs vc and
-:ui vc-gutter.")
-
 (make-obsolete-variable 'doom-inhibit-module-warnings nil "2.1.0")
 (defvar doom-inhibit-module-warnings (not noninteractive)
   "If non-nil, don't emit deprecated or missing module warnings at startup.")
@@ -130,18 +86,25 @@ properties:
       ;;   is looked up *very* often.
       (put group name (doom-module->context module)))))
 
+(defun doom-module--remap (group module)
+  (cl-loop for (old new v) in
+           (with-memoization (get 'doom-module--remap 'cache)
+             (cl-loop for dir in (reverse doom-module-load-path)
+                      if (doom-config `(,dir modules obsolete))
+                      append it))
+           if (equal `(,group ,module) old)
+           return (list old new v)))
+
 (defun doom-module-mplist-map (fn mplist)
   "Apply FN to each module in MPLIST."
   (let ((mplist (copy-sequence mplist))
         (inhibit-message doom-inhibit-module-warnings)
-        obsolete
         results
         group m)
     (while mplist
       (setq m (pop mplist))
       (cond ((keywordp m)
-             (setq group m
-                   obsolete (assq m doom-obsolete-modules)))
+             (setq group m))
             ((null group)
              (error "No module group specified for %s" m))
             ((and (listp m) (keywordp (car m)))
@@ -159,24 +122,19 @@ properties:
             ((catch 'doom-modules
                (let* ((module (if (listp m) (car m) m))
                       (flags  (if (listp m) (cdr m))))
-                 (when-let* ((new (assq module obsolete)))
-                   (let ((newkeys (cdr new)))
-                     (if (null newkeys)
-                         (print! (warn "%s module was removed"))
-                       (if (cdr newkeys)
-                           (print! (warn "%s module was removed and split into the %s modules")
-                                   (list group module)
-                                   (mapconcat #'prin1-to-string newkeys ", "))
-                         (print! (warn "%s module was moved to %s")
-                                 (list group module)
-                                 (car newkeys)))
+                 (when-let* ((remap (doom-module--remap group module)))
+                   (pcase-let* ((`(,old ,new ,when) remap))
+                     (when when
+                       (setq when (format " in %s" v)))
+                     (if (null new)
+                         (print! (warn "%s module was removed%s, ignoring..." old when))
+                       (if (stringp new)
+                           (print! (warn "%s module was removed%s: %s..." old new when))
+                         (print! (warn "%s module was moved to %s%s, remapping..." old new when)))
                        (push group mplist)
-                       (dolist (key newkeys)
-                         (push (if flags
-                                   (nconc (cdr key) flags)
-                                 (cdr key))
-                               mplist)
-                         (push (car key) mplist))
+                       (dolist (f (reverse new))
+                         (push (if (keywordp f) f (cons f flags))
+                               mplist))
                        (throw 'doom-modules t))))
                  (doom-log "module: %s %s %s -> %s" group module (or flags "")
                            (doom-module-locate-path (cons group module)))

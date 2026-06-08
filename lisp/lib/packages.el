@@ -369,8 +369,8 @@ PACKAGE is installed."
 
 If MODULE-LIST is omitted, read enabled module list in configdepth order (see
 `doom-module-set'). Otherwise, MODULE-LIST may be any symbol (or t) to mean read
-all modules in `doom-modules-dir', including :doom and :user. MODULE-LIST may
-also be a list of module keys."
+all modules, including :doom and :user. MODULE-LIST may also be a list of module
+keys."
   (let ((module-list (cond ((null module-list) (doom-module-list))
                            ((symbolp module-list) (doom-module-list 'all))
                            (module-list)))

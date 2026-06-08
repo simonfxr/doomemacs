@@ -444,7 +444,7 @@ This primes `org-mode' for reading."
           org-mode-hook)
       (if (or force (not (file-exists-p org-id-locations-file)))
           (org-id-update-id-locations
-           (doom-files-in (list doom-docs-dir doom-modules-dir)
+           (doom-files-in (cons doom-docs-dir doom-module-load-path)
                           :match "/[^.].+\\.org$"))
         (org-id-locations-load))
       (setq doom-docs--id-files org-id-files
