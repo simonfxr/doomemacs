@@ -23,7 +23,7 @@
   (when dryrun?
     (print! (warn "Running dry run")))
   (let* ((root (doom-git-toplevel))
-         (rc (doom-rcfile-read `(project make) root)))
+         (rc (doom-config `(,root project make))))
     (dolist (target targets)
       (with-temp-buffer
         (let* ((outfile
