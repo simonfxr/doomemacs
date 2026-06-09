@@ -125,7 +125,7 @@ properties:
                  (when-let* ((remap (doom-module--remap group module)))
                    (pcase-let* ((`(,old ,new ,when) remap))
                      (when when
-                       (setq when (format " in %s" v)))
+                       (setq when (format " in %s" when)))
                      (if (null new)
                          (print! (warn "%s module was removed%s, ignoring..." old when))
                        (if (stringp new)
