@@ -10,10 +10,11 @@
 ;;; DSL
 
 (defun elc-check-dir (dir)
-  (dolist (file (directory-files-recursively dir "\\.elc$"))
-    (when (file-newer-than-file-p (concat (file-name-sans-extension file) ".el")
-                                  file)
-      (warn! "%s is out-of-date" (abbreviate-file-name file)))))
+  (when (file-directory-p dir)
+    (dolist (file (directory-files-recursively dir "\\.elc$"))
+      (when (file-newer-than-file-p (concat (file-name-sans-extension file) ".el")
+                                    file)
+        (warn! "%s is out-of-date" (abbreviate-file-name file))))))
 
 (defmacro assert! (condition message &rest args)
   `(unless ,condition
