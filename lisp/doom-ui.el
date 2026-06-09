@@ -726,8 +726,7 @@ them as such. Also intended as a helper for `doom--theme-is-colorscheme-p'."
   (defun doom-enable-theme-h (theme)
     "Record themes and trigger `doom-load-theme-hook'."
     (when (doom--theme-is-colorscheme-p theme)
-      (ring-insert (with-memoization (get 'doom-theme 'history) (make-ring 8))
-                   (copy-sequence custom-enabled-themes))
+      (push (copy-sequence custom-enabled-themes) (get 'doom-theme 'history))
       ;; Functions in `doom-load-theme-hook' may trigger face recalculations,
       ;; which can be contaminated by buffer-local face remaps (e.g. by
       ;; `mixed-pitch-mode'); this prevents that contamination:
