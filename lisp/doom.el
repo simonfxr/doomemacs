@@ -196,7 +196,7 @@
   :link '(url-link :tag "Website" "https://doomemacs.org")
   :group 'emacs)
 
-(defconst doom-version "2.1.1"
+(defconst doom-version "2.2.0"
   "Current version of Doom Emacs core.")
 
 (defvar doom-init-time nil
