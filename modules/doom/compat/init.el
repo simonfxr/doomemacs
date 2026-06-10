@@ -94,7 +94,7 @@ This is a variadic `cl-pushnew'."
 
 ;; (load! "+projectile")
 ;; (load! "+keybinds")  ; `general' & `map!'
-(load! "+use-package")
+(if (modulep! +use-package) (load! "+use-package"))
 ;; (load! "+smartparens")
 ;; (load! "+better-jumper")
 
