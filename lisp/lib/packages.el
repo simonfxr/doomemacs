@@ -65,7 +65,7 @@ package's name as a symbol, and whose CDR is the plist supplied to its
        ("GIT_CONFIG_GLOBAL" (or (getenv "DOOMGITCONFIG")
                                 "/dev/null")))
     (let ((repo-dir (doom-path straight-base-dir "straight/repos/straight.el"))
-          (repo-url (concat "http" (if gnutls-verify-error "s")
+          (repo-url (concat "http" (if (gnutls-available-p) "s")
                             "://github.com/"
                             (or (plist-get recipe :repo) "radian-software/straight.el")))
           (branch (or (plist-get recipe :branch) straight-repository-branch))

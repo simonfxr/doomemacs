@@ -75,9 +75,9 @@
 (eval-when-compile (require 'subr-x))
 
 (eval-and-compile
-  ;; Doom core supports Emacs 27.1+, but its official module library requires
-  ;; 28.1+. Also keep in mind that certain modules may have stricter
-  ;; requirements (e.g.  tree-sitter needs 29.1+).
+  ;; Doom core will support Emacs 27.1+ for a *long* time, but the official
+  ;; module libraries require 29.1+. Also keep in mind that certain modules may
+  ;; have stricter requirements (e.g. tree-sitter needs 29.1+).
   (when (< emacs-major-version 27)
     (user-error
      (concat
@@ -104,26 +104,16 @@
                 "to diagnose common issues with your config and system.")))))
   nil)
 
-;; Doom needs to be synced/rebuilt if either Doom or Emacs has been
-;; up/downgraded. This is because byte-code isn't backwards compatible, and many
-;; packages (including Doom), bake in absolute paths into their caches that need
-;; to be refreshed.
-(let ((old-version (eval-when-compile emacs-major-version)))
-  (unless (= emacs-major-version old-version)
-    (user-error (concat "Doom core was compiled with Emacs %s, but loaded with %s. Recompile it!")
-                emacs-major-version old-version)))
-
 ;;; Custom features & global constants
 ;; Doom has its own features that its modules, CLI, and user extensions can
 ;; announce, and don't belong in `features', so they are stored here, which can
 ;; include information about the external system environment.
 (defconst doom-system
-  (pcase system-type
-    ('darwin                           '(macos bsd))
-    ((or 'cygwin 'windows-nt 'ms-dos)  '(windows))
-    ((or 'gnu 'gnu/linux)              '(linux))
-    ((or 'gnu/kfreebsd 'berkeley-unix) '(linux bsd))
-    ('android                          '(android)))
+  (cond ((eq system-type 'darwin)                         '(macos bsd))
+        ((memq system-type '(cygwin windows-nt ms-dos))   '(windows))
+        ((memq system-type '(gnu gnu/linux))              '(linux))
+        ((memq system-type '(gnu/kfreebsd berkeley-unix)) '(linux bsd))
+        ((eq system-type 'android)                        '(android)))
   "A list of symbols denoting available features in the active Doom profile.")
 
 ;; Convenience aliases for internal use only (may be removed later).
@@ -138,18 +128,10 @@
              (getenv-internal "WSLENV")))
   (add-to-list 'doom-system 'wsl 'append))
 
-;; `system-type' is esoteric, so I create a pseudo feature as a stable and
-;; consistent alternative, for use with `featurep'.
+;; `system-type' is esoteric and imprecise, so I create a pseudo feature as a
+;; more consistent alternative, for use with `featurep'.
 (push :system features)
 (put :system 'subfeatures doom-system)
-
-;; The `native-compile' feature exists whether or not it is functional (e.g.
-;; libgcc is available or not). This seems silly, as some packages will blindly
-;; use the native-comp API if it's present but non-functional, so let's pretend
-;; it doesn't exist if that's the case.
-(if (featurep 'native-compile)
-    (if (not (native-comp-available-p))
-        (delq 'native-compile features)))
 
 ;; DEPRECATED: Remove in v3
 (with-no-warnings
@@ -162,30 +144,6 @@
   (make-obsolete-variable 'IS-LINUX   "Use (featurep :system 'linux) instead" "2.1.0")
   (make-obsolete-variable 'IS-WINDOWS "Use (featurep :system 'windows) instead" "2.1.0")
   (make-obsolete-variable 'IS-BSD     "Use (featurep :system 'bsd) instead" "2.1.0"))
-
-;; HACK: Silence obnoxious obsoletion warnings about (if|when)-let in >=31.
-;;   These warnings are unhelpful to end-users, and many packages use these
-;;   macros, so I silence these warnings to spare users the unactionable spam.
-;;   Not to mention, Emacs doesn't respect `warning-suppress-types' when it
-;;   comes to obsoletion warnings.
-(put 'if-let 'byte-obsolete-info nil)
-(put 'when-let 'byte-obsolete-info nil)
-
-
-;;; Fix $HOME on Windows
-;; $HOME isn't normally defined on Windows, but many unix tools expect it.
-(when doom--system-windows-p
-  (when-let* ((realhome
-               (and (null (getenv-internal "HOME"))
-                    (getenv "USERPROFILE"))))
-    (setenv "HOME" realhome)
-    (setq abbreviated-home-dir nil)))
-
-
-;;; Load Doom's stdlib
-(add-to-list 'load-path (file-name-directory load-file-name))
-(require 'doom-compat) ; backport niceties from later versions of Emacs
-(require 'doom-lib)
 
 
 ;;
@@ -376,340 +334,6 @@ uses a straight or package.el command directly).")
 
 
 ;;
-;;; Startup optimizations
-
-;; Here are Doom's hackiest (and least offensive) startup optimizations. They
-;; exploit implementation details and unintended side-effects in Emacs' startup
-;; process, and will change often between major Emacs releases. However, I
-;; disable them if this is a daemon session (where startup time matters less).
-;;
-;; Most of these have been tested on Linux and on fairly fast machines (with
-;; SSDs), so your mileage may vary depending on hardware and `window-system'.
-(unless (daemonp)
-  ;; PERF: `file-name-handler-alist' is consulted on each call to `require',
-  ;;   `load', or various file/io functions (like `expand-file-name' or
-  ;;   `file-remote-p'). You get a noteable boost to startup time by unsetting
-  ;;   or simplifying its value.
-  (let ((old-value (default-toplevel-value 'file-name-handler-alist)))
-    (set-default-toplevel-value
-     'file-name-handler-alist
-     ;; HACK: The elisp libraries bundled with Emacs are either compressed or
-     ;;   not, never both. So if calc-loaddefs.el.gz exists, calc-loaddefs.el
-     ;;   won't, and vice versa. This heuristic is used to guess the state of
-     ;;   all other built-in (or site); if they're compressed, we must leave the
-     ;;   gzip file handler in `file-name-handler-alist' so Emacs knows how to
-     ;;   load them. Otherwise, we can omit it (at least during startup) for a
-     ;;   boost in package load time.
-     (if (eval-when-compile
-           (locate-file-internal "calc-loaddefs.el" load-path))
-         nil
-       (list (rassq 'jka-compr-handler old-value))))
-    ;; Remember it so it can be reset where needed.
-    (put 'file-name-handler-alist 'initial-value old-value)
-    ;; COMPAT: Eventually, Emacs will process any files passed to it via the
-    ;;   command line, and will do so *really* early in the startup process.
-    ;;   These might contain special file paths like TRAMP paths, so restore
-    ;;   `file-name-handler-alist' just for this portion of startup.
-    (define-advice command-line-1 (:around (fn args-left) respect-file-handlers)
-      (let ((file-name-handler-alist (if args-left old-value file-name-handler-alist)))
-        (funcall fn args-left)))
-    ;; COMPAT: ...but restore `file-name-handler-alist' later, because it is
-    ;;   needed for handling encrypted or compressed files, among other things.
-    (add-hook! 'emacs-startup-hook :depth 101
-      (defun doom--reset-file-handler-alist-h ()
-        (set-default-toplevel-value
-         'file-name-handler-alist
-         ;; Merge instead of overwrite because there may have been changes to
-         ;; `file-name-handler-alist' since startup we want to preserve.
-         (delete-dups (append file-name-handler-alist old-value))))))
-
-  (unless noninteractive
-    ;; PERF: Resizing the Emacs frame (to accommodate fonts that are smaller or
-    ;;   larger than the default system font) can impact startup time
-    ;;   dramatically. The larger the delta, the greater the delay. Even trivial
-    ;;   deltas can yield up to a ~1000ms loss, depending also on
-    ;;   `window-system' (PGTK builds seem least affected and NS/MAC the most).
-    (setq frame-inhibit-implied-resize t)
-
-    ;; PERF: A fair bit of startup time goes into initializing the splash and
-    ;;   scratch buffers in the typical Emacs session (b/c they activate a
-    ;;   non-trivial major mode, generate the splash buffer, and trigger
-    ;;   premature frame redraws by writing to *Messages*). These hacks prevent
-    ;;   most of this work from happening for some decent savings in startup
-    ;;   time. Our dashboard and `doom/open-scratch-buffer' provide a faster
-    ;;   (and more useful) alternative anyway.
-    (setq inhibit-startup-screen t
-          inhibit-startup-echo-area-message user-login-name
-          initial-major-mode 'fundamental-mode
-          initial-scratch-message nil)
-    ;; PERF,UX: Prevent "For information about GNU Emacs..." line in *Messages*.
-    (advice-add #'display-startup-echo-area-message :override #'ignore)
-    ;; PERF: Suppress the vanilla startup screen completely. We've disabled it
-    ;;   with `inhibit-startup-screen', but it would still initialize anyway.
-    ;;   This involves file IO and/or bitmap work (depending on the frame type)
-    ;;   that we can no-op for a free 50-100ms saving in startup time.
-    (advice-add #'display-startup-screen :override #'ignore)
-
-    (unless initial-window-system
-      ;; PERF: `tty-run-terminal-initialization' can take 2-3s when starting up
-      ;;   TTY Emacs (non-daemon sessions), depending on your TERM, TERMINFO,
-      ;;   and TERMCAP, but this work isn't very useful on modern systems (the
-      ;;   type I expect Doom's users to be using). The function seems less
-      ;;   expensive if run later in the startup process, so I defer it.
-      ;; REVIEW: This may no longer be needed in 29+. Needs testing!
-      (define-advice tty-run-terminal-initialization (:override (&rest _) defer)
-        (advice-remove #'tty-run-terminal-initialization #'tty-run-terminal-initialization@defer)
-        (add-hook 'window-setup-hook
-                  (apply-partially #'tty-run-terminal-initialization
-                                   (selected-frame) nil t))))
-
-    ;; These optimizations are brittle, difficult to debug, and obscure other
-    ;; issues, so bow out when debug mode is on.
-    (unless init-file-debug
-      ;; PERF: The mode-line procs a couple dozen times during startup, before
-      ;;   the user even sees the first mode-line. This is normally fast, but we
-      ;;   can't predict what the user (or packages) will put into the
-      ;;   mode-line. Also, mode-line packages have a bad habit of throwing
-      ;;   performance to the wind, so best we just disable the mode-line until
-      ;;   we can see one.
-      (put 'mode-line-format 'initial-value (default-toplevel-value 'mode-line-format))
-      (setq-default mode-line-format nil)
-      (dolist (buf (buffer-list))
-        (with-current-buffer buf (setq mode-line-format nil)))
-      ;; PERF,UX: Premature redisplays/redraws can substantially affect startup
-      ;;   times and/or flash a white/unstyled Emacs frame during startup, so I
-      ;;   try real hard to suppress them until we're sure the session is ready.
-      (setq-default inhibit-redisplay t
-                    inhibit-message t)
-      ;; COMPAT: If the above vars aren't reset, Emacs could appear frozen or
-      ;;   garbled after startup (or in case of an startup error).
-      (defun doom--reset-inhibited-vars-h ()
-        (setq-default inhibit-redisplay nil
-                      inhibit-message nil)
-        (remove-hook 'post-command-hook #'doom--reset-inhibited-vars-h))
-      (add-hook 'post-command-hook #'doom--reset-inhibited-vars-h -100))
-
-    ;; PERF: Doom disables the UI elements by default, so that there's less for
-    ;;   the frame to initialize. However, `tool-bar-setup' is still called and
-    ;;   it does some non-trivial work to set up the toolbar before we can
-    ;;   disable it. To side-step this work, I disable the function and call it
-    ;;   later (see `startup--load-user-init-file@undo-hacks').
-    (advice-add #'tool-bar-setup :override #'ignore)
-
-    (define-advice startup--load-user-init-file (:around (fn &rest args) undo-hacks 95)
-      "Undo Doom's startup optimizations to prep for the user's session."
-      (unwind-protect (apply fn args)
-        ;; Now it's safe to be verbose.
-        (setq-default inhibit-message nil)
-        ;; COMPAT: Once startup is sufficiently complete, undo our earlier
-        ;;   optimizations to reduce the scope of potential edge cases.
-        (advice-remove #'tool-bar-setup #'ignore)
-        (add-transient-hook! 'tool-bar-mode (tool-bar-setup))
-        (unless (default-toplevel-value 'mode-line-format)
-          (setq-default mode-line-format (get 'mode-line-format 'initial-value)))))
-
-    ;; PERF: Unset a non-trivial list of command line options that aren't
-    ;;   relevant to this session, but `command-line-1' still processes.
-    (unless doom--system-macos-p
-      (setq command-line-ns-option-alist nil))
-    (unless (memq initial-window-system '(x pgtk))
-      (setq command-line-x-option-alist nil))
-
-    ;; PERF: `setopt' can eagerly load symbol dependencies to preform immediate
-    ;;   type checking, which can cause unexpected load order issues and impact
-    ;;   startup time drastically. Type checks are already performed when the
-    ;;   variable is defined, anyway, so this advice prevents early loading.
-    (define-advice setopt--set (:around (fn &rest args) inhibit-load-symbol -90)
-      (let ((custom-load-recursion t))
-        (apply fn args)))))
-
-
-;;
-;;; Reasonable, global defaults
-
-;;; CLI settings
-(when noninteractive
-  ;; Don't generate superfluous files when writing temp buffers.
-  (setq make-backup-files nil)
-  ;; Stop user config from interfering with elisp shell scripts.
-  (setq enable-dir-local-variables nil)
-  ;; Reduce ambiguity, embrace specificity, enjoy predictability.
-  (setq case-fold-search nil)
-  ;; Don't clog the user's trash with our CLI refuse.
-  (setq delete-by-moving-to-trash nil))
-
-;;; Don't litter `doom-emacs-dir'/$HOME
-;; HACK: I change `user-emacs-directory' because many packages (even built-in
-;;   ones) abuse it to build paths for storage/cache files (instead of correctly
-;;   using `locate-user-emacs-file'). This change ensures that said data files
-;;   are never saved to the root of your emacs directory *and* saves us the
-;;   trouble of setting a million directory/file variables.
-(setq user-emacs-directory doom-profile-cache-dir)
-
-;; ...However, this can surprise packages (and users) that read
-;; `user-emacs-directory' expecting to find the location of your Emacs config,
-;; such as server.el!
-(setq server-auth-dir (file-name-concat doom-emacs-dir "server/"))
-
-;; If a packages doesn't use `user-emacs-directory' or `locate-user-emacs-file'
-;; to set their file/dir variables, then we need to set them ourselves to avoid
-;; littering in ~/.emacs.d/.
-(setq desktop-dirname  (file-name-concat doom-profile-state-dir "desktop")
-      pcache-directory (file-name-concat doom-profile-cache-dir "pcache/"))
-
-;; Write custom.el settings to $DOOMDIR/custom.el instead of $EMACSDIR/init.el,
-;; allowing users to version control them and not interfere with Doom init.
-(setq custom-file (file-name-concat doom-user-dir "custom.el"))
-
-(define-advice en/disable-command (:around (fn &rest args) write-to-data-dir)
-  "Save safe-local-variables to `custom-file' instead of `user-init-file'.
-
-Otherwise, `en/disable-command' (in novice.el.gz) is hardcoded to write them to
-`user-init-file')."
-  (let ((user-init-file custom-file))
-    (apply fn args)))
-
-;;; Native compilation support (see http://akrl.sdf.org/gccemacs.html)
-(when (boundp 'native-comp-eln-load-path)
-  ;; Don't store eln files in ~/.emacs.d/eln-cache (where they can easily be
-  ;; deleted by 'doom upgrade').
-  (setq native-comp-eln-load-path
-        (cons (expand-file-name "eln/" doom-profile-cache-dir)
-              (cdr native-comp-eln-load-path)))
-
-  ;; UX: Suppress compiler warnings and don't inundate users with their popups.
-  ;;   They are rarely more than warnings, so are safe to ignore.
-  (setq native-comp-async-report-warnings-errors init-file-debug
-        native-comp-warning-on-missing-source init-file-debug)
-
-  ;; HACK: `native-comp-deferred-compilation-deny-list' is replaced in Emacs 29,
-  ;;   and with no deprecation warning. This alias ensures backwards
-  ;;   compatibility for packages downstream. I don't mark it obsolete because
-  ;;   those warnings should be shown to package devs not end-users.
-  (unless (boundp 'native-comp-deferred-compilation-deny-list)
-    (defvaralias 'native-comp-deferred-compilation-deny-list 'native-comp-jit-compilation-deny-list))
-
-  ;; UX: By default, native-comp uses half your cores (and tends to saturate
-  ;;   them). The sudden (and silent) spike of CPU and memory utilization alarms
-  ;;   folks, overheats laptops, and overwhelms less performant systems, so
-  ;;   default to 1/4 of cores instead.
-  (define-advice comp-effective-async-max-jobs (:before (&rest _) set-default-cpus)
-    "Default to 1/4 of cores in interactive sessions and all of them otherwise."
-    (and (null comp-num-cpus)
-         (zerop native-comp-async-jobs-number)
-         (setq comp-num-cpus
-               (max 1 (/ (num-processors) (if noninteractive 1 4))))))
-
-  (define-advice comp-run-async-workers (:around (fn &rest args) dont-litter-tmpdir)
-    "Normally, native-comp writes a ton to /tmp. This advice redirects this IO
-to `doom-profile-cache-dir' instead, so it doesn't OOM tmpfs users and can be
-safely cleaned up with \\='doom sync' or \\='doom gc'."
-    (let ((temporary-file-directory (expand-file-name "comp/" doom-profile-cache-dir)))
-      (make-directory temporary-file-directory t)
-      (apply fn args)))
-  ;; This is renamed in newer versions of Emacs.
-  (advice-add #'comp--run-async-workers :around #'comp-run-async-workers@dont-litter-tmpdir)
-
-  (with-eval-after-load 'comp
-    ;; HACK: On Emacs 30.0.92, `native-comp-jit-compilation-deny-list' was moved
-    ;;   to comp-run. See emacsmirror/emacs@e6a955d24268. Doom forces straight
-    ;;   to consult this variable when building packages.
-    (require 'comp-run nil t)
-    ;; HACK: Disable native-compilation for some troublesome packages
-    (mapc (apply-partially #'add-to-list 'native-comp-deferred-compilation-deny-list)
-          (list "/seq-tests\\.el\\'"
-                "/emacs-jupyter.*\\.el\\'"
-                "/evil-collection-vterm\\.el\\'"
-                "/vterm\\.el\\'"
-                "/with-editor\\.el\\'"))))
-
-
-;;; Reduce unnecessary/unactionable warnings/logs
-;; Disable warnings from the legacy advice API. They aren't actionable or
-;; useful, and often come from third party packages.
-(setq ad-redefinition-action 'accept)
-
-;; Ignore warnings about "existing variables being aliased". Otherwise the user
-;; gets very intrusive popup warnings about our (intentional) uses of
-;; defvaralias, which are done because ensuring aliases are created before
-;; packages are loaded is an unneeded and unhelpful maintenance burden. Emacs
-;; still aliases them fine regardless.
-(setq warning-suppress-types '((defvaralias) (lexical-binding)))
-
-;; Straight emits an intrusive warning if package.el is present and
-;; loaded. Silence it.
-;; REVIEW: Remove when Straight is replaced with Elpaca
-(add-to-list 'warning-suppress-types '(straight package))
-
-;; As some point in 31+, Emacs began spamming the user with warnings about
-;; missing `lexical-binding' cookies in elisp files that you are unlikely to
-;; have any direct control over (e.g. package files, data lisp files, and elisp
-;; shell scripts). This shuts it up.
-(setq warning-inhibit-types '((files missing-lexbind-cookie)))
-
-;; Reduce debug output unless we've asked for it.
-(setq debug-on-error init-file-debug
-      jka-compr-verbose init-file-debug)
-
-;;; Stricter security defaults
-;; Emacs is essentially one huge security vulnerability, what with all the
-;; dependencies it pulls in from all corners of the globe. Let's try to be a
-;; *little* more discerning.
-(setq gnutls-verify-error noninteractive
-      gnutls-algorithm-priority
-      (when (boundp 'libgnutls-version)
-        (concat "SECURE128:+SECURE192:-VERS-ALL"
-                (if (and (not doom--system-windows-p)
-                         (>= libgnutls-version 30605))
-                    ":+VERS-TLS1.3")
-                ":+VERS-TLS1.2"))
-      ;; `gnutls-min-prime-bits' is set based on recommendations from
-      ;; https://www.keylength.com/en/4/
-      gnutls-min-prime-bits 3072
-      tls-checktrust gnutls-verify-error
-      ;; Emacs is built with gnutls.el by default, so `tls-program' won't
-      ;; typically be used, but in the odd case that it does, we ensure a more
-      ;; secure default for it (falling back to `openssl' if absolutely
-      ;; necessary). See https://redd.it/8sykl1 for details.
-      tls-program '("openssl s_client -connect %h:%p -CAfile %t -nbio -no_ssl3 -no_tls1 -no_tls1_1 -ign_eof"
-                    "gnutls-cli -p %p --dh-bits=3072 --ocsp --x509cafile=%t \
---strict-tofu --priority='SECURE192:+SECURE128:-VERS-ALL:+VERS-TLS1.2:+VERS-TLS1.3' %h"
-                    ;; compatibility fallbacks
-                    "gnutls-cli -p %p %h"))
-
-
-;;; Package managers
-;; Since Emacs 27, package initialization occurs before `user-init-file' is
-;; loaded, but after `early-init-file'. Doom handles package initialization, so
-;; we must prevent Emacs from doing it again.
-(setq package-enable-at-startup nil)
-
-;; Ensure that, if the user does want package.el, it is configured correctly.
-;; You really shouldn't be using it, though...
-(with-eval-after-load 'package
-  (setq package-user-dir (file-name-concat doom-local-dir "elpa/")
-        package-gnupghome-dir (expand-file-name "gpg" package-user-dir))
-  (let ((s (if gnutls-verify-error "s" "")))
-    (cl-callf2 append
-        ;; I omit Marmalade because its packages are manually submitted rather
-        ;; than pulled, and so often out of date.
-        `(("melpa" . ,(format "http%s://melpa.org/packages/" s))
-          ("org"   . ,(format "http%s://orgmode.org/elpa/"   s)))
-        package-archives))
-
-  ;; Refresh package.el the first time you call `package-install', so it's still
-  ;; trivially usable. Remember to run 'doom sync' to purge them; they can
-  ;; conflict with packages installed via straight!
-  (add-transient-hook! 'package-install (package-refresh-contents)))
-
-;; DEPRECATED: Interactive sessions won't be able to interact with Straight (or
-;;   Elpaca) in the future, so this is temporary.
-(with-eval-after-load 'straight
-  (require 'doom-straight)
-  (doom-initialize-packages))
-
-
-;;
 ;;; Custom hooks
 
 (defcustom doom-before-init-hook ()
@@ -724,7 +348,6 @@ appropriately against `noninteractive' or the `cli' context (see
 
 In contrast, `before-init-hook' is run just after $DOOMDIR/init.el is loaded,
 but long before your modules and $DOOMDIR/config.el are loaded."
-  :group 'doom
   :type 'hook)
 
 (defcustom doom-after-init-hook ()
@@ -733,28 +356,30 @@ but long before your modules and $DOOMDIR/config.el are loaded."
 This triggers at the absolute latest point in the eager startup process, and
 runs in both interactive and non-interactive sessions, so guard hooks
 appropriately against `noninteractive' or the `cli' context."
-  :group 'doom
   :type 'hook)
 
 (defcustom doom-before-modules-init-hook nil
   "Hooks run before module init.el files are loaded."
-  :group 'doom
   :type 'hook)
 
 (defcustom doom-after-modules-init-hook nil
   "Hooks run after module init.el files are loaded."
-  :group 'doom
   :type 'hook)
 
 (defcustom doom-before-modules-config-hook nil
   "Hooks run before module config.el files are loaded."
-  :group 'doom
   :type 'hook)
 
 (defcustom doom-after-modules-config-hook nil
   "Hooks run after module config.el files are loaded (but before the user's)."
-  :group 'doom
   :type 'hook)
+
+
+;;
+;;; Load Doom's stdlib
+
+(require 'doom-compat) ; backport niceties from later versions of Emacs
+(require 'doom-lib)
 
 
 ;;
@@ -763,6 +388,61 @@ appropriately against `noninteractive' or the `cli' context."
 (defun doom-initialize (&optional interactive?)
   "Bootstrap the Doom session ahead."
   (when (doom-context-push 'startup)
+    ;; Since Emacs 27, package initialization occurs before `user-init-file' is
+    ;; loaded, but after `early-init-file'. Doom handles package initialization,
+    ;; so we must prevent Emacs from doing it again.
+    (setq package-enable-at-startup nil)
+
+    ;; HACK: Many packages (even built-in ones) abuse `user-emacs-directory' to
+    ;;   build paths for storage/cache files instead of correctly using
+    ;;   `locate-user-emacs-file'. Changing `user-emacs-directory' saves us the
+    ;;   trouble of setting a million directory/file variables.
+    (setq user-emacs-directory doom-profile-cache-dir)
+    ;; ...However, this can surprise packages (and users) that read
+    ;; `user-emacs-directory' expecting to find the location of your Emacs
+    ;; config, such as server.el!
+    (setq server-auth-dir (file-name-concat doom-emacs-dir "server/"))
+
+    ;; Native compilation support (see http://akrl.sdf.org/gccemacs.html)
+    (when (boundp 'native-comp-eln-load-path)
+      ;; Don't store eln files in ~/.emacs.d/eln-cache (where they can easily be
+      ;; deleted by 'doom upgrade').
+      (setq native-comp-eln-load-path
+            (cons (expand-file-name "eln/" doom-profile-cache-dir)
+                  (cdr native-comp-eln-load-path)))
+
+      (unless (boundp 'native-comp-deferred-compilation-deny-list)
+        (defvaralias 'native-comp-deferred-compilation-deny-list 'native-comp-jit-compilation-deny-list))
+
+      (define-advice comp-run-async-workers (:around (fn &rest args) dont-litter-tmpdir)
+        "Normally, native-comp writes a ton to /tmp. This advice redirects this
+IO to `doom-profile-cache-dir' instead, so it doesn't OOM tmpfs users and can be
+safely cleaned up with \\='doom sync' or \\='doom gc'."
+        (let ((temporary-file-directory (expand-file-name "comp/" doom-profile-cache-dir)))
+          (make-directory temporary-file-directory t)
+          (apply fn args)))
+      ;; This is renamed in newer versions of Emacs.
+      (advice-add #'comp--run-async-workers :around #'comp-run-async-workers@dont-litter-tmpdir)
+
+      (with-eval-after-load 'comp
+        ;; HACK: On Emacs 30.0.92, `native-comp-jit-compilation-deny-list' was
+        ;;   moved to comp-run. See emacsmirror/emacs@e6a955d24268. Doom forces
+        ;;   straight to consult this variable when building packages.
+        (require 'comp-run nil t)
+        ;; HACK: Disable native-compilation for some troublesome packages
+        (mapc (apply-partially #'add-to-list 'native-comp-deferred-compilation-deny-list)
+              (list "/seq-tests\\.el\\'"
+                    "/emacs-jupyter.*\\.el\\'"
+                    "/evil-collection-vterm\\.el\\'"
+                    "/vterm\\.el\\'"
+                    "/with-editor\\.el\\'"))))
+
+    ;; DEPRECATED: Interactive sessions won't be able to interact with Straight
+    ;;   (or Elpaca) in the future, so this is temporary.
+    (with-eval-after-load 'straight
+      (require 'doom-straight)
+      (doom-initialize-packages))
+
     (if interactive?
         (when (doom-context-push 'emacs)
           (add-hook 'doom-after-init-hook #'doom-load-packages-incrementally-h 100)
@@ -783,12 +463,21 @@ appropriately against `noninteractive' or the `cli' context."
           ;; process.
           (advice-add #'command-line-1 :after #'doom-finalize '((depth . 100)))
 
-          (require 'doom-start)
+          (advice-add #'startup--load-user-init-file :override #'doom--load-user-init-file-a '((depth . 100)))
           (let ((init-file (doom-profile-init-file doom-profile)))
             (or (doom-load init-file t)
                 (signal 'doom-nosync-error (list init-file)))))
 
       (when (doom-context-push 'cli)
+        ;; Don't generate superfluous files when writing temp buffers.
+        (setq make-backup-files nil)
+        ;; Stop user config from interfering with elisp shell scripts.
+        (setq enable-dir-local-variables nil)
+        ;; Reduce ambiguity, embrace specificity, enjoy predictability.
+        (setq case-fold-search nil)
+        ;; Don't clog the user's trash with our CLI refuse.
+        (setq delete-by-moving-to-trash nil)
+
         ;; REVIEW: Remove later. The endpoints should be responsibile for
         ;;   ensuring they exist. For now, they exist to quell file errors.
         (with-file-modes #o700
@@ -870,6 +559,84 @@ Triggers `doom-after-init-hook' and sets `doom-init-time.'"
     (if (= (default-value 'gc-cons-percentage) 1.0)
         (setq-default gc-cons-percentage 0.1))
     t))
+
+
+;;
+;;; Entry point
+
+;; HACK: This advice hijacks Emacs' initfile loader to accomplish the following:
+;;
+;;   1. Load the profile init file directory (generated on `doom sync`)
+;;   2. Ignore initfiles we don't care about (like $EMACSDIR/init.el, ~/.emacs,
+;;      and ~/_emacs) -- and spare us the IO of searching for them, and allows
+;;      savvy hackers to use $EMACSDIR as their $DOOMDIR, if they wanted.
+;;   3. Cut down on unnecessary logic in Emacs' bootstrapper.
+;;   4. TODO: Offer a more user-friendly error state/screen, especially for
+;;      errors emitted from Doom's core or the user's config.
+(defun doom--load-user-init-file-a (&rest _)
+  ":override advice for `startup--load-user-init-file'."
+  (let ((debug-on-error-from-init-file nil)
+        (debug-on-error-should-be-set nil)
+        (debug-on-error-initial (if (eq init-file-debug t) 'startup init-file-debug))
+        ;; The init file might contain byte-code with embedded NULs, which can
+        ;; cause problems when read back, so disable nul byte detection. (Bug
+        ;; #52554)
+        (inhibit-null-byte-detection t))
+    (let ((debug-on-error debug-on-error-initial))
+      (condition-case-unless-debug error
+          (when init-file-user
+            (let ((init-file-name
+                   ;; This dynamically generated init file stores a lot of
+                   ;; precomputed information, such as module and package
+                   ;; autoloads, and values for expensive variables like
+                   ;; `doom-modules', `doom-disabled-packages', `load-path',
+                   ;; `auto-mode-alist', and `Info-directory-list'. etc.
+                   ;; Compiling them in one place is a big reduction in startup
+                   ;; time, and by keeping a history of them, you get a snapshot
+                   ;; of your config in time.
+                   (doom-profile-init-file doom-profile)))
+              ;; If we loaded a compiled file, set `user-init-file' to the
+              ;; source version if that exists.
+              (setq user-init-file init-file-name)
+              ;; HACK: if `init-file-name' happens to be higher in
+              ;;   `load-history' than a symbol's actual definition,
+              ;;   `symbol-file' (and help/helpful buffers) will report the
+              ;;   source of a symbol as `init-file-name', rather than it's true
+              ;;   source. By removing this file from `load-history', no one
+              ;;   will make that mistake.
+              (setq load-history
+                    (delete (assoc init-file-name load-history)
+                            load-history))
+              (doom-startup)))
+        ;; TODO: Add safe-mode profile.
+        ;; (error
+        ;;  ;; HACK: This is not really this variable's intended purpose, but it
+        ;;  ;;   doesn't mind what value its set to, only that its non-nil, so I'm
+        ;;  ;;   exploiting its dynamic scope to pass the error to the profile.
+        ;;  (setq init-file-had-error error)
+        ;;  (load (file-name-concat doom-emacs-dir "profiles" "safe-mode" "init.el")
+        ;;        nil 'nomessage 'nosuffix))
+        (error
+         (display-warning
+          'initialization
+          (format-message "\
+An error occurred while booting Doom Emacs:\n\n%s%s%s\n\n\
+To ensure normal operation, you should investigate and remove the
+cause of the error in your Doom config files. Start Emacs with
+the `--debug-init' option to view a complete error backtrace."
+                          (get (car error) 'error-message)
+                          (if (cdr error) ": " "")
+                          (mapconcat (lambda (s) (prin1-to-string s t))
+                                     (cdr error) ", "))
+          :warning)
+         (setq init-file-had-error t)))
+      ;; If we can tell that the init file altered debug-on-error, arrange to
+      ;; preserve the value that it set up.
+      (or (eq debug-on-error debug-on-error-initial)
+          (setq debug-on-error-should-be-set t
+                debug-on-error-from-init-file debug-on-error)))
+    (when debug-on-error-should-be-set
+      (setq debug-on-error debug-on-error-from-init-file))))
 
 (provide 'doom)
 ;;; doom.el ends here
