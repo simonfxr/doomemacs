@@ -31,7 +31,7 @@ libraries. It is the equivalent of the following shell commands:
 
     $ cd ~/.emacs.d
     $ git pull --rebase
-    $ git submodules update -f --init --recursive
+    $ git submodule update -f --init --recursive
     $ doom sync -u"
   (let ((force? (doom-cli-context-suppress-prompts-p context)))
     (cond
