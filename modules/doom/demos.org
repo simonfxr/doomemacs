@@ -1,21 +1,26 @@
-#+title: Doom Emacs API Demos
+#+title: Doom Core API Demos
 #+property: header-args:elisp :results pp :exports both :eval never-export
 
-This module installs the elisp-demos package, which adds code examples to
-documentation buffers (the ones help.el or helpful produces). The built-in demos
-are great, but this file exists to add demos for Doom's API and beyond.
+This file adds Doom API demos for the [[doom-package:elisp-demos]] package,
+installed by the [[doom-module::lang emacs-lisp]] module, which adds code examples
+to documentation buffers (produced by help.el or helpful). The built-in demos
+cover Emacs' APIs, but this file adds demos for Doom's core APIs.
+
+The emacs-lisp module also configures elisp-demos to search for =demos.org= files
+in modules and ~$DOOMDIR~.
 
 #+begin_quote
- 󰐃 Please make sure new additions to this file are arranged alphabetically and
-    has a :PROPERTIES: drawer that includes in what version of Doom that the
+ 󰐃 New additions to this file should be sorted alphabetically and should contain
+    a :PROPERTIES: drawer that includes what version of Doom in which that that
     symbol/function was added.
 #+end_quote
 
 #+begin_quote
  󰐃 Please don't add demos for code outside of Doom Emacs. PR those to the parent
-    project: https://github.com/xuchunyang/elisp-demos. And please don't add
-    functions from modules, put those in that module's demo.org file, or your
-    own in $DOOMDIR/demos.org.
+    project: https://github.com/xuchunyang/elisp-demos. Failing that, PR them to
+    the [[doom-module::lang emacs-lisp]] module's demos.org. And please don't add
+    functions from modules, put those in that module's demo.org file or your own
+    in $DOOMDIR/demos.org.
 #+end_quote
 
 * add-hook!

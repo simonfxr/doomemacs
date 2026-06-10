@@ -369,20 +369,13 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
     (letf! ((defun module-loader (key file)
               (let ((noextfile (file-name-sans-extension file)))
                 `(with-doom-module ',key
-                   ,(pcase key
-                      ('(:doom . nil)
-                       `(doom-load
-                         (file-name-concat
-                          doom-core-dir ,(file-name-nondirectory noextfile))
-                         t))
-                      ('(:user . nil)
-                       `(doom-load
-                         (file-name-concat
-                          doom-user-dir ,(file-name-nondirectory noextfile))
-                         t))
-                      (_
-                       (when (doom-file-cookie-p file "if" t)
-                         `(doom-load ,(abbreviate-file-name noextfile) t)))))))
+                   ,(if (equal key '(:user . nil))
+                        `(doom-load
+                          (file-name-concat
+                           doom-user-dir ,(file-name-nondirectory noextfile))
+                          t)
+                      (when (doom-file-cookie-p file "if" t)
+                        `(doom-load ,(abbreviate-file-name noextfile) t))))))
             (defun module-list-loader (modules file)
               (cl-loop for key in modules
                        if (doom-module-locate-path key file)

@@ -1,5 +1,5 @@
 ;; -*- no-byte-compile: t; -*-
-;;; lisp/packages.el
+;;; modules/doom/packages.el
 
 ;; doom.el
 (package! auto-minor-mode

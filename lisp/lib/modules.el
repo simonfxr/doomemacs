@@ -20,14 +20,18 @@
     (setq doom-modules (make-hash-table :test 'equal))
     ;; Register Doom's two virtual module categories, representing Doom's core
     ;; and the user's config; which are always enabled.
-    (doom-module--put '(:doom . nil) :path doom-core-dir :depth -110)
-    (doom-module--put '(:user . nil) :path doom-user-dir :depth '(-105 . 105))
+    (doom-module--put '(:doom . nil)
+                      :path (doom-module-locate-path '(:doom))
+                      :depth -110)
+    (doom-module--put '(:user . nil)
+                      :path doom-user-dir
+                      :depth '(-105 . 105))
     ;; DEPRECATED: Includes use-package, deprecated APIs/vars, smartparens,
     ;;   projectile -- everything that makes v2 distinct from v3. The module is
     ;;   here to stay, but it won't be hardcoded after v3.
     (doom-module--put '(:doom . compat)
                       :path (doom-module-locate-path '(:doom . compat))
-                      :depth -111)
+                      :depth -115)
     ;; Load $DOOMDIR/init.el, where the user's `doom!' lives, which will inform
     ;; us of all desired modules.
     (doom-load (file-name-concat doom-user-dir doom-module-init-file)
