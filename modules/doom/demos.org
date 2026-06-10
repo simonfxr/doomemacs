@@ -1,10 +1,9 @@
 #+title: Doom Core API Demos
 #+property: header-args:elisp :results pp :exports both :eval never-export
 
-This file adds Doom API demos for the [[doom-package:elisp-demos]] package,
-installed by the [[doom-module::lang emacs-lisp]] module, which adds code examples
-to documentation buffers (produced by help.el or helpful). The built-in demos
-cover Emacs' APIs, but this file adds demos for Doom's core APIs.
+This file adds demonstrations of Doom API for the [[doom-package:elisp-demos]]
+package, installed by the [[doom-module::lang emacs-lisp]] module, which displays
+these demos in documentation buffers (produced by help.el or helpful).
 
 The emacs-lisp module also configures elisp-demos to search for =demos.org= files
 in modules and ~$DOOMDIR~.
@@ -13,14 +12,6 @@ in modules and ~$DOOMDIR~.
  󰐃 New additions to this file should be sorted alphabetically and should contain
     a :PROPERTIES: drawer that includes what version of Doom in which that that
     symbol/function was added.
-#+end_quote
-
-#+begin_quote
- 󰐃 Please don't add demos for code outside of Doom Emacs. PR those to the parent
-    project: https://github.com/xuchunyang/elisp-demos. Failing that, PR them to
-    the [[doom-module::lang emacs-lisp]] module's demos.org. And please don't add
-    functions from modules, put those in that module's demo.org file or your own
-    in $DOOMDIR/demos.org.
 #+end_quote
 
 * add-hook!
@@ -58,6 +49,7 @@ in modules and ~$DOOMDIR~.
 :PROPERTIES:
 :added: 2.1.0
 :END:
+
 * after!
 :PROPERTIES:
 :added: 2.1.0
@@ -87,12 +79,13 @@ in modules and ~$DOOMDIR~.
 (after! rustic ...)
 (after! python ...)
 #+end_src
+
 * cmd!
 :PROPERTIES:
 :added: 2.1.0
 :END:
 #+begin_src emacs-lisp :eval no
-(map! "C-j" (cmd! (newline) (indent-according-to-mode)))
+(define-key org-mode-map (kbd "C-j") (cmd! (newline) (indent-according-to-mode)))
 #+end_src
 
 * cmd!!
@@ -100,11 +93,11 @@ in modules and ~$DOOMDIR~.
 :added: 2.1.0
 :END:
 When ~newline~ is passed a numerical prefix argument (=C-u 5 M-x newline=), it
-inserts N newlines. We can use ~cmd!!~ to easily create a keybinds that bakes in
-the prefix arg into the command call:
+inserts N newlines. We can use ~cmd!!~ to easily create keybinds that bake in the
+prefix arg into the command call:
 
 #+begin_src emacs-lisp :eval no
-(map! "C-j" (cmd!! #'newline 5))
+(define-key org-mode-map (kbd "C-j") (cmd!! #'newline 5))
 #+end_src
 
 Or to create aliases for functions that behave differently:
@@ -122,22 +115,25 @@ Or to create aliases for functions that behave differently:
 :added: 2.1.0
 :END:
 #+begin_src emacs-lisp :eval no
-(map! :i [tab] (cmds! (and (modulep! :editor snippets)
-                           (bound-and-true-p yas-minor-mode)
-                           (yas-maybe-expand-abbrev-key-filter 'yas-expand))
-                      #'yas-expand
-                      (modulep! :completion company +tng)
-                      #'company-indent-or-complete-common)
-      :m [tab] (cmds! (and (bound-and-true-p yas-minor-mode)
-                           (evil-visual-state-p)
-                           (or (eq evil-visual-selection 'line)
-                               (not (memq (char-after) (list ?\( ?\[ ?\{ ?\} ?\] ?\))))))
-                      #'yas-insert-snippet
-                      (and (modulep! :editor fold)
-                           (save-excursion (end-of-line) (invisible-p (point))))
-                      #'+fold/toggle
-                      (fboundp 'evil-jump-item)
-                      #'evil-jump-item))
+(define-key evil-insert-state-map (kbd "TAB")
+            (cmds! (and (modulep! :editor snippets)
+                        (bound-and-true-p yas-minor-mode)
+                        (yas-maybe-expand-abbrev-key-filter 'yas-expand))
+                   #'yas-expand
+                   (modulep! :completion company +tng)
+                   #'company-indent-or-complete-common))
+
+(define-key evil-motion-state-map (kbd "TAB")
+            (cmds! (and (bound-and-true-p yas-minor-mode)
+                        (evil-visual-state-p)
+                        (or (eq evil-visual-selection 'line)
+                            (not (memq (char-after) (list ?\( ?\[ ?\{ ?\} ?\] ?\))))))
+                   #'yas-insert-snippet
+                   (and (modulep! :editor fold)
+                        (save-excursion (end-of-line) (invisible-p (point))))
+                   #'+fold/toggle
+                   (fboundp 'evil-jump-item)
+                   #'evil-jump-item))
 #+end_src
 
 * custom-set-faces!
@@ -214,10 +210,12 @@ Or to create aliases for functions that behave differently:
 :PROPERTIES:
 :added: 2.1.0
 :END:
+
 * TODO defer-until!
 :PROPERTIES:
 :added: 2.1.0
 :END:
+
 * disable-packages!
 :PROPERTIES:
 :added: 2.1.0
@@ -244,16 +242,14 @@ Or to create aliases for functions that behave differently:
 
        :lang
        (cc +lsp)
-       (:cond ((string= system-name "work-pc")
-               python
-               rust
-               web)
-              ((string= system-name "writing-pc")
-               (org +dragndrop)
-               ruby))
-       (:if (featurep :system 'linux)
-           (web +lsp)
-         web)
+       ,@(:cond ((string= system-name "work-pc")
+                 '(python rust web))
+                ((string= system-name "writing-pc")
+                 '((org +dragndrop)
+                   ruby)))
+       ,(if (featurep :system 'linux)
+            '(web +lsp)
+          'web)
 
        :config
        literate
@@ -295,8 +291,8 @@ Or to create aliases for functions that behave differently:
 :added: 2.1.0
 :END:
 #+begin_src emacs-lisp :eval no
-(map! "," (kbd! "SPC")
-      ";" (kbd! ":"))
+(global-set-key "," (kbd! "SPC"))
+(global-set-key ";" (kbd! ":"))
 #+end_src
 
 * lambda!
@@ -307,6 +303,7 @@ Or to create aliases for functions that behave differently:
           (:baz hello :boop nil)
           (:bar 42)))
 #+end_src
+
 * letf!
 :PROPERTIES:
 :added: 2.1.0
@@ -519,6 +516,7 @@ These are side-by-side comparisons, showing how to bind keys with and without
 ;; refresh to delete packages used only on one system, use :ignore
 (package! evil :ignore (not (equal system-name "my-desktop")))
 #+end_src
+
 * pushnew!
 :PROPERTIES:
 :added: 2.1.0
@@ -540,6 +538,7 @@ These are side-by-side comparisons, showing how to bind keys with and without
 ;; Enters recentf-mode without extra output
 (quiet! (recentf-mode +1))
 #+end_src
+
 * remove-hook!
 :PROPERTIES:
 :added: 2.1.0
@@ -561,6 +560,7 @@ These are side-by-side comparisons, showing how to bind keys with and without
 ;; Removing arbitrary forms (must be exactly the same as the definition)
 (remove-hook! (one-mode second-mode) (setq v 5) (setq a 2))
 #+end_src
+
 * setq-hook!
 :PROPERTIES:
 :added: 2.1.0
@@ -592,6 +592,7 @@ These are side-by-side comparisons, showing how to bind keys with and without
 (unsetq-hook! '(one-mode-hook second-mode-hook) enable-something)
 (unsetq-hook! (one-mode second-mode) enable-something)
 #+end_src
+
 * use-package!
 :PROPERTIES:
 :added: 2.1.0
