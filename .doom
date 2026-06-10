@@ -5,11 +5,8 @@
  (homepage . "https://doomemacs.org")
 
  (commit
-  (preset doom-conventional-commits)
-  (types "module")
+  (preset doom-conventional-commits +modules)
   (scopes "cli" "lib"
-          (module)
-          (release "modules")
           (docs
            "install"
            (lambda (scope _plist)
@@ -17,13 +14,7 @@
              (member
               scope (doom-files-in (doom-path (dir!) "../docs")
                                    :match "\\.org$"
-                                   :map #'file-name-base))))
-          (lambda (scope _plist)
-            "Only allow :CATEGORY or MODULE scopes if they actually exist."
-            (doom-glob
-             (dir!) "modules" (if (string-prefix-p ":" scope)
-                                  (format "%s" (substring scope 1))
-                                (format "*/%s" scope))))))
+                                   :map #'file-name-base))))))
 
  (make
   ("LICENSE"
@@ -60,7 +51,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.")
                                   (match-string 2 path)))))))
 
  (publish
-  (targets "docs/index.org" "docs" "modules/*/README.org")
+  (targets "docs/index.org"
+           "docs"
+           "modules/*/README.org"
+           "modules/*/*/README.org")
   (env
    (global-menus
     ("± Suggest edits" . "doom-suggest-edit:")
