@@ -796,22 +796,5 @@ triggering hooks during startup."
 ;;   the sweet spot.
 (add-hook 'window-setup-hook #'doom-init-ui-h -100)
 
-
-;;
-;;; Fixes/hacks
-
-;; Doom doesn't support `customize' and it never will. It's a clumsy interface
-;; that sets variables at a time where it can be easily and unpredictably
-;; overwritten. Configure things from your $DOOMDIR instead.
-(dolist (sym '(customize-option customize-browse customize-group customize-face
-               customize-rogue customize-saved customize-apropos
-               customize-changed customize-unsaved customize-variable
-               customize-set-value customize-customized customize-set-variable
-               customize-apropos-faces customize-save-variable
-               customize-apropos-groups customize-apropos-options
-               customize-changed-options customize-save-customized))
-  (put sym 'disabled "Doom doesn't support `customize', configure Emacs from $DOOMDIR/config.el instead"))
-(put 'customize-themes 'disabled "Set `doom-theme' or use `load-theme' in $DOOMDIR/config.el instead")
-
 (provide 'doom-ui)
 ;;; doom-ui.el ends here
