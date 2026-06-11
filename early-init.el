@@ -1,14 +1,19 @@
 ;;; early-init.el --- Doom's universal bootstrapper -*- lexical-binding: t -*-
 ;;; Commentary:
 ;;
+;; This is Doom's "universal bootstrapper" for both interactive and
+;; non-interactive sessions. No matter what environment you want Doom in, load
+;; this file first.
+;;
 ;; This file, in summary:
 ;; - Determines where `user-emacs-directory' is by:
 ;;   - Processing `--init-directory DIR' (backported from Emacs 29),
 ;;   - Processing `--profile NAME' (see
 ;;     `https://docs.doomemacs.org/-/developers' or docs/developers.org),
 ;;   - Or assume that it's the directory this file lives in.
-;; - Loads Doom as efficiently as possible, with only the essential startup
-;;   optimizations, and prepares it for interactive or non-interactive sessions.
+;; - Deploy all of Doom's hackiest startup optimizations.
+;; - Bootstraps Doom and prepares it for interactive or non-interactive
+;;   sessions.
 ;; - If Doom isn't present, then we assume that Doom is being used as a
 ;;   bootloader and the user wants to load a non-Doom config, so we undo all our
 ;;   global side-effects, load `user-emacs-directory'/early-init.el, and carry
@@ -17,12 +22,9 @@
 ;;
 ;; early-init.el was introduced in Emacs 27.1. It is loaded before init.el,
 ;; before Emacs initializes its UI or package.el, and before site files are
-;; loaded. This is great place for startup optimizing, because only here can you
+;; loaded (NOTE: as of Emacs 31, site files are loaded *before* early-init).
+;; This is great place for startup optimizing, because only here can you
 ;; *prevent* things from loading, rather than turn them off after-the-fact.
-;;
-;; Doom uses this file as its "universal bootstrapper" for both interactive and
-;; non-interactive sessions. That means: no matter what environment you want
-;; Doom in, load this file first.
 ;;
 ;;; Code:
 
@@ -367,11 +369,12 @@
           ;; COMPAT: I make no assumptions about the config we're going to load,
           ;;   so undo this file's global side-effects.
           (setq load-prefer-newer t)
-          ;; PERF: But make an exception for `gc-cons-threshold', which I think
-          ;;   all Emacs users and configs will benefit from. Still, setting it
-          ;;   to `most-positive-fixnum' is dangerous if downstream does not
-          ;;   reset it later to something reasonable, so I use 16mb as a best
-          ;;   fit guess. It's better than Emacs' 80kb default.
+          ;; PERF: But make an exception for our GC settings (and
+          ;;   `read-process-output-max'), which I think all Emacs users and
+          ;;   configs will benefit from. Still, setting it to
+          ;;   `most-positive-fixnum' is dangerous if downstream does not reset
+          ;;   it later to something reasonable, so I use 16mb as a best fit
+          ;;   guess. It's better than Emacs' 80kb default.
           (setq gc-cons-threshold (* 16 1024 1024)
                 gc-cons-percentage 0.1)
           nil))

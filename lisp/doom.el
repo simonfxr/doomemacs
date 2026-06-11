@@ -27,13 +27,18 @@
 ;;
 ;;; Commentary:
 ;;
-;; This is Doom's heart, where I define all its major constants and variables,
-;; set its saner global defaults, then prepare Emacs to bootstrap Doom.
+;; This file is Doom's heart, minus most of its startup optimizations (which are
+;; in early-init.el), which loads what's needed for all Doom sessions,
+;; interactive or otherwise.
+;;
+;; See modules/doom/init.el for initialization intended solely for interactive
+;; sessions and doom-cli.el for non-interactive sessions.
 ;;
 ;; The overall load order of Doom is as follows:
 ;;
 ;;   > $EMACSDIR/early-init.el
 ;;     > $EMACSDIR/lisp/doom.el
+;;       - $EMACSDIR/lisp/doom-compat.el
 ;;       - $EMACSDIR/lisp/doom-lib.el
 ;;       - hook: `doom-before-init-hook'
 ;;       - $DOOMDIR/init.el
@@ -59,18 +64,8 @@
 ;;     - On first switched-to buffer: `doom-first-buffer-hook'
 ;;     - On first opened file:        `doom-first-file-hook'
 ;;
-;; This file is Doom's heart, where I define all its major constants and
-;; variables, set only its sanest global defaults, employ its hackiest (and
-;; least offensive) optimizations, and load the minimum needed for all Doom
-;; sessions, interactive or otherwise.
-;;
-;; See modules/doom/init.el for initialization intended solely for interactive
-;; sessions and doom-cli.el for non-interactive sessions.
-;;
 ;;; Code:
 
-;; For the `when-let*' and `if-let*' macros on older versions of Emacs, before
-;; they were autoloaded.
 (eval-when-compile (require 'subr-x))
 
 (eval-and-compile

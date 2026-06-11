@@ -16,8 +16,8 @@
 
 ;; This magical mess of a shebang is necessary for any script that relies on
 ;; Doom's CLI framework, because Emacs' tty libraries and capabilities are too
-;; immature (borderline non-existent) at the time of writing (28.1). This
-;; shebang sets out to accomplish these three goals:
+;; immature (borderline non-existent). This shebang sets out to accomplish these
+;; three goals:
 ;;
 ;; 1. To produce a more helpful error if Emacs isn't installed or broken. It
 ;;    must do so without assuming whether $EMACS is a shell command (e.g. 'snap
@@ -65,8 +65,8 @@
 ;;   do the opposite.
 ;; - I intentionally suppress loading site files (must be done with '-q
 ;;   --no-site-file' NOT '-Q', as the latter omits the site-lisp dir from
-;;   `load-path' too), so lisp/doom-cli.el can load them manually later (early
-;;   in lisp/doom-cli.el). Look there for an explanation why I do this.
+;;   `load-path' too), so `doom-initialize' can load them manually later (so I
+;;   can suppress the extraneous output that site-lisp files produce).
 ;; - POSIX-compliancy is paramount: there's no guarantee what /bin/sh will be
 ;;   symlinked to in the esoteric OSes/distros Emacs users use.
 ;; - The user may have mounted /tmp with a noexec flag, so pass the exit script
@@ -74,7 +74,7 @@
 ;; - The (setq warning-inhibit-types '((files missing-lexbind-cookie))) is
 ;;   necessary on later versions of Emacs 31, where Emacs will throw warnings
 ;;   when loading elisp that lack 'lexical-binding: t' header line. Setting it
-;;   here or in lisp/doom.el is not enough, though I do it anyway.
+;;   here or in early-init.el is not enough, though I do it anyway.
 
 ;; Doom's core sets up everything we need; including `doom-*-dir' variables,
 ;; universal defaults, and autoloads for doom-*-initialize functions.
