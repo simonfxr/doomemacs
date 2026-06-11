@@ -1,9 +1,5 @@
 ;;; modules/doom/init.el -*- lexical-binding: t; -*-
 ;;; Commentary:
-;;
-;; These files will be merged in doom-start in v3 and use-package is no longer
-;; used internally.
-;;
 ;;; Code:
 
 ;;; * Variables

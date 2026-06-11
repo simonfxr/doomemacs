@@ -35,7 +35,6 @@
 ;;   > $EMACSDIR/early-init.el
 ;;     > $EMACSDIR/lisp/doom.el
 ;;       - $EMACSDIR/lisp/doom-lib.el
-;;     > $EMACSDIR/lisp/doom-start.el
 ;;       - hook: `doom-before-init-hook'
 ;;       - $DOOMDIR/init.el
 ;;   - hook: `before-init-hook'
@@ -65,8 +64,8 @@
 ;; least offensive) optimizations, and load the minimum needed for all Doom
 ;; sessions, interactive or otherwise.
 ;;
-;; See doom-start.el for initialization intended solely for interactive
-;; sessions, and doom-cli.el for non-interactive sessions.
+;; See modules/doom/init.el for initialization intended solely for interactive
+;; sessions and doom-cli.el for non-interactive sessions.
 ;;
 ;;; Code:
 
