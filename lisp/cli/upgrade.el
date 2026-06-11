@@ -162,7 +162,7 @@ libraries. It is the equivalent of the following shell commands:
 
 (defun doom-upgrade--get-straight-recipe ()
   (with-temp-buffer
-    (insert-file-contents (doom-path doom-core-dir doom-module-packages-file))
+    (insert-file-contents (doom-module-locate-path '(:doom) doom-module-packages-file))
     (when (re-search-forward "(package! straight" nil t)
       (goto-char (match-beginning 0))
       (let ((sexp (sexp-at-point)))
