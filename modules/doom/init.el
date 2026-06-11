@@ -324,7 +324,7 @@ Otherwise, `en/disable-command' (in novice.el.gz) is hardcoded to write them to
 
 
 ;;; ** Support for Doom-specific dotfiles
-(add-to-list 'auto-mode-alist '("/\\.doom\\(?:module\\|profile\\)?\\'" . lisp-data-mode))
+(add-to-list 'auto-mode-alist '("/\\.doom\\(?:modules?\\|profiles?\\)?\\'" . lisp-data-mode))
 
 
 ;;; ** Disable {menu,tool,scroll}-bar UI
