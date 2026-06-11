@@ -12,6 +12,9 @@
     :pin "6ff8788e347ce31b5c3c4647c2e22e7ee2c5ab7c"))
 (package! use-package :pin "4b3484b550431f74ab9cda060a8dc983fe482131")
 
+(when (modulep! +smartparens)
+  (package! smartparens :pin "82d2cf084a19b0c2c3812e0550721f8a61996056"))
+
 ;; (package! auto-minor-mode :pin "17cfa1b54800fdef2975c0c0531dad34846a5065")
 ;; (package! better-jumper :pin "b1bf7a3c8cb820d942a0305e0e6412ef369f819c")
 ;; (package! smartparens :pin "82d2cf084a19b0c2c3812e0550721f8a61996056")

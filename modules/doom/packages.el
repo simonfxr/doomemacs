@@ -26,7 +26,6 @@
 
 ;; doom-editor.el
 (package! better-jumper :pin "b1bf7a3c8cb820d942a0305e0e6412ef369f819c")
-(package! smartparens :pin "82d2cf084a19b0c2c3812e0550721f8a61996056")
 
 ;; doom-projects.el
 (package! projectile :pin "6449fb0465587c757c1fbf1a64bb4ba420a78bfa")

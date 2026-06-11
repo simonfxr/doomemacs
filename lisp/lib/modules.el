@@ -31,7 +31,7 @@
     ;;   here to stay, but it won't be hardcoded after v3.
     (doom-module--put '(:doom . compat)
                       :path (doom-module-locate-path '(:doom . compat))
-                      :flags '(+use-package)
+                      :flags '(+use-package +smartparens)
                       :depth -115)
     ;; Load $DOOMDIR/init.el, where the user's `doom!' lives, which will inform
     ;; us of all desired modules.

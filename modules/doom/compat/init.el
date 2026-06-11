@@ -92,10 +92,10 @@ This is a variadic `cl-pushnew'."
 ;;
 ;;; Deprecated sub-modules
 
-;; (load! "+projectile")
-;; (load! "+keybinds")  ; `general' & `map!'
 (if (modulep! +use-package) (load! "+use-package"))
-;; (load! "+smartparens")
+;; (load! "+keybinds")  ; `general' & `map!'
+;; (load! "+projectile")
+(if (modulep! +smartparens) (load! "+smartparens"))
 ;; (load! "+better-jumper")
 
 ;;; init.el ends here
