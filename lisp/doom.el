@@ -74,6 +74,10 @@
 (eval-when-compile (require 'subr-x))
 
 (eval-and-compile
+  (add-to-list 'load-path
+               (file-name-directory (or (bound-and-true-p byte-compile-current-file)
+                                        load-file-name)))
+
   ;; Doom core will support Emacs 27.1+ for a *long* time, but the official
   ;; module libraries require 29.1+. Also keep in mind that certain modules may
   ;; have stricter requirements (e.g. tree-sitter needs 29.1+).

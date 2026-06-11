@@ -347,7 +347,6 @@
         (if (file-exists-p (concat doom ".el"))
             (progn
               (doom--startup-optimizations)
-              (add-to-list 'load-path (file-name-directory doom))
               ;; Don't use `load's NOERROR argument because it suppresses other,
               ;; legitimate errors (like permission or IO errors), which should
               ;; not be interpreted as "this is not a Doom config".
