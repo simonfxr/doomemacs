@@ -337,12 +337,6 @@ Otherwise, `en/disable-command' (in novice.el.gz) is hardcoded to write them to
 (add-hook! '(prog-mode-hook text-mode-hook conf-mode-hook)
            #'display-line-numbers-mode)
 
-;; Fix #2742: cursor is off by 4 characters in `artist-mode'
-;; REVIEW: Reported upstream https://debbugs.gnu.org/cgi/bugreport.cgi?bug=43811
-;; DEPRECATED: Fixed in Emacs 28; remove when we drop 27 support
-(unless (> emacs-major-version 27)
-  (add-hook 'artist-mode-hook #'doom-disable-line-numbers-h))
-
 
 ;;; ** Encodings
 ;; Contrary to what many Emacs users have in their configs, you don't need more
