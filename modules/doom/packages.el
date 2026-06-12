@@ -25,5 +25,4 @@
 (package! nerd-icons :pin "d33d12f5dcb6bf2fb23c3f75df5de85beb4afd95")
 
 ;; doom-projects.el
-(package! projectile :pin "6449fb0465587c757c1fbf1a64bb4ba420a78bfa")
 (package! project :pin "f4ec26c30a08663e93449317a5f765032ab84f28")

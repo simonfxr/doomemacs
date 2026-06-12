@@ -105,7 +105,7 @@ This is a variadic `cl-pushnew'."
 
 (if (modulep! +use-package) (load! "+use-package"))
 (if (modulep! +keybinds)    (load! "+keybinds"))  ; `general' & `map!'
-;; (load! "+projectile")
+(if (modulep! +projectile)  (load! "+projectile"))
 (if (modulep! +smartparens) (load! "+smartparens"))
 (if (modulep! +better-jumper) (load! "+better-jumper"))
 
