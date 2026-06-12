@@ -130,8 +130,8 @@ ENVIRONMENT VARIABLES:
   `$DOOMDIR'
     The location of your private configuration for Doom Emacs (defaults to
     ~/.config/doom or ~/.doom.d; whichever it finds first). This is *not* the
-    place you've cloned doomemacs/doomemacs to. The `--doomdir' option also sets
-    this variable.
+    place you've cloned doomemacs/core to. The `--doomdir' option also sets this
+    variable.
 
   `$DOOMPAGER'
     The pager to invoke for large output (default: \"less +g\"). The `--pager'

@@ -8,7 +8,7 @@
 ;;
 ;;; Variables
 
-(defvar doom-upgrade-url "https://github.com/doomemacs/doomemacs"
+(defvar doom-upgrade-url "https://github.com/doomemacs/core"
   "The git repo url for Doom Emacs.")
 
 (defvar doom-upgrade-remote "_upgrade"

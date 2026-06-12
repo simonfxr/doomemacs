@@ -159,7 +159,7 @@
 
 ;; DEPRECATED: Will be renamed once docs "framework" is generalized
 (defvar doom-docs-link-alist
-  '(("doom-tag"                . "https://github.com/doomemacs/doomemacs/releases/tag/%s")
+  '(("doom-tag"                . "https://github.com/doomemacs/core/releases/tag/%s")
     ("doom-contrib-core"       . "id:9ac0c15c-29e7-43f8-8926-5f0edb1098f0")
     ("doom-contrib-docs"       . "id:31f5a61d-d505-4ee8-9adb-97678250f4e2")
     ("doom-contrib-maintainer" . "id:e71e9595-a297-4c49-bd11-f238329372db")
@@ -170,9 +170,9 @@
     ("doom-help-modules"       . "id:1ee0b650-f09b-4454-8690-cc145aadef6e")
     ("doom-index"              . "id:3051d3b6-83e2-4afa-b8fe-1956c62ec096")
     ("doom-module-index"       . "id:12d2de30-c569-4b8e-bbc7-85dd5ccc4afa")
-    ("doom-module-issues"      . "https://github.com/doomemacs/doomemacs/labels/%s")
-    ("doom-module-history"     . "https://github.com/doomemacs/doomemacs/commits/master/modules/%s")
-    ("doom-report"             . "https://github.com/doomemacs/doomemacs/issues/new/choose")
+    ("doom-module-issues"      . "https://github.com/doomemacs/modules/labels/%s")
+    ("doom-module-history"     . "https://github.com/doomemacs/modules/commits/master/modules/%s")
+    ("doom-report"             . "https://github.com/doomemacs/core/issues/new/choose")
     ("doom-suggest-edit"       . "id:31f5a61d-d505-4ee8-9adb-97678250f4e2")
     ("doom-suggest-faq"        . "id:aa28b732-0512-49ed-a47b-f20586c0f051")
     ("github"                  . "https://github.com/%s")

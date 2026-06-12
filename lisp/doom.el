@@ -1,7 +1,7 @@
 ;;; doom.el --- the heart of the beast -*- lexical-binding: t; -*-
 ;;
 ;; Author:  Henrik Lissner <contact@henrik.io>
-;; URL:     https://github.com/doomemacs/doomemacs
+;; URL:     https://github.com/doomemacs/core
 ;;
 ;;   =================     ===============     ===============   ========  ========
 ;;   \\ . . . . . . .\\   //. . . . . . .\\   //. . . . . . .\\  \\. . .\\// . . //
