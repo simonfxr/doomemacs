@@ -24,9 +24,6 @@
 ;; doom-ui.el
 (package! nerd-icons :pin "d33d12f5dcb6bf2fb23c3f75df5de85beb4afd95")
 
-;; doom-editor.el
-(package! better-jumper :pin "b1bf7a3c8cb820d942a0305e0e6412ef369f819c")
-
 ;; doom-projects.el
 (package! projectile :pin "6449fb0465587c757c1fbf1a64bb4ba420a78bfa")
 (package! project :pin "f4ec26c30a08663e93449317a5f765032ab84f28")

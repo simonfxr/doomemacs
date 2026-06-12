@@ -107,6 +107,6 @@ This is a variadic `cl-pushnew'."
 (if (modulep! +keybinds)    (load! "+keybinds"))  ; `general' & `map!'
 ;; (load! "+projectile")
 (if (modulep! +smartparens) (load! "+smartparens"))
-;; (load! "+better-jumper")
+(if (modulep! +better-jumper) (load! "+better-jumper"))
 
 ;;; init.el ends here
