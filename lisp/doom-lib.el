@@ -1388,16 +1388,18 @@ absolute path."
                 (file-exists-p path))
             path)
       (cl-destructuring-bind (group . module) (doom-module-key key)
-        (let* ((group (doom-keyword-name group))
-               (module (if module (symbol-name module)))
-               (path (file-name-concat group module file)))
+        (when-let*
+            ((default-directory
+              (cl-loop with group = (doom-keyword-name group)
+                       with module = (if module (symbol-name module))
+                       with dir = (file-name-concat group module)
+                       for default-directory in doom-module-load-path
+                       if (file-directory-p dir)
+                       return (expand-file-name dir))))
           (if file
-              ;; PERF: locate-file-internal is a little faster for finding files,
-              ;;   but its interface for finding directories is clumsy.
-              (locate-file-internal path doom-module-load-path '("" ".elc" ".el"))
-            (cl-loop for default-directory in doom-module-load-path
-                     if (file-exists-p path)
-                     return (expand-file-name path))))))))
+              (when (file-exists-p file)
+                (expand-file-name file))
+            default-directory))))))
 
 (defun doom-module-locate-paths (module-list file)
   "Return all existing paths to FILE under each module in MODULE-LIST.
