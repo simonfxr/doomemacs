@@ -135,7 +135,6 @@ list is returned as-is."
 ;;
 ;;; Public library
 
-(define-obsolete-function-alias 'doom-enlist 'ensure-list "2.1.0")
 
 (defun doom-unquote (exp)
   "Return EXP unquoted."
@@ -376,8 +375,6 @@ TRIGGER-HOOK is a list of quoted hooks and/or sharp-quoted functions."
   (let (file-name-handler-alist)
     (file-name-directory (macroexpand '(file!)))))
 
-(define-obsolete-function-alias 'letenv! 'with-environment-variables "2.1.0")
-
 (put 'defun* 'lisp-indent-function 'defun)
 (defmacro letf! (bindings &rest body)
   "Temporarily rebind function, macros, and advice in BODY.
@@ -477,9 +474,6 @@ echo-area, but not to *Messages*."
         `(let ((inhibit-message t)
                (save-silently t))
            (prog1 ,@forms (message ""))))))
-
-(define-obsolete-function-alias 'eval-if! 'static-if "2.1.0")
-(define-obsolete-function-alias 'eval-when! 'static-when "2.1.0")
 
 (defmacro versionp! (v1 comp v2 &rest comps)
   "Perform compound version checks.
