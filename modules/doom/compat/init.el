@@ -37,6 +37,13 @@
 ;;
 ;;; Deprecated functions/macros
 
+;;; lisp/lib/files.el
+(define-obsolete-function-alias 'doom-dir 'doom-path "2.1.0")
+
+;;; lisp/lib/plist.el
+(define-obsolete-function-alias 'doom-plist-get #'cl-getf "2.1.0")
+
+;;; lisp/doom-lib.el
 (define-obsolete-function-alias 'featurep! 'modulep! "2.1.0")
 (define-obsolete-function-alias 'doom-enlist 'ensure-list "2.1.0")
 (define-obsolete-function-alias 'letenv! 'with-environment-variables "2.1.0")
