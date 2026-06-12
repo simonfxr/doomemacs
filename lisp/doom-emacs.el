@@ -268,7 +268,7 @@ multiple frames focused at once)."
 ;;; * File/Directory paths
 
 ;; User themes should live in $DOOMDIR/themes, not ~/.emacs.d
-(setq custom-theme-directory (file-name-concat doom-user-dir "themes/"))
+(setq custom-theme-directory (doom-user-dir "themes/"))
 
 ;; Third party themes add themselves to `custom-theme-load-path', but the themes
 ;; living in $DOOMDIR/themes should always have priority.
@@ -279,12 +279,12 @@ multiple frames focused at once)."
 ;; If a packages doesn't use `user-emacs-directory' or `locate-user-emacs-file'
 ;; to set their file/dir variables, then we need to set them ourselves to avoid
 ;; littering in ~/.emacs.d/.
-(setq desktop-dirname  (file-name-concat doom-profile-state-dir "desktop")
-      pcache-directory (file-name-concat doom-profile-cache-dir "pcache/"))
+(setq desktop-dirname  (doom-profile-state-dir t "desktop")
+      pcache-directory (doom-profile-cache-dir t "pcache/"))
 
 ;; Write custom.el settings to $DOOMDIR/custom.el instead of $EMACSDIR/init.el,
 ;; allowing users to version control them and not interfere with Doom init.
-(setq custom-file (file-name-concat doom-user-dir "custom.el"))
+(setq custom-file (doom-user-dir "custom.el"))
 
 (define-advice en/disable-command (:around (fn &rest args) write-to-data-dir)
   "Save safe-local-variables to `custom-file' instead of `user-init-file'.
@@ -463,7 +463,7 @@ Otherwise, `en/disable-command' (in novice.el.gz) is hardcoded to write them to
       delete-old-versions t ; clean up after itself
       kept-old-versions 5
       kept-new-versions 5
-      backup-directory-alist `(("." . ,(file-name-concat doom-profile-cache-dir "backup/")))
+      backup-directory-alist `(("." . ,(doom-profile-cache-dir t "backup/")))
       tramp-backup-directory-alist backup-directory-alist)
 
 ;; But turn on auto-save, so we have a fallback in case of crashes or lost data.
@@ -474,7 +474,7 @@ Otherwise, `en/disable-command' (in novice.el.gz) is hardcoded to write them to
       ;; just deleted, but I believe that's VCS's jurisdiction, not ours.
       auto-save-include-big-deletions t
       ;; Keep it out of `doom-emacs-dir' or the local directory.
-      auto-save-list-file-prefix (file-name-concat doom-profile-cache-dir "autosave/")
+      auto-save-list-file-prefix (doom-profile-cache-dir t "autosave/")
       ;; This resolves two issue while ensuring auto-save files are still
       ;; reasonably recognizable at a glance:
       ;;
@@ -1356,7 +1356,7 @@ triggering hooks during startup."
 
 
 ;;;###package bookmark
-(setq bookmark-default-file (file-name-concat doom-profile-data-dir "bookmarks"))
+(setq bookmark-default-file (doom-profile-data-dir t "bookmarks"))
 
 
 ;;;###package comint
@@ -1542,7 +1542,7 @@ triggering hooks during startup."
 
 
 ;;;###package project
-(setq project-list-file (file-name-concat doom-profile-state-dir "projects"))
+(setq project-list-file (doom-profile-state-dir t "projects"))
 (with-eval-after-load 'project
   ;; Not valid vc backends, but I use it to inform (global) file index
   ;; exclusions below and elsewhere.
@@ -1557,7 +1557,7 @@ triggering hooks during startup."
 ;;;###package recentf
 ;; Keep track of recently opened files
 (doom-load-packages-incrementally '(easymenu tree-widget timer recentf))
-(setq recentf-save-file (file-name-concat doom-profile-cache-dir "recentf"))
+(setq recentf-save-file (doom-profile-cache-dir t "recentf"))
 (add-hook 'doom-first-file-hook #'recentf-mode)
 (autoload 'recentf-open-files "recentf" nil t)
 (with-eval-after-load 'recentf
@@ -1604,7 +1604,7 @@ triggering hooks during startup."
 ;;;###package savehist
 ;; persist variables across sessions
 (doom-load-packages-incrementally '(custom))
-(setq savehist-file (file-name-concat doom-profile-cache-dir "savehist"))
+(setq savehist-file (doom-profile-cache-dir t "savehist"))
 (add-hook 'doom-first-input-hook #'savehist-mode)
 (with-eval-after-load 'savehist
   (setq savehist-save-minibuffer-history t
@@ -1638,7 +1638,7 @@ the unwritable tidbits."
 
 ;;;###package saveplace
 ;; persistent point location in buffers
-(setq save-place-file (file-name-concat doom-profile-cache-dir "saveplace"))
+(setq save-place-file (doom-profile-cache-dir t "saveplace"))
 (add-hook 'doom-first-input-hook #'savehist-mode)
 (with-eval-after-load 'savehist
   (defadvice! doom--recenter-on-load-saveplace-a (&rest _)

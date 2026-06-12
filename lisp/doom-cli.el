@@ -162,7 +162,7 @@ Only applies if (exit! :pager) or (exit! :pager?) are called."
   :group 'doom-cli)
 
 ;;; Logger settings
-(defvar doom-cli-log-file-format (expand-file-name "logs/cli.%s.%s.%s" doom-state-dir)
+(defvar doom-cli-log-file-format (doom-state-dir "logs/cli.%s.%s.%s")
   "Where to write any output/log file to.
 
 Must have two arguments, one for session id and the other for log type.")
@@ -1172,7 +1172,7 @@ Emacs' batch library lacks an implementation of the exec system call."
          (persisted-env
           (cl-remove-if-not
            #'cdr (append
-                  `(("DOOMPROFILE" . ,(ignore-errors (doom-profile->id doom-profile)))
+                  `(("DOOMPROFILE" . ,(doom-profile->id doom-profile))
                     ("EMACSDIR" . ,doom-emacs-dir)
                     ("DOOMDIR" . ,doom-user-dir)
                     ("DEBUG" . ,(if doom-debug-mode (number-to-string doom-log-level)))
@@ -1216,7 +1216,7 @@ Emacs' batch library lacks an implementation of the exec system call."
                           concat (format "%s=%s \\\n" var (shell-quote-argument val))
                           else do (doom-log 1 "restart: discarding envvar %S for being too long (%d)" var (length val)))
                 ,(format "PATH=\"%s%s$PATH\" \\\n"
-                         (doom-path doom-emacs-dir "bin")
+                         (doom-emacs-dir "bin")
                          path-separator)
                 "_doomrun \"$@\"\n"))
          (`pwsh `("try {\n"
@@ -2474,7 +2474,7 @@ OPTIONS:
     (doom/version)
     (terpri)
     (with-temp-buffer
-      (insert-file-contents (doom-path doom-emacs-dir "LICENSE"))
+      (insert-file-contents (doom-emacs-dir "LICENSE"))
       (re-search-forward "^Copyright (c) ")
       (print! "%s\n" (trim (thing-at-point 'line t)))
       (print! (p "Doom Emacs uses the MIT license and is provided without warranty "

@@ -163,6 +163,10 @@
 (defvar doom-init-time nil
   "The time it took, in seconds (as a float), for Doom Emacs to start up.")
 
+;;; DEPRECATED: Will be removed in v3
+(defconst doom--noprofile nil)
+(defconst doom--profile-default (cons "_default" "0"))
+
 (defconst doom-profile
   (if-let* ((profile (getenv-internal "DOOMPROFILE")))
       (save-match-data
@@ -170,9 +174,8 @@
             (cons (match-string 1 profile)
                   (match-string 2 profile))
           (cons profile "0")))
-    ;; TODO: Restore this in v3
-    ;; (cons "_" "0")
-    )
+    (setq doom--noprofile t)
+    doom--profile-default)
   "The active profile as a cons cell (NAME . VERSION).")
 
 ;;; Data directory variables
@@ -227,12 +230,12 @@ These files should not be shared across systems. By default, it is used by
 `doom-data-dir' and `doom-cache-dir'. Must end with a slash.")
 
 (defvar doom-data-dir
-  (if doom-profile
-      (if doom--system-windows-p
-          (expand-file-name "doomemacs/data/" (getenv-internal "LOCALAPPDATA"))
-        (expand-file-name "doom/" (or (getenv-internal "XDG_DATA_HOME") "~/.local/share")))
-    ;; DEPRECATED: .local will be removed entirely in 3.0
-    (file-name-concat doom-local-dir "etc/"))
+  (if doom--noprofile
+      ;; DEPRECATED: .local will be removed entirely in 3.0
+      (file-name-concat doom-local-dir "etc/")
+    (if doom--system-windows-p
+        (expand-file-name "doomemacs/data/" (getenv-internal "LOCALAPPDATA"))
+      (expand-file-name "doom/" (or (getenv-internal "XDG_DATA_HOME") "~/.local/share"))))
   "Where Doom stores its global data files.
 
 Data files contain shared and long-lived data that Doom, Emacs, and their
@@ -246,12 +249,12 @@ generated files for profiles, profiles themselves, autoloads/loaddefs, etc.
 For profile-local data files, use `doom-profile-data-dir' instead.")
 
 (defvar doom-cache-dir
-  (if doom-profile
-      (if doom--system-windows-p
-          (expand-file-name "doomemacs/cache/" (getenv-internal "LOCALAPPDATA"))
-        (expand-file-name "doom/" (or (getenv-internal "XDG_CACHE_HOME") "~/.cache")))
-    ;; DEPRECATED: .local will be removed entirely in 3.0
-    (file-name-concat doom-local-dir "cache/"))
+  (if doom--noprofile
+      ;; DEPRECATED: .local will be removed entirely in 3.0
+      (file-name-concat doom-local-dir "cache/")
+    (if doom--system-windows-p
+        (expand-file-name "doomemacs/cache/" (getenv-internal "LOCALAPPDATA"))
+      (expand-file-name "doom/" (or (getenv-internal "XDG_CACHE_HOME") "~/.cache"))))
   "Where Doom stores its global cache files.
 
 Cache files represent unessential data that shouldn't be problematic when
@@ -265,12 +268,12 @@ session files, ELPA archives, authinfo files, org-persist, etc.
 For profile-local cache files, use `doom-profile-cache-dir' instead.")
 
 (defvar doom-state-dir
-  (if doom-profile
-      (if doom--system-windows-p
-          (expand-file-name "doomemacs/state/" (getenv-internal "LOCALAPPDATA"))
-        (expand-file-name "doom/" (or (getenv-internal "XDG_STATE_HOME") "~/.local/state")))
-    ;; DEPRECATED: .local will be removed entirely in 3.0
-    (file-name-concat doom-local-dir "state/"))
+  (if doom--noprofile
+      ;; DEPRECATED: .local will be removed entirely in 3.0
+      (file-name-concat doom-local-dir "state/")
+    (if doom--system-windows-p
+        (expand-file-name "doomemacs/state/" (getenv-internal "LOCALAPPDATA"))
+      (expand-file-name "doom/" (or (getenv-internal "XDG_STATE_HOME") "~/.local/state"))))
   "Where Doom stores its global state files.
 
 State files contain unessential, non-portable, but persistent data which, if
@@ -285,27 +288,34 @@ projects, recent files, bookmarks.
 For profile-local state files, use `doom-profile-state-dir' instead.")
 
 ;;; Profile file/directory variables
+;;; DEPRECATED: To be replaced with `doom-profile-cache-dir' function in v3
 (defvar doom-profile-cache-dir
-  (file-name-concat doom-cache-dir (car doom-profile))
+  (file-name-concat
+   doom-cache-dir (unless doom--noprofile (car doom-profile)))
   "For profile-local cache files under `doom-cache-dir'.")
 
+;;; DEPRECATED: To be replaced with `doom-profile-data-dir' function in v3
 (defvar doom-profile-data-dir
-  (file-name-concat doom-data-dir (car doom-profile))
+  (file-name-concat
+   doom-data-dir (unless doom--noprofile (car doom-profile)))
   "For profile-local data files under `doom-data-dir'.")
 
+;;; DEPRECATED: To be replaced with `doom-profile-state-dir' function in v3
 (defvar doom-profile-state-dir
-  (file-name-concat doom-state-dir (car doom-profile))
+  (file-name-concat
+   doom-state-dir (unless doom--noprofile (car doom-profile)))
   "For profile-local state files under `doom-state-dir'.")
 
+;;; DEPRECATED: To be replaced with `doom-profile-dir' function in v3
 (defconst doom-profile-dir
-  (file-name-concat doom-profile-data-dir "@" (cdr doom-profile))
+  (file-name-concat doom-profile-data-dir "@" (unless doom--noprofile (cdr doom-profile)))
   "Where generated files for the active profile (for Doom's core) are kept.")
 
 ;; DEPRECATED: Will be moved to cli/env
 (defconst doom-env-file
-  (file-name-concat (if doom-profile
-                        doom-profile-dir
-                      doom-local-dir)
+  (file-name-concat (if doom--noprofile
+                        doom-local-dir
+                      doom-profile-dir)
                     "env.el")
   "The location of your envvar file, generated by `doom env`.
 
@@ -393,18 +403,18 @@ appropriately against `noninteractive' or the `cli' context."
     ;;   build paths for storage/cache files instead of correctly using
     ;;   `locate-user-emacs-file'. Changing `user-emacs-directory' saves us the
     ;;   trouble of setting a million directory/file variables.
-    (setq user-emacs-directory doom-profile-cache-dir)
+    (setq user-emacs-directory (doom-profile-cache-dir t))
     ;; ...However, this can surprise packages (and users) that read
     ;; `user-emacs-directory' expecting to find the location of your Emacs
     ;; config, such as server.el!
-    (setq server-auth-dir (file-name-concat doom-emacs-dir "server/"))
+    (setq server-auth-dir (doom-emacs-dir "server/"))
 
     ;; Native compilation support (see http://akrl.sdf.org/gccemacs.html)
     (when (boundp 'native-comp-eln-load-path)
       ;; Don't store eln files in ~/.emacs.d/eln-cache (where they can easily be
       ;; deleted by 'doom upgrade').
       (setq native-comp-eln-load-path
-            (cons (expand-file-name "eln/" doom-profile-cache-dir)
+            (cons (doom-profile-cache-dir t "eln/")
                   (cdr native-comp-eln-load-path)))
 
       (unless (boundp 'native-comp-deferred-compilation-deny-list)
@@ -414,7 +424,7 @@ appropriately against `noninteractive' or the `cli' context."
         "Normally, native-comp writes a ton to /tmp. This advice redirects this
 IO to `doom-profile-cache-dir' instead, so it doesn't OOM tmpfs users and can be
 safely cleaned up with \\='doom sync' or \\='doom gc'."
-        (let ((temporary-file-directory (expand-file-name "comp/" doom-profile-cache-dir)))
+        (let ((temporary-file-directory (doom-profile-cache-dir t "comp/")))
           (make-directory temporary-file-directory t)
           (apply fn args)))
       ;; This is renamed in newer versions of Emacs.

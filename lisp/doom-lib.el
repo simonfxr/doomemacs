@@ -290,7 +290,6 @@ list is returned as-is."
 ;;
 ;;; Public library
 
-
 (defun doom-unquote (exp)
   "Return EXP unquoted."
   (declare (pure t) (side-effect-free t))
@@ -444,6 +443,71 @@ TRIGGER-HOOK is a list of quoted hooks and/or sharp-quoted functions."
           (advice-add 'after-find-file :before fn '((depth . -101)))
         (add-hook hook fn -101))
       fn)))
+
+
+;;
+;;; Directory helpers
+
+;; These are intentional facsimiles of their final implementations, meant solely
+;; for forward-compatibility with v3.
+
+(defsubst doom--profile (profile)
+  (let ((p (if (eq profile t) doom-profile profile)))
+    (unless (equal p doom--profile-default)
+      p)))
+
+(defsubst doom--dir (dir segments)
+  (let ((segments (delq nil segments))
+        file-name-handler-alist)
+    (if segments
+        (expand-file-name
+         (if (cdr segments)
+             (apply #'file-name-concat segments)
+           (car segments))
+         dir)
+      (expand-file-name dir))))
+
+(dolist (var '(doom-emacs-dir
+               doom-core-dir
+               doom-user-dir
+               doom-data-dir
+               doom-state-dir
+               doom-cache-dir))
+  (defalias var
+    (lambda (&rest segments)
+      (doom--dir (symbol-value var) segments))
+    (format "Return a path from SEGMENTS after `%s'." var)))
+
+(dolist (var '((doom-profile-data-dir  . doom-data-dir)
+               (doom-profile-cache-dir . doom-cache-dir)
+               (doom-profile-state-dir . doom-state-dir)))
+  (defalias (car var)
+    (lambda (profile &rest segments)
+      (doom--dir (file-name-concat
+                  (symbol-value (cdr var))
+                  (car (doom--profile profile)))
+                 segments))
+    (format "Return a local PROFILE path from SEGMENTS after `%s'.
+
+If PROFILE is t, default to the active profile."
+            (cdr var))))
+
+(defun doom-profile-dir (profile &rest segments)
+  "Return a path from SEGMENTS after a PROFILE's root data directory."
+  (doom--dir (file-name-concat doom-data-dir (car (doom--profile profile)))
+             segments))
+
+(defun doom-profile-init-dir (profile &rest segments)
+  "Return a path from SEGMENTS after a PROFILE's init files directory."
+  (apply #'doom-profile-dir profile "@" (cdr (doom--profile profile))
+         segments))
+
+(defun doom-profile-init-file (profile &optional filename)
+  "Return a path to a PROFILE's FILENAME (or its init.%d.%d.el file)."
+  (doom-profile-init-dir
+   profile (or filename (format "init.%d.%d.el"
+                                emacs-major-version
+                                emacs-minor-version))))
 
 
 ;;
@@ -1827,18 +1891,6 @@ If DEFAULT? is non-nil, an unspecified CAR/CDR will fall bakc to (_default .
           ((signal 'wrong-type-argument
                    (list "Expected PROFILE to be a string, cons cell, or `doom-profile'"
                          (type-of profile) profile))))))
-
-(defun doom-profile-init-file (profile)
-  "Return the init file for PROFILE."
-  (declare (side-effect-free t))
-  (cl-destructuring-bind (name . ref)
-      (if profile
-          (doom-profile-key profile t)
-        (cons nil nil))
-    (file-name-concat doom-data-dir name "@" ref
-                      (format "init.%d.%d.el"
-                              emacs-major-version
-                              emacs-minor-version))))
 
 (defun doom-profile-get (profile-name &optional property null-value)
   "Return PROFILE-NAME's PROFILE, otherwise its PROPERTY, otherwise NULL-VALUE."
