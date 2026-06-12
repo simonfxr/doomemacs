@@ -1414,7 +1414,7 @@ If ENABLED-ONLY?, return nil if the containing module isn't enabled."
   (let* ((file-name-handler-alist nil)
          (path (expand-file-name path)))
     (save-match-data
-      (cond ((string-match "/modules/\\([^/]+\\)/\\([^/]+\\)\\(?:/.*\\)?$" path)
+      (cond ((string-match "/\\(?:modules/\\)+\\([^/]+\\)/\\([^/]+\\)\\(?:/.*\\)?$" path)
              (when-let* ((group (doom-keyword-intern (match-string 1 path)))
                          (name  (intern (match-string 2 path))))
                (and (or (null enabled-only?)
