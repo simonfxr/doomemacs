@@ -46,7 +46,6 @@ An omitted font size means to inherit `doom-font''s size."
   :type '(restricted-sexp :match-alternatives (fontp stringp 'nil))
   :group 'doom)
 
-(define-obsolete-variable-alias 'doom-unicode-font 'doom-symbol-font "2.1.0")
 (defcustom doom-symbol-font nil
   "Fallback font for symbols.
 Must be a `font-spec', a font object, an XFT font string, or an XLFD string. See
@@ -1595,7 +1594,6 @@ triggering hooks during startup."
 
 ;;; doom-projects
 
-(define-obsolete-variable-alias 'doom-projectile-fd-binary 'doom-fd-executable "2.1.0")
 (defvar doom-fd-executable (cl-find-if #'executable-find (list "fdfind" "fd"))
   "The filename of the fd executable.
 

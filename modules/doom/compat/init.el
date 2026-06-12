@@ -43,6 +43,10 @@
 ;;; lisp/lib/plist.el
 (define-obsolete-function-alias 'doom-plist-get #'cl-getf "2.1.0")
 
+;;; lisp/doom-*.el
+(define-obsolete-variable-alias 'doom-unicode-font 'doom-symbol-font "2.1.0")
+(define-obsolete-variable-alias 'doom-projectile-fd-binary 'doom-fd-executable "2.1.0")
+
 ;;; lisp/doom-lib.el
 (define-obsolete-function-alias 'featurep! 'modulep! "2.1.0")
 (define-obsolete-function-alias 'doom-enlist 'ensure-list "2.1.0")
