@@ -2,8 +2,6 @@
 ;;; modules/doom/packages.el
 
 ;; doom.el
-(package! auto-minor-mode
-  :pin "17cfa1b54800fdef2975c0c0531dad34846a5065")
 (package! compat
   :recipe (:host github :repo "emacs-compat/compat")
   :pin "b5b48183689b536f72b1214106afeabc465da9d4")  ; 31.0.0.1

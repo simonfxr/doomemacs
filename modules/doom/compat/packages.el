@@ -5,6 +5,7 @@
 ;;   make Doom core resistant to upstream breakage.
 
 (when (modulep! +use-package)
+  (package! auto-minor-mode :pin "17cfa1b54800fdef2975c0c0531dad34846a5065")
   (unless (fboundp 'lisp-data-mode)
     (package! bind-key
       ;; HACK: bind-key-pkg.el tries to set the mode to lisp-data-mode, which
@@ -25,5 +26,3 @@
 
 (when (modulep! +smartparens)
   (package! smartparens :pin "82d2cf084a19b0c2c3812e0550721f8a61996056"))
-
-;; (package! auto-minor-mode :pin "17cfa1b54800fdef2975c0c0531dad34846a5065")
