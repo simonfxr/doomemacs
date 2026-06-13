@@ -111,15 +111,6 @@
   ;; redisplays, affecting startup time.
   (setq ad-redefinition-action 'accept)
 
-  ;; PGTK builds only: there's a timeout that adds latency to frame operations,
-  ;; like `make-frame-invisible', which Emacs frequently calls without a guard
-  ;; because it's inexpensive in non-PGTK builds. Lowering the timeout from the
-  ;; default 0.1 should make childframes and packages that manipulate them (like
-  ;; `lsp-ui', `company-box', and `posframe') feel much snappier. See
-  ;; emacs-lsp/lsp-ui#613.
-  (when (boundp 'pgtk-wait-for-event-timeout)
-    (setq pgtk-wait-for-event-timeout 0.001))
-
   ;; Performance on Windows is considerably worse than elsewhere. We'll need
   ;; everything we can get.
   (when (boundp 'w32-get-true-file-attributes)

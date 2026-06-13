@@ -434,12 +434,6 @@ safely cleaned up with \\='doom sync' or \\='doom gc'."
                     "/vterm\\.el\\'"
                     "/with-editor\\.el\\'"))))
 
-    ;; DEPRECATED: Interactive sessions won't be able to interact with Straight
-    ;;   (or Elpaca) in the future, so this is temporary.
-    (with-eval-after-load 'straight
-      (require 'doom-straight)
-      (doom-initialize-packages))
-
     (if interactive?
         (when (doom-context-push 'emacs)
           (add-hook 'doom-after-init-hook #'doom-load-packages-incrementally-h 100)
@@ -460,7 +454,7 @@ safely cleaned up with \\='doom sync' or \\='doom gc'."
           ;; process.
           (advice-add #'command-line-1 :after #'doom-finalize '((depth . 100)))
 
-          (advice-add #'startup--load-user-init-file :override #'doom--load-user-init-file-a '((depth . 100)))
+          (require 'doom-emacs)
           (let ((init-file (doom-profile-init-file doom-profile)))
             (or (doom-load init-file t)
                 (signal 'doom-nosync-error (list init-file)))))
@@ -557,83 +551,15 @@ Triggers `doom-after-init-hook' and sets `doom-init-time.'"
         (setq-default gc-cons-percentage 0.1))
     t))
 
+(defun doom-display-benchmark-h (&optional return-p)
+  "Display a benchmark including number of packages and modules loaded.
 
-;;
-;;; Entry point
-
-;; HACK: This advice hijacks Emacs' initfile loader to accomplish the following:
-;;
-;;   1. Load the profile init file directory (generated on `doom sync`)
-;;   2. Ignore initfiles we don't care about (like $EMACSDIR/init.el, ~/.emacs,
-;;      and ~/_emacs) -- and spare us the IO of searching for them, and allows
-;;      savvy hackers to use $EMACSDIR as their $DOOMDIR, if they wanted.
-;;   3. Cut down on unnecessary logic in Emacs' bootstrapper.
-;;   4. TODO: Offer a more user-friendly error state/screen, especially for
-;;      errors emitted from Doom's core or the user's config.
-(defun doom--load-user-init-file-a (&rest _)
-  ":override advice for `startup--load-user-init-file'."
-  (let ((debug-on-error-from-init-file nil)
-        (debug-on-error-should-be-set nil)
-        (debug-on-error-initial (if (eq init-file-debug t) 'startup init-file-debug))
-        ;; The init file might contain byte-code with embedded NULs, which can
-        ;; cause problems when read back, so disable nul byte detection. (Bug
-        ;; #52554)
-        (inhibit-null-byte-detection t))
-    (let ((debug-on-error debug-on-error-initial))
-      (condition-case-unless-debug error
-          (when init-file-user
-            (let ((init-file-name
-                   ;; This dynamically generated init file stores a lot of
-                   ;; precomputed information, such as module and package
-                   ;; autoloads, and values for expensive variables like
-                   ;; `doom-modules', `doom-disabled-packages', `load-path',
-                   ;; `auto-mode-alist', and `Info-directory-list'. etc.
-                   ;; Compiling them in one place is a big reduction in startup
-                   ;; time, and by keeping a history of them, you get a snapshot
-                   ;; of your config in time.
-                   (doom-profile-init-file doom-profile)))
-              ;; If we loaded a compiled file, set `user-init-file' to the
-              ;; source version if that exists.
-              (setq user-init-file init-file-name)
-              ;; HACK: if `init-file-name' happens to be higher in
-              ;;   `load-history' than a symbol's actual definition,
-              ;;   `symbol-file' (and help/helpful buffers) will report the
-              ;;   source of a symbol as `init-file-name', rather than it's true
-              ;;   source. By removing this file from `load-history', no one
-              ;;   will make that mistake.
-              (setq load-history
-                    (delete (assoc init-file-name load-history)
-                            load-history))
-              (doom-startup)))
-        ;; TODO: Add safe-mode profile.
-        ;; (error
-        ;;  ;; HACK: This is not really this variable's intended purpose, but it
-        ;;  ;;   doesn't mind what value its set to, only that its non-nil, so I'm
-        ;;  ;;   exploiting its dynamic scope to pass the error to the profile.
-        ;;  (setq init-file-had-error error)
-        ;;  (load (file-name-concat doom-emacs-dir "profiles" "safe-mode" "init.el")
-        ;;        nil 'nomessage 'nosuffix))
-        (error
-         (display-warning
-          'initialization
-          (format-message "\
-An error occurred while booting Doom Emacs:\n\n%s%s%s\n\n\
-To ensure normal operation, you should investigate and remove the
-cause of the error in your Doom config files. Start Emacs with
-the `--debug-init' option to view a complete error backtrace."
-                          (get (car error) 'error-message)
-                          (if (cdr error) ": " "")
-                          (mapconcat (lambda (s) (prin1-to-string s t))
-                                     (cdr error) ", "))
-          :warning)
-         (setq init-file-had-error t)))
-      ;; If we can tell that the init file altered debug-on-error, arrange to
-      ;; preserve the value that it set up.
-      (or (eq debug-on-error debug-on-error-initial)
-          (setq debug-on-error-should-be-set t
-                debug-on-error-from-init-file debug-on-error)))
-    (when debug-on-error-should-be-set
-      (setq debug-on-error debug-on-error-from-init-file))))
+If RETURN-P, return the message as a string instead of displaying it."
+  (funcall (if return-p #'format #'message)
+           "Doom loaded %d packages across %d modules in %.03fs"
+           (- (length load-path) (length (get 'load-path 'initial-value)))
+           (if doom-modules (hash-table-count doom-modules) -1)
+           doom-init-time))
 
 (provide 'doom)
 ;;; doom.el ends here
