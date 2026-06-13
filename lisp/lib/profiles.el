@@ -31,11 +31,11 @@ list of paths or profile config files (semi-colon delimited on Windows).")
 (defvar doom-profile-load-file
   ;; REVIEW: Derive from `doom-data-dir' in v3
   (expand-file-name
-   (format (or (getenv-internal "DOOMPROFILELOADFILE")
-               (file-name-concat (if doom--system-windows-p "doomemacs/data" "doom")
-                                 "profiles.%d.el"))
-           emacs-major-version)
-   (or (if doom--system-windows-p (getenv-internal "LOCALAPPDATA"))
+   (or (getenv-internal "DOOMPROFILELOADFILE")
+       (file-name-concat (if doom--system-windows-p "doomemacs/data" "doom")
+                         "profiles.el"))
+   (or (if doom--system-windows-p
+           (getenv-internal "LOCALAPPDATA"))
        (getenv-internal "XDG_DATA_HOME")
        "~/.local/share"))
   "Where Doom writes its interactive profile loader script.

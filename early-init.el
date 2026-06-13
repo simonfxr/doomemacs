@@ -313,13 +313,14 @@
       ;; $DOOMPROFILELOADFILE), after reading `doom-profile-load-path'. This
       ;; loader requires `$DOOMPROFILE' be set.
       (setenv "DOOMPROFILE" profile)
-      (or (load (expand-file-name
-                 (or (getenv-internal "DOOMPROFILELOADFILE")
-                     "doom/profiles.el")
-                 (or (if (memq system-type '(ms-dos windows-nt cygwin))
-                         (getenv-internal "LOCALAPPDATA"))
-                     (getenv-internal "XDG_DATA_HOME")
-                     "~/.local/share"))
+      (or (load (let ((windows? (memq system-type '(ms-dos windows-nt cygwin))))
+                  (expand-file-name
+                   (or (getenv-internal "DOOMPROFILELOADFILE")
+                       (concat (if windows? "doomemacs/data/" "doom/")
+                               "profiles.el"))
+                   (or (if windows? (getenv-internal "LOCALAPPDATA"))
+                       (getenv-internal "XDG_DATA_HOME")
+                       "~/.local/share")))
                 'noerror (not init-file-debug))
           (user-error "Profiles not initialized yet; run 'doom sync' first"))
 
