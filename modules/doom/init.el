@@ -1658,8 +1658,4 @@ and whether the line count of the buffer exceeds that matching entry in
              nerd-icons-pomicon
              nerd-icons-powerline))
 
-
-;;;###package image
-(setq image-animate-loop t)
-
 ;;; init.el ends here
