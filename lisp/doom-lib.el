@@ -729,7 +729,9 @@ This ensures any changes to ALIST's spec (according to TYPE) is resolved for the
 current version of Doom."
   (cl-loop for fn in doom-config-read-functions
            if (funcall fn type compat (doom-copy alist t))
-           do (if (consp it) (pcase-setq `(,compat ,alist) it))
+           do (if (consp it)
+                  (setq compat (car it)
+                        alist  (cadr it)))
            finally return alist))
 
 (defun doom-config (keys &optional nocache?)
