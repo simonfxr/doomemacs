@@ -302,6 +302,7 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
                       ;; init file.
                       (when (or (doom-context-p 'startup)
                                 (doom-context-p 'reload))
+                        (require 'doom-emacs)
                         ,@(cl-loop for (_ genfn initfn) in doom-profile-generators
                                    if initfn
                                    if (functionp genfn)
