@@ -143,6 +143,12 @@
   (make-obsolete-variable 'IS-WINDOWS "Use (featurep :system 'windows) instead" "2.1.0")
   (make-obsolete-variable 'IS-BSD     "Use (featurep :system 'bsd) instead" "2.1.0"))
 
+;;
+;;; Load Doom's stdlib
+
+(require 'doom-compat) ; backport niceties from later versions of Emacs
+(require 'doom-lib)
+
 
 ;;
 ;;; Core globals
@@ -371,13 +377,6 @@ appropriately against `noninteractive' or the `cli' context."
 (defcustom doom-after-modules-config-hook nil
   "Hooks run after module config.el files are loaded (but before the user's)."
   :type 'hook)
-
-
-;;
-;;; Load Doom's stdlib
-
-(require 'doom-compat) ; backport niceties from later versions of Emacs
-(require 'doom-lib)
 
 
 ;;
