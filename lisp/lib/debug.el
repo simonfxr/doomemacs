@@ -309,6 +309,12 @@ ready to be pasted in a bug report on github."
              (cl-loop for (type var _) in (get 'user 'theme-settings)
                       if (eq type 'theme-value)
                       collect var)))
+        (sources
+         ,@(cl-loop for default-directory in (doom-glob doom-emacs-dir "sources/*/")
+                    if (file-exists-p ".git")
+                    collect (cons (or (doom-config `(,default-directory project name) t)
+                                      (file-name-base (directory-file-name default-directory)))
+                                  (cdr (doom-call-process "git" "log" "-1" "--format=%D %h %ci")))))
         (modules
          ,@(or (cl-loop with lastcat = nil
                         for (cat . mod) in (seq-filter #'cdr (doom-module-list))
