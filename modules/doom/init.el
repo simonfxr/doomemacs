@@ -2,6 +2,19 @@
 ;;; Commentary:
 ;;; Code:
 
+;;
+;;; * Extra file extensions to support
+
+(add-to-list 'auto-mode-alist '("/LICENSE\\'" . text-mode))
+(add-to-list 'auto-mode-alist '("rc\\'" . conf-mode) 'append)
+
+;; Support for Doom dotfiles
+(add-to-list 'auto-mode-alist '("/\\.doom\\(?:modules?\\|profiles?\\)?\\'" . lisp-data-mode))
+
+
+;;
+;;; * 3rd Party Packages
+
 ;; The GC introduces annoying pauses and stuttering into our Emacs experience,
 ;; so we use `gcmh' to stave off the GC while we're using Emacs, and provoke it
 ;; when it's idle. However, if the idle delay is too long, we run the risk of

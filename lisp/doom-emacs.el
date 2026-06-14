@@ -286,9 +286,6 @@ Otherwise, `en/disable-command' (in novice.el.gz) is hardcoded to write them to
 
 ;;; ** Accommodating Doom itself
 
-;; Support for Doom dotfiles
-(add-to-list 'auto-mode-alist '("/\\.doom\\(?:modules?\\|profiles?\\)?\\'" . lisp-data-mode))
-
 ;; Trust the contents of $EMACSDIR and $DOOMDIR, because the user will likely be
 ;; working with either/both.
 (when (boundp 'trusted-content)
@@ -488,12 +485,6 @@ tell you about it. Very annoying. This prevents that."
 ;; Cull duplicates in the kill ring to reduce bloat and make the kill ring
 ;; easier to peruse (with `counsel-yank-pop' or `helm-show-kill-ring'.
 (setq kill-do-not-save-duplicates t)
-
-
-;;; ** Extra file extensions to support
-
-(add-to-list 'auto-mode-alist '("/LICENSE\\'" . text-mode))
-(add-to-list 'auto-mode-alist '("rc\\'" . conf-mode) 'append)
 
 
 ;;
