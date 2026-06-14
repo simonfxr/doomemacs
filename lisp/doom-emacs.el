@@ -1670,7 +1670,7 @@ and whether the line count of the buffer exceeds that matching entry in
                    ;; Compiling them in one place is a big reduction in startup
                    ;; time, and by keeping a history of them, you get a snapshot
                    ;; of your config in time.
-                   (doom-profile-init-file t)))
+                   (doom-profile-init-file doom-profile)))
               ;; If we loaded a compiled file, set `user-init-file' to the
               ;; source version if that exists.
               (setq user-init-file init-file-name)
