@@ -711,7 +711,7 @@ tell you about it. Very annoying. This prevents that."
                  '(([C-i] [?\C-i] tab kp-tab)
                    ([C-m] [?\C-m] return kp-return)))
     (define-key
-     input-decode-map fallback
+     key-translation-map fallback
      (cmd! (if (when-let* ((keys (this-single-command-raw-keys)))
                  (and (display-graphic-p)
                       (not (cl-loop for event in events
