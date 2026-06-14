@@ -110,7 +110,8 @@ Why this over exec-path-from-shell?
                      ";; And load it with (load! \"~/.doom.d/env\").\n")
            (concat ";; This file is safe to edit by hand, but needs to be loaded manually with:\n;;\n"
                    ";;   (load! \"path/to/this/file\")\n;;\n"
-                   ";; Use 'doom env -o path/to/this/file.el' to regenerate it.")))
+                   ";; Use 'doom env -o path/to/this/file.el' to regenerate it."))
+         "\n")
         ;; We assume that this noninteractive session was spawned from the user's
         ;; interactive shell, so simply dump `process-environment' to a file.
         ;;
@@ -132,9 +133,13 @@ Why this over exec-path-from-shell?
                     (doom-log "cli:env: deny %s" var)
                     (throw 'skip t)))
                 (push env vars))))
-          (pp `(setq exec-path ',(get 'exec-path 'initial-value)
-                     process-environment ',(reverse vars)
-                     shell-file-name ,shell-file-name)
+          (pp `(setq
+                process-environment (append ',(reverse vars)
+                                            (default-value 'process-environment))
+                exec-path (append (split-string (getenv "PATH") path-separator t)
+                                  (list exec-directory))
+                shell-file-name (or (getenv "SHELL")
+                                    (default-value 'shell-file-name)))
               (current-buffer)))
         (print! (success "Generated %s") (path env-file))
         t))))
