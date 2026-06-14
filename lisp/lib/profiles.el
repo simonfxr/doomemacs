@@ -286,7 +286,7 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
             (prin1 `(when (and (or initial-window-system
                                    (daemonp))
                                doom-env-file)
-                      (doom-load-envvars-file doom-env-file 'noerror))
+                      (doom-load doom-env-file t))
                    (current-buffer))
             (prin1 `(with-doom-context '(module init)
                       (doom-load (file-name-concat doom-user-dir ,doom-module-init-file) t))

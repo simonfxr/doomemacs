@@ -132,7 +132,7 @@ imported into Emacs."
   (with-doom-context 'reload
     (let ((default-directory doom-emacs-dir))
       (with-temp-buffer
-        (doom-load-envvars-file doom-env-file)
+        (doom-load doom-env-file)
         (message "Reloaded %S" (abbreviate-file-name doom-env-file))))))
 
 (provide 'doom-lib '(config))
