@@ -550,6 +550,14 @@ Triggers `doom-after-init-hook' and sets `doom-init-time.'"
     (setq doom-init-time (float-time (time-subtract (current-time) before-init-time)))
     (doom-run-hooks 'doom-after-init-hook)
 
+    (when (display-graphic-p)
+      (require 'server)
+      (unless (server-running-p)
+        ;; Allow users to override `server-name' via envvar.
+        (when-let* ((name (getenv "EMACS_SERVER_NAME")))
+          (setq server-name name))
+        (server-start)))
+
     ;; If `gc-cons-threshold' and `gc-cons-percentage' haven't been reset at
     ;; this point, do it now (without overwriting `gcmh' or the user's config).
     ;; If not done, the session may see freezing and crashes. Also handles the

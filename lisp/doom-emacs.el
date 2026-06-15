@@ -1664,14 +1664,6 @@ files, so this replace calls to `pp' with the much faster `prin1'."
     (letf! ((#'pp #'prin1)) (funcall fn))))
 
 
-;;;###package server
-(when (display-graphic-p)
-  (add-hook 'doom-after-init-hook #'server-start)
-  (with-eval-after-load 'server
-    (when-let* ((name (getenv "EMACS_SERVER_NAME")))
-      (setq server-name name))))
-
-
 ;;;###package so-long
 (when (fboundp 'buffer-line-statistics)  ; only 29+
   (add-hook 'doom-first-file-hook #'global-so-long-mode)
