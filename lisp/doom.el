@@ -38,9 +38,9 @@
 ;;
 ;;   > $EMACSDIR/early-init.el
 ;;     > $EMACSDIR/lisp/doom.el
-;;       - $EMACSDIR/lisp/doom-compat.el
 ;;       - $EMACSDIR/lisp/doom-lib.el
 ;;       - hook: `doom-before-init-hook'
+;;       - $EMACSDIR/lisp/doom-emacs.el
 ;;       - $DOOMDIR/init.el
 ;;   - hook: `before-init-hook'
 ;;   > $XDG_DATA_HOME/doom/$PROFILE/@/$VERSION/init.el   (replaces $EMACSDIR/init.el)
@@ -146,7 +146,6 @@
 ;;
 ;;; Load Doom's stdlib
 
-(require 'doom-compat) ; backport niceties from later versions of Emacs
 (require 'doom-lib)
 
 

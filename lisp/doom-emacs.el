@@ -3,6 +3,115 @@
 ;;; Code:
 
 ;;
+;;; * Emacs forwards compatibility
+
+(with-no-warnings
+  ;; Introduced in 29.1
+  (unless (boundp 'enable-theme-functions)
+    (defcustom enable-theme-functions nil
+      "Abnormal hook that is run after a theme has been enabled.
+The functions in the hook are called with one parameter -- the
+ name of the theme that's been enabled (as a symbol)."
+      :type 'hook
+      :group 'customize
+      :version "29.1")
+    (defcustom disable-theme-functions nil
+      "Abnormal hook that is run after a theme has been disabled.
+The functions in the hook are called with one parameter -- the
+ name of the theme that's been disabled (as a symbol)."
+      :type 'hook
+      :group 'customize
+      :version "29.1")
+    (define-advice enable-theme (:after (theme) trigger-hooks)
+      (run-hook-with-args 'enable-theme-functions theme))
+    (define-advice disable-theme (:around (fn theme) trigger-hooks)
+      (when (custom-theme-enabled-p theme)
+        (funcall fn theme)
+        (run-hook-with-args 'enable-theme-functions theme))))
+
+  ;; Introduced in 29.1
+  ;; In case of Emacs builds where treesit isn't built in (to avoid void-function
+  ;; errors and verbose, redundant checks everywhere).
+  (unless (fboundp 'treesit-available-p)
+    (defun treesit-available-p ()
+      "Return non-nil if tree-sitter support is built-in and available."
+      nil))
+
+  (unless (fboundp 'treesit-library-abi-version)
+    (defun treesit-library-abi-version (&optional _min-compatible)
+      0))
+
+  (unless (fboundp 'treesit-language-abi-version)
+    (defun treesit-language-abi-version (&optional _lang)
+      nil))
+
+  ;; Introduced in 30.1
+  (unless (fboundp 'major-mode-remap)
+    (defvar major-mode-remap-alist nil)  ; introduced in 29.1
+    (defvar major-mode-remap-defaults nil)
+    (defun major-mode-remap (mode)
+      "Return the function to use to enable MODE."
+      (or (cdr (or (assq mode major-mode-remap-alist)
+                   (assq mode major-mode-remap-defaults)))
+          mode))
+    (defvar-local set-auto-mode--last nil)
+    (define-advice set-auto-mode-0 (:override (mode &optional keep-mode-if-same) backport-major-mode-remap)
+      (unless (and keep-mode-if-same
+                   (or (eq (indirect-function mode)
+                           (indirect-function major-mode))
+                       (and set-auto-mode--last
+                            (eq mode (car set-auto-mode--last))
+                            (eq major-mode (cdr set-auto-mode--last)))))
+        (when mode
+          (funcall (major-mode-remap mode))
+          (unless (eq mode major-mode)
+            (setq set-auto-mode--last (cons mode major-mode)))
+          mode))))
+
+  ;; Introduced in 30.1
+  (unless (boundp 'safe-local-variable-directories)
+    (defvar safe-local-variable-directories ())
+    (define-advice hack-local-variables-filter
+        (:around (fn variables dir-name) backport-safe-local-variable-directories)
+      (let ((enable-local-variables
+             (if (delq nil (mapcar (lambda (dir)
+                                     (and dir-name dir
+                                          (file-equal-p dir dir-name)))
+                                   safe-local-variable-directories))
+                 :all
+               enable-local-variables)))
+        (funcall fn variables dir-name))))
+
+;;; From Emacs 31+
+  (unless (fboundp 'mode-line-invisible-mode)
+    (defvar-local mode-line-invisible--buf-state nil)
+    (define-minor-mode mode-line-invisible-mode
+      "Toggle the mode-line visibility of the current buffer.
+Hide the mode line if it is shown, and show it if it's hidden."
+      :global nil
+      :group 'mode-line
+      (if mode-line-invisible-mode
+          (progn
+            (add-hook 'after-change-major-mode-hook #'mode-line-invisible-mode nil t)
+            (setq mode-line-invisible--buf-state
+                  `(mode-line-format
+                    ,(local-variable-p 'mode-line-format)
+                    ,mode-line-format))
+            (setq-local mode-line-format nil))
+        (remove-hook 'after-change-major-mode-hook #'mode-line-invisible-mode t)
+        (when mode-line-invisible--buf-state
+          (setq mode-line-invisible--buf-state
+                (cl-destructuring-bind (var local val) mode-line-invisible--buf-state
+                  (if local (set var val) (kill-local-variable var)))))
+        (unless mode-line-format
+          (setq-local mode-line-format (default-value 'mode-line-format)))
+        (when (called-interactively-p 'any)
+          (force-mode-line-update))))
+    (put 'mode-line-invisible--buf-state 'permanent-local t)
+    (put 'mode-line-invisible-mode 'permanent-local-hook t)))
+
+
+;;
 ;;; * Variables
 
 (defcustom doom-theme nil
