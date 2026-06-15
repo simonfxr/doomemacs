@@ -116,6 +116,13 @@ OPTIONS:
             (with-temp-file doom-sync-info-file
               (prin1 (cons emacs-version (doom-sync--system-hash))
                      (current-buffer))))
+          (cond ((doom-cli-context-get context 'installing)
+                 (print! (success "Doom successfully installed!"))
+                 (with-temp-buffer
+                   (insert-file-contents (doom-path doom-emacs-dir "static/QUICKSTART_INTRO"))
+                   (print! "%s" (buffer-string))))
+                ((doom-cli-context-get context 'upgrading)
+                 (print! (success "Doom successfully upgraded!"))))
           t)
       (remove-hook 'kill-emacs-hook #'doom-sync--abort-warning-h))))
 

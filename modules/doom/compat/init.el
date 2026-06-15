@@ -37,12 +37,48 @@
 ;;
 ;;; Deprecated functions/macros
 
+;;; lisp/lib/files.el
+(define-obsolete-function-alias 'doom-dir 'doom-path "2.1.0")
+
+;;; lisp/lib/plist.el
+(define-obsolete-function-alias 'doom-plist-get #'cl-getf "2.1.0")
+
+;;; lisp/doom-*.el
+(define-obsolete-variable-alias 'doom-unicode-font 'doom-symbol-font "2.1.0")
+(define-obsolete-variable-alias 'doom-projectile-fd-binary 'doom-fd-executable "2.1.0")
+
+;;; lisp/doom-lib.el
 (define-obsolete-function-alias 'featurep! 'modulep! "2.1.0")
 (define-obsolete-function-alias 'doom-enlist 'ensure-list "2.1.0")
 (define-obsolete-function-alias 'letenv! 'with-environment-variables "2.1.0")
 (define-obsolete-function-alias 'eval-if! 'static-if "2.1.0")
 (define-obsolete-function-alias 'eval-when! 'static-when "2.1.0")
 (define-obsolete-function-alias 'setq! 'setopt "2.1.0")
+
+(defun doom-load-envvars-file (file &optional noerror)
+  "Read and set envvars from FILE.
+If NOERROR is non-nil, don't throw an error if the file doesn't exist or is
+unreadable. Returns the names of envvars that were changed."
+  (if (null (file-exists-p file))
+      (unless noerror
+        (signal 'file-error (list "No envvar file exists" file)))
+    (with-temp-buffer
+      (insert-file-contents file)
+      (when-let* ((env (read (current-buffer))))
+        (let ((tz (getenv-internal "TZ")))
+          (setq-default
+           process-environment
+           (append env (default-value 'process-environment))
+           exec-path
+           (append (split-string (getenv "PATH") path-separator t)
+                   (list exec-directory))
+           shell-file-name
+           (or (getenv "SHELL")
+               (default-value 'shell-file-name)))
+          (when-let* ((newtz (getenv-internal "TZ")))
+            (unless (equal tz newtz)
+              (set-time-zone-rule newtz))))
+        env))))
 
 (defun doom-compile-functions (&rest fns)
   "Queue FNS to be byte/natively-compiled after a brief delay."
@@ -92,10 +128,10 @@ This is a variadic `cl-pushnew'."
 ;;
 ;;; Deprecated sub-modules
 
-;; (load! "+projectile")
-;; (load! "+keybinds")  ; `general' & `map!'
-(load! "+use-package")
-;; (load! "+smartparens")
-;; (load! "+better-jumper")
+(if (modulep! +use-package) (load! "+use-package"))
+(if (modulep! +keybinds)    (load! "+keybinds"))  ; `general' & `map!'
+(if (modulep! +projectile)  (load! "+projectile"))
+(if (modulep! +smartparens) (load! "+smartparens"))
+(if (modulep! +better-jumper) (load! "+better-jumper"))
 
 ;;; init.el ends here

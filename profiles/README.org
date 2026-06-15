@@ -112,7 +112,7 @@ There are two caveats with this profile system:
 * How to switch from Chemacs
 1. Delete [[https://github.com/plexus/chemacs2][Chemacs]] from =$EMACSDIR=.
 
-2. Install Doom there: ~$ git clone https://github.com/doomemacs/doomemacs
+2. Install Doom there: ~$ git clone https://github.com/doomemacs/core
    \~/.config/emacs~
 
 3. Move =~/.emacs-profiles.el= to =~/.config/doom/profiles.el= and transform the

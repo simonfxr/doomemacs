@@ -10,10 +10,11 @@
 ;;; DSL
 
 (defun elc-check-dir (dir)
-  (dolist (file (directory-files-recursively dir "\\.elc$"))
-    (when (file-newer-than-file-p (concat (file-name-sans-extension file) ".el")
-                                  file)
-      (warn! "%s is out-of-date" (abbreviate-file-name file)))))
+  (when (file-directory-p dir)
+    (dolist (file (directory-files-recursively dir "\\.elc$"))
+      (when (file-newer-than-file-p (concat (file-name-sans-extension file) ".el")
+                                    file)
+        (warn! "%s is out-of-date" (abbreviate-file-name file))))))
 
 (defmacro assert! (condition message &rest args)
   `(unless ,condition
@@ -200,7 +201,7 @@ in."
 
   (print! (start "Checking for stale elc files..."))
   (elc-check-dir doom-core-dir)
-  (elc-check-dir doom-modules-dir)
+  (mapc #'elc-check-dir doom-module-load-path)
   (elc-check-dir (doom-path doom-local-dir "straight" straight-build-dir))
 
   (print! (start "Checking for problematic git global settings..."))

@@ -379,10 +379,11 @@ Prevents pushing if there are unrebased or WIP commits."
 ;; DEPRECATED: Will be made project-specific in v3.
 (defun doom-ci-module-scopes (scope _plist)
   "Checks if SCOPE is a valid module scope."
-  (doom-glob
-   doom-modules-dir (if (string-prefix-p ":" scope)
-                        (format "%s" (substring scope 1))
-                      (format "*/%s" scope))))
+  (cl-loop for dir in (cdr doom-module-load-path)
+           if (doom-glob dir (if (string-prefix-p ":" scope)
+                                 (format "%s" (substring scope 1))
+                               (format "*/%s" scope)))
+           return t))
 
 
 (defun doom-ci--parse-commit (commit-msg)

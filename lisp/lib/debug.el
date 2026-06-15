@@ -309,6 +309,12 @@ ready to be pasted in a bug report on github."
              (cl-loop for (type var _) in (get 'user 'theme-settings)
                       if (eq type 'theme-value)
                       collect var)))
+        (sources
+         ,@(cl-loop for default-directory in (doom-glob doom-emacs-dir "sources/*/")
+                    if (file-exists-p ".git")
+                    collect (cons (or (doom-config `(,default-directory project name) t)
+                                      (file-name-base (directory-file-name default-directory)))
+                                  (cdr (doom-call-process "git" "log" "-1" "--format=%D %h %ci")))))
         (modules
          ,@(or (cl-loop with lastcat = nil
                         for (cat . mod) in (seq-filter #'cdr (doom-module-list))
@@ -323,7 +329,7 @@ ready to be pasted in a bug report on github."
                                 (append
                                  (cond ((null path)
                                         (list '&nopath))
-                                       ((not (file-in-directory-p path doom-modules-dir))
+                                       ((file-in-directory-p path doom-user-dir)
                                         (list '&user)))
                                  (if flags
                                      `(,mod ,@flags)
@@ -387,28 +393,29 @@ FILL-COLUMN determines the column at which lines will be broken."
 (defun doom/version ()
   "Display the running version of Doom core, module sources, and Emacs."
   (interactive)
-  (print! "%s\n%s\n%s"
-          (format "%-13s v%-15s %s"
-                  "GNU Emacs"
-                  emacs-version
-                  emacs-repository-version)
-          (format "%-13s v%-15s %s"
-                  "Doom core"
-                  doom-version
-                  (or (cdr (doom-call-process
-                            "git" "-C" (expand-file-name doom-emacs-dir)
-                            "log" "-1" "--format=%D %h %ci"))
-                      "n/a"))
-          ;; NOTE: This is a placeholder. Our modules will be moved to its own
-          ;;   repo eventually, and Doom core will later be capable of managing
-          ;;   them like package sources.
-          (format "%-13s v%-15s %s"
-                  "Doom modules"
-                  doom-modules-version
-                  (or (cdr (doom-call-process
-                            "git" "-C" (expand-file-name doom-modules-dir)
-                            "log" "-1" "--format=%D %h %ci"))
-                      "n/a"))))
+  (letf! ((defun gitinfo (dir)
+            (let ((default-directory (expand-file-name dir)))
+              (if (locate-dominating-file ".git" default-directory)
+                  (format "%s %s"
+                          (or (cdr (doom-call-process "git" "log" "-1" "--format=%h %cs"))
+                              "-")
+                          (or (cdr (doom-call-process "git" "branch" "--show-current"))
+                              "-"))
+                "[not a git repo]")))
+          (fmt "%-10s v%-10s %s"))
+    (print! fmt "emacs" emacs-version
+            (and (stringp emacs-repository-version)
+                 (substring emacs-repository-version 0 9)))
+    (print! fmt "doom" doom-version (gitinfo doom-emacs-dir))
+    (dolist (dir (cddr doom-module-load-path))
+      (print! fmt
+              (or (doom-config `(,dir modules name))
+                  (doom-config `(,dir project name))
+                  (file-name-nondirectory (expand-file-name ".." dir)))
+              (or (doom-config `(,dir modules version))
+                  (doom-config `(,dir project version))
+                  "n/a")
+              (gitinfo dir)))))
 
 ;;;###autoload
 (defun doom/info ()

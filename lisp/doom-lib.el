@@ -2,6 +2,9 @@
 ;;; Commentary:
 ;;; Code:
 
+(autoload 'map-nested-elt "map")
+
+
 ;;; Custom error types
 (define-error 'doom-error "An unexpected Doom error")
 (dolist (type '((doom-font-error "Could not find a font on your system" doom-error)
@@ -132,7 +135,6 @@ list is returned as-is."
 ;;
 ;;; Public library
 
-(define-obsolete-function-alias 'doom-enlist 'ensure-list "2.1.0")
 
 (defun doom-unquote (exp)
   "Return EXP unquoted."
@@ -197,14 +199,14 @@ Return non-nil if loading the file succeeds."
      (setq path (locate-file path load-path (get-load-suffixes)))
      (if (not (and path (featurep 'doom)))
          (signal (car e) (cdr e))
-       (cl-loop for (err . dir)
-                in `((doom-cli-error     . ,(expand-file-name "cli" doom-core-dir))
-                     (doom-core-error    . ,doom-core-dir)
-                     (doom-user-error    . ,doom-user-dir)
-                     (doom-profile-error . ,doom-profile-dir)
-                     (doom-module-error  . ,doom-modules-dir))
-                if (file-in-directory-p path dir)
-                do (signal err (list (file-relative-name path (expand-file-name "../" dir))
+       (cl-loop for (err . dirs)
+                in `((doom-cli-error     ,(expand-file-name "cli" doom-core-dir))
+                     (doom-core-error    ,doom-core-dir)
+                     (doom-user-error    ,doom-user-dir)
+                     (doom-profile-error ,doom-profile-dir)
+                     (doom-module-error  ,@(cdr doom-module-load-path)))
+                if (cl-find-if (lambda (dir) (file-in-directory-p path dir)) dirs)
+                do (signal err (list (file-relative-name path (expand-file-name "../" it))
                                      e)))))))
 
 (defun doom-require (feature &optional filename noerror)
@@ -220,32 +222,6 @@ Can also load Doom's subfeatures, e.g. (doom-require \\='doom-lib \\='files)"
                                (symbol-name filename))
            (symbol-name feature))
          noerror))))
-
-;;; DEPRECATED: Remove in v3 (where the envvar file will be an elisp file)
-(defun doom-load-envvars-file (file &optional noerror)
-  "Read and set envvars from FILE.
-If NOERROR is non-nil, don't throw an error if the file doesn't exist or is
-unreadable. Returns the names of envvars that were changed."
-  (if (null (file-exists-p file))
-      (unless noerror
-        (signal 'file-error (list "No envvar file exists" file)))
-    (with-temp-buffer
-      (insert-file-contents file)
-      (when-let* ((env (read (current-buffer))))
-        (let ((tz (getenv-internal "TZ")))
-          (setq-default
-           process-environment
-           (append env (default-value 'process-environment))
-           exec-path
-           (append (split-string (getenv "PATH") path-separator t)
-                   (list exec-directory))
-           shell-file-name
-           (or (getenv "SHELL")
-               (default-value 'shell-file-name)))
-          (when-let* ((newtz (getenv-internal "TZ")))
-            (unless (equal tz newtz)
-              (set-time-zone-rule newtz))))
-        env))))
 
 (defvar doom--hook nil)
 (defun doom-run-hook (hook)
@@ -373,8 +349,6 @@ TRIGGER-HOOK is a list of quoted hooks and/or sharp-quoted functions."
   (let (file-name-handler-alist)
     (file-name-directory (macroexpand '(file!)))))
 
-(define-obsolete-function-alias 'letenv! 'with-environment-variables "2.1.0")
-
 (put 'defun* 'lisp-indent-function 'defun)
 (defmacro letf! (bindings &rest body)
   "Temporarily rebind function, macros, and advice in BODY.
@@ -474,9 +448,6 @@ echo-area, but not to *Messages*."
         `(let ((inhibit-message t)
                (save-silently t))
            (prog1 ,@forms (message ""))))))
-
-(define-obsolete-function-alias 'eval-if! 'static-if "2.1.0")
-(define-obsolete-function-alias 'eval-when! 'static-when "2.1.0")
 
 (defmacro versionp! (v1 comp v2 &rest comps)
   "Perform compound version checks.
@@ -683,9 +654,9 @@ See `general-key-dispatch' for what other arguments it accepts in BRANCHES."
   `(doom-struct doom-module ,@fields))
 
 
-;;; `doom-rcfile-read'
+;;; `doom-config'
 
-(defvar doom-rcfile-read-functions
+(defvar doom-config-read-functions
   `(;;,(lambda (type version alist) (list version body))
     ,(lambda (type version alist)
        (pcase type
@@ -693,132 +664,101 @@ See `general-key-dispatch' for what other arguments it accepts in BRANCHES."
           (setq alist
                 (mapcar (lambda (p)
                           (cons (car p)
-                                (doom-rcfile--normalize 'profile version (cdr p))))
+                                (doom-config--normalize 'profile version (cdr p))))
                         (alist-get 'profiles alist))))
          ('project
           (setf (alist-get 'profiles alist)
                 (mapcar (lambda (p)
                           (cons (car p)
-                                (doom-rcfile--normalize 'profile version (cdr p))))
-                        (alist-get 'profiles alist)))
-          (setf (alist-get 'sources alist)
-                (mapcar (lambda (s)
-                          (cons (car s)
-                                (doom-rcfile--normalize 'source version (cdr s))))
-                        (alist-get 'sources alist)))))
+                                (doom-config--normalize 'profile version (cdr p))))
+                        (alist-get 'profiles alist))
+                (alist-get 'modules alist)
+                (mapcar (lambda (m)
+                          (cons (car m)
+                                (doom-config--normalize 'module version (cdr m))))
+                        (alist-get 'modules alist)))))
        (list version alist)))
-  "A list of functions to transform files read by `doom-rcfile-read'.
+  "A list of functions to transform files read by `doom-config'.
 
 Each function takes three arguments: TYPE VERSION ALIST, and must return
 (VERSION ALIST) to pass to the next function or t/nil (which are ignored). TYPE
-is one of `project', `module', `source', `profile', or `profiles', corresponding
-to each rcfile that Doom recognizes (e.g. .doom, .doommodule, .doomsource, etc).
+is one of `project', `module', `modules', `profile', or `profiles',
+corresponding to each rcfile that Doom recognizes (e.g. .doom, .doommodule,
+.doommodules, etc).
 
 The primary purpose of functions in this list is to resolve inter-version
 incompatibilities introduced in future versions of Doom.")
 
-(defvar doom-rcfile--cache (make-hash-table :test 'equal))
-
-(defconst doom-rcfile--alist
+(defconst doom-config--alist
   `((".doom" . project)
     (".doommodule" . module)
-    (".doomsource" . source)
+    (".doommodules" . modules)
     (".doomprofile" . profile)
     (".doomprofiles" . profiles)))
 
-(defun doom-rcfile (type)
-  "Return the filename for rcfile TYPE.
-
-Should be one of the CDRs of `doom-rcfile--alist'."
-  (car (rassq type doom-rcfile--alist)))
-
-(defun doom-rcfile-locate (file dir &optional dir?)
-  "Return the file location of FILE above DIR.
-
-if DIR? is non-nil, treat FILE a directory path."
-  (when (symbolp file)
-    (setq file (doom-rcfile file)))
-  (when-let* ((dir (locate-dominating-file dir file)))
-    (if dir?
-        dir
-      (file-name-concat dir file))))
-
-(defun doom-rcfile--normalize (type compat alist &optional key)
-  "Ensure ALIST is processed through `doom-rcfile-read-functions'.
+(defun doom-config--normalize (type compat alist)
+  "Ensure ALIST is processed through `doom-config-read-functions'.
 
 This ensures any changes to ALIST's spec (according to TYPE) is resolved for the
 current version of Doom."
-  (if key
-      (setf (alist-get key alist)
-            (cl-loop with subalist = (alist-get key alist)
-                     for fn in doom-rcfile-read-functions
-                     if (funcall fn type compat (doom-copy subalist t))
-                     do (when (consp it)
-                          (setq compat (car it))
-                          (setf (alist-get key alist) subalist))
-                     finally return alist))
-    (cl-loop for fn in doom-rcfile-read-functions
-             if (funcall fn type compat (doom-copy alist t))
-             do (if (consp it) (pcase-setq `(,compat ,alist) it))
-             finally return alist)))
+  (cl-loop for fn in doom-config-read-functions
+           if (funcall fn type compat (doom-copy alist t))
+           do (if (consp it)
+                  (setq compat (car it)
+                        alist  (cadr it)))
+           finally return alist))
 
-(defun doom-rcfile-read (file &optional dir type nocache?)
-  "Return the alist contained in Doom config FILE in or above DIR.
+(defun doom-config (keys &optional nocache?)
+  "Return the alist contained in a Doom dotfile.
 
-Each of Doom's dotfiles are expected to be in the same format: a version string
+KEYS can be a symbol or list thereof, the first symbol of which should be one of
+`project', `module', `modules', `profile', or `profiles' (see
+`doom-config--alist' for what files each correspond to). The rest of the symbols
+represent the nested keys to fetch from that config file.
+
+Doom's dotfiles are expected to be in the same format: a version string
 \\=(signifying what version of Doom it was generated from) followed by an
 unquoted alist which may contain comma-interpolated elisp forms which this
-function will evaluate (and cache) before returning it.
-
-FILE can either be a file name (with no directory component), a single absolute
-path (but then TYPE is required), a symbol (one of the keys in
-`doom-rcfile--alist'), or a cons cell (FILE . KEY) where KEY is the alist key
-sub-entry to return. KEY can also be a list of symbols to access a nested
-sub-entry.
-
-DIR is the directory to start searching from, walking up file tree in search of
-FILES. If FILES is an absolute path, its file name will be searched for starting
-from its directory (or otherwise from DIR, if specified).
-
-With TYPE, you can override how this function treats FILE (when passing it to
-`doom-rcfile-read-functions'. It is required if FILE is not a symbol.
+function will evaluate (and cache) before returning it. The first element of
+KEYS can be a string path to a directory, which will set the `default-directory'
+for the rest of the function.
 
 If NONCACHE? is non-nil, the cached alist will be ignored and the target FILE
 will be reread (and re-cached).
 
-Consults `doom-rcfile-read-functions' to resolve any inter-version compatibility
-issues"
-  (let (keys)
-    (when (consp file)
-      (setq keys (cdr file)
-            file (car file)))
-    (when (and file (symbolp file))
-      (setq type (or type file)
-            file (doom-rcfile file)))
-    (when-let* ((path (if file (doom-rcfile-locate file dir))))
-      (or (if (not nocache?) (gethash path doom-rcfile--cache))
-          (when-let*
-              ((forms (doom-file-read path :by `(read . 2)))
-               (rc (let ((v (pop forms)) (f (car forms)))
-                     (when (and v (not (stringp v)))
-                       (push v f)
-                       (setq v doom-version))
-                     (cons
-                      v (doom-rcfile--normalize
-                         (or type
-                             (cdr (assoc (file-name-nondirectory file)
-                                         doom-rcfile--alist)))
-                         v (when (listp f)
-                             (let ((default-directory
-                                    (directory-file-name (file-name-directory path))))
-                               (eval `(backquote ,f) t))))))))
-            (puthash path rc doom-rcfile--cache)
-            (cond ((null keys) (cdr rc))
-                  ((symbolp keys) (cdr (assq keys (cdr rc))))
-                  ((listp keys) (map-nested-elt (cdr rc) keys))))))))
+Consults `doom-config-read-functions' to resolve any inter-version compatibility
+issues."
+  (declare (side-effect-free t))
+  (cl-check-type keys (or list symbol))
+  (when-let*
+      ((keys (if (symbolp keys) (list keys) (copy-sequence keys)))
+       (dir  (if (stringp (car keys)) (pop keys) default-directory))
+       (type (pop keys))
+       (file (or (car (rassq type doom-config--alist))
+                 (doom-core-error 'invalid-config-type type)))
+       (dir  (locate-dominating-file dir file))
+       (path (file-name-concat dir file))
+       (cache (get 'doom-config 'cache))
+       (rc (or (if (not nocache?) (gethash path cache))
+               (when-let*
+                   ((forms (doom-file-read path :by `(read . 2))))
+                 (puthash
+                  path (let ((v (pop forms)) (f (car forms)))
+                         (when (and v (not (stringp v)))
+                           (push v f)
+                           (setq v doom-version))
+                         (cons
+                          v (doom-config--normalize
+                             type v (if (listp f) (eval `(backquote ,f) t)))))
+                  cache)))))
+    (cond ((null keys) (cdr rc))
+          ((symbolp keys) (cdr (assq keys (cdr rc))))
+          ((listp keys) (map-nested-elt (cdr rc) keys)))))
+(put 'doom-config 'cache (make-hash-table :test 'equal))
 
 
 ;;; Loading
+
 (defmacro add-load-path! (&rest dirs)
   "Add DIRS to `load-path', relative to the current file.
 The current file is the file from which `add-to-load-path!' is used."
@@ -1424,16 +1364,18 @@ absolute path."
                 (file-exists-p path))
             path)
       (cl-destructuring-bind (group . module) (doom-module-key key)
-        (let* ((group (doom-keyword-name group))
-               (module (if module (symbol-name module)))
-               (path (file-name-concat group module file)))
+        (when-let*
+            ((default-directory
+              (cl-loop with group = (doom-keyword-name group)
+                       with module = (if module (symbol-name module))
+                       with dir = (file-name-concat group module)
+                       for default-directory in doom-module-load-path
+                       if (file-directory-p dir)
+                       return (expand-file-name dir))))
           (if file
-              ;; PERF: locate-file-internal is a little faster for finding files,
-              ;;   but its interface for finding directories is clumsy.
-              (locate-file-internal path doom-module-load-path '("" ".elc" ".el"))
-            (cl-loop for default-directory in doom-module-load-path
-                     if (file-exists-p path)
-                     return (expand-file-name path))))))))
+              (when (file-exists-p file)
+                (expand-file-name file))
+            default-directory))))))
 
 (defun doom-module-locate-paths (module-list file)
   "Return all existing paths to FILE under each module in MODULE-LIST.
@@ -1450,7 +1392,7 @@ If ENABLED-ONLY?, return nil if the containing module isn't enabled."
   (let* ((file-name-handler-alist nil)
          (path (expand-file-name path)))
     (save-match-data
-      (cond ((string-match "/modules/\\([^/]+\\)/\\([^/]+\\)\\(?:/.*\\)?$" path)
+      (cond ((string-match "/\\(?:modules/\\)+\\([^/]+\\)/\\([^/]+\\)\\(?:/.*\\)?$" path)
              (when-let* ((group (doom-keyword-intern (match-string 1 path)))
                          (name  (intern (match-string 2 path))))
                (and (or (null enabled-only?)

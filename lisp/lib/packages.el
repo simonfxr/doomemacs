@@ -65,7 +65,7 @@ package's name as a symbol, and whose CDR is the plist supplied to its
        ("GIT_CONFIG_GLOBAL" (or (getenv "DOOMGITCONFIG")
                                 "/dev/null")))
     (let ((repo-dir (doom-path straight-base-dir "straight/repos/straight.el"))
-          (repo-url (concat "http" (if gnutls-verify-error "s")
+          (repo-url (concat "http" (if (gnutls-available-p) "s")
                             "://github.com/"
                             (or (plist-get recipe :repo) "radian-software/straight.el")))
           (branch (or (plist-get recipe :branch) straight-repository-branch))
@@ -369,8 +369,8 @@ PACKAGE is installed."
 
 If MODULE-LIST is omitted, read enabled module list in configdepth order (see
 `doom-module-set'). Otherwise, MODULE-LIST may be any symbol (or t) to mean read
-all modules in `doom-modules-dir', including :doom and :user. MODULE-LIST may
-also be a list of module keys."
+all modules, including :doom and :user. MODULE-LIST may also be a list of module
+keys."
   (let ((module-list (cond ((null module-list) (doom-module-list))
                            ((symbolp module-list) (doom-module-list 'all))
                            (module-list)))

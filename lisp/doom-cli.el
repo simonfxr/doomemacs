@@ -1412,14 +1412,15 @@ ARGS are options passed to less. If DOOMPAGER is set, ARGS are ignored."
   (dolist (key (hash-table-keys doom-cli--table))
     (doom-cli-load (gethash key doom-cli--table))))
 
-(cl-defgeneric doom-cli-handle-error (_context e)
-  (when (eq (car e) 'user-error)
-    (print! (red "Error: %s") (cadr e))
-    (print! "\nAborting...")
-    3))
+(cl-defgeneric doom-cli-handle-error (_context type data))
 
-(cl-defmethod doom-cli-handle-error (context (e (head 'doom-cli-wrong-number-of-arguments-error)))
-  (pcase-let ((`(,command ,flag ,args ,min ,max) (cdr e)))
+(cl-defmethod doom-cli-handle-error (_context (_type (eql 'user-error)) data)
+  (print! (red "Error: %s") data)
+  (print! "\nAborting...")
+  3)
+
+(cl-defmethod doom-cli-handle-error (context (type (eql 'doom-cli-wrong-number-of-arguments-error)) data)
+  (pcase-let ((`(,command ,flag ,args ,min ,max) data))
     (print! (red "Error: %S expected %s argument%s, but got %d")
             (or flag (doom-cli-command-string
                       (if (keywordp (car command))
@@ -1431,38 +1432,43 @@ ARGS are options passed to less. If DOOMPAGER is set, ARGS are ignored."
               (format "%d-%d" min max))
             (if (or (= min 0) (> min 1)) "s" "")
             (length args))
-    (doom-cli-call `(:help "--synopsis" "--postamble" ,@(cdr (doom-cli--command context))) context e)
+    (doom-cli-call `(:help "--synopsis" "--postamble" ,@(cdr (doom-cli--command context)))
+                   context (cons type data))
     5))
 
-(cl-defmethod doom-cli-handle-error (context (e (head 'doom-cli-unrecognized-option-error)))
-  (print! (red "Error: unknown option %s") (cadr e))
-  (doom-cli-call `(:help "--synopsis" "--postamble" ,@(cdr (doom-cli--command context))) context e)
+(cl-defmethod doom-cli-handle-error (context (type (eql 'doom-cli-unrecognized-option-error)) data)
+  (print! (red "Error: unknown option %s") (car data))
+  (doom-cli-call `(:help "--synopsis" "--postamble" ,@(cdr (doom-cli--command context)))
+                 context (cons type data))
   5)
 
-(cl-defmethod doom-cli-handle-error (context (e (head 'doom-cli-invalid-option-error)))
-  (pcase-let ((`(,_types ,option ,value ,errors) (cdr e)))
+(cl-defmethod doom-cli-handle-error (context (type (eql 'doom-cli-invalid-option-error)) data)
+  (pcase-let ((`(,_types ,option ,value ,errors) data))
     (print! (red "Error: %s received invalid value %S")
             (string-join (doom-cli-option-switches option) "/")
             value)
     (print! (bold "\nValidation errors:"))
     (dolist (err errors) (print! (item "%s." (fill err))))
-    (doom-cli-call `(:help "--postamble" ,@(cdr (doom-cli--command context))) context e)
+    (doom-cli-call `(:help "--postamble" ,@(cdr (doom-cli--command context)))
+                   context (cons type data))
     5))
 
-(cl-defmethod doom-cli-handle-error (context (e (head 'doom-cli-command-not-found-error)))
-  (let* ((command (cdr e))
+(cl-defmethod doom-cli-handle-error (context (type (eql 'doom-cli-command-not-found-error)) data)
+  (let* ((command data)
          (cli (doom-cli-get command)))
     (cond ((null cli)
            (print! (red "Error: unrecognized command: %s")
                    (doom-cli-command-string command))
-           (doom-cli-call `(:help "--similar" "--postamble" ,@(cdr command)) context e))
+           (doom-cli-call `(:help "--similar" "--postamble" ,@(cdr command))
+                          context (cons type data)))
           ((null (doom-cli-fn cli))
            (print! (red "Error: a subcommand is required"))
-           (doom-cli-call `(:help "--subcommands" "--postamble" ,@(cdr command)) context e)))
+           (doom-cli-call `(:help "--subcommands" "--postamble" ,@(cdr command))
+                          context (cons type data))))
     4))
 
-(cl-defmethod doom-cli-handle-error (_context (e (head 'doom-cli-invalid-prefix-error)))
-  (let ((prefix (cadr e)))
+(cl-defmethod doom-cli-handle-error (_context (type (eql 'doom-cli-invalid-prefix-error)) data)
+  (let ((prefix (car data)))
     (print! (red "Error: `run!' called with invalid prefix %S") prefix)
     (if-let* ((suggested (cl-loop for cli being the hash-value of doom-cli--table
                                   unless (doom-cli-type cli)
@@ -1932,7 +1938,7 @@ errors to `doom-cli-error-file')."
       (doom-log "run!: %s %s" prefix (combine-and-quote-strings args))
       (doom-cli--exit
        (catch 'exit
-         (condition-case-unless-debug e
+         (condition-case e
              (let* ((args (cons (if (getenv "__DOOMDUMP") :dump prefix) args))
                     (context (doom-cli-context-restore (getenv "__DOOMCONTEXT") context))
                     (context (doom-cli-context-parse args context)))
@@ -1940,9 +1946,11 @@ errors to `doom-cli-error-file')."
                (let ((result (doom-cli-context-execute context)))
                  (run-hook-with-args 'doom-cli-after-run-functions context result))
                0)
-           (error
-            (or (doom-cli-handle-error context e)
-                (signal (car e) (cdr e))))))
+           ((doom-cli-error user-error)
+            (doom-cli-handle-error context (car e) (cdr e))
+            2)
+           ((debug error)
+            (signal (car e) (cdr e)))))
        context))))
 
 (defalias 'sh! #'doom-call-process)
@@ -2453,14 +2461,14 @@ OPTIONS:
                               " or ")))))))))
 
 (defcli! (:root :version)
-    ((verbose? ("-v" "--verbose"))
+    ((short? ("-s" "--short"))
      &context _)
-  "Show installed versions of Doom core.
+  "Show versions of Emacs, Doom core, and installed module sources.
 
 OPTIONS:
-  -v, --verbose
-    Also show version (and git info) for GNU Emacs and installed module sources."
-  (if (not verbose?)
+  -s, --short
+    Only show the version number for Doom Core."
+  (if short?
       (print! "%s" doom-version)
     (doom/version)
     (terpri)

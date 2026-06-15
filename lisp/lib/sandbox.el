@@ -108,8 +108,6 @@
                (`vanilla-doom  ; only Doom core
                 `(let ((doom-user-dir "/tmp/does/not/exist"))
                    (require 'doom ,(expand-file-name "doom.el" doom-core-dir))
-                   (let ((doom-module-init-file "__does-not-exist__"))
-                     (require 'doom-start))
                    (setq doom-modules (make-hash-table :test 'equal))
                    (--run--)))
                (`vanilla       ; nothing loaded

@@ -8,7 +8,7 @@
 ;;
 ;;; Variables
 
-(defvar doom-upgrade-url "https://github.com/doomemacs/doomemacs"
+(defvar doom-upgrade-url "https://github.com/doomemacs/core"
   "The git repo url for Doom Emacs.")
 
 (defvar doom-upgrade-remote "_upgrade"
@@ -31,13 +31,14 @@ libraries. It is the equivalent of the following shell commands:
 
     $ cd ~/.emacs.d
     $ git pull --rebase
+    $ git submodule update -f --init --recursive
     $ doom sync -u"
   (let ((force? (doom-cli-context-suppress-prompts-p context)))
     (cond
      (packages?
       (or (zerop (car (sh! "git" "-C" doom-emacs-dir
-                           "submodule" "update" "--init" "--recursive")))
-          (error "Failed to update submodules"))
+                           "submodule" "update" "-f" "--init" "--recursive")))
+          (error "Failed to update submodules. Run `doom upgrade -p` again"))
 
       ;; HACK: It's messy to use straight to upgrade straight, due to the
       ;;   potential for backwards incompatibility, so we staticly check if
@@ -50,11 +51,11 @@ libraries. It is the equivalent of the following shell commands:
           (print! (item "Preparing straight for an update"))
           (delete-directory (doom-path straight-base-dir "straight/repos/straight.el")
                             'recursive)))
-      (call! (append '("sync" "-u")
-                     (if aot? '("--aot"))
-                     (if nobuild? '("-B"))
-                     (if jobs `("-j" ,jobs))))
-      (print! (success "Finished upgrading Doom Emacs")))
+
+      (exit! "doom" "sync" "-u"
+             (if aot? '("--aot"))
+             (if nobuild? '("-B"))
+             (if jobs (format "--jobs=%d" jobs))))
 
      ((doom-cli-upgrade context force? force?)
       ;; Reload Doom's CLI & libraries, in case there were any upstream changes.
@@ -161,8 +162,9 @@ libraries. It is the equivalent of the following shell commands:
 
 (defun doom-upgrade--get-straight-recipe ()
   (with-temp-buffer
-    (insert-file-contents (doom-path doom-core-dir doom-module-packages-file))
-    (when (re-search-forward "(package! straight" nil t)
+    (insert-file-contents (doom-module-locate-path '(:doom) doom-module-packages-file))
+    (if (not (re-search-forward "(package! straight" nil t))
+        t
       (goto-char (match-beginning 0))
       (let ((sexp (sexp-at-point)))
         (plist-put sexp :recipe

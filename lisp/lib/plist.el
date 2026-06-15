@@ -20,9 +20,6 @@
 ;;; Library
 
 ;;;###autoload
-(define-obsolete-function-alias 'doom-plist-get #'cl-getf "2.1.0")
-
-;;;###autoload
 (defun doom-plist-map (fn plist)
   "Map FN on each keyword/value pair in PLIST.
 

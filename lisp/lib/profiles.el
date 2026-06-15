@@ -31,11 +31,11 @@ list of paths or profile config files (semi-colon delimited on Windows).")
 (defvar doom-profile-load-file
   ;; REVIEW: Derive from `doom-data-dir' in v3
   (expand-file-name
-   (format (or (getenv-internal "DOOMPROFILELOADFILE")
-               (file-name-concat (if doom--system-windows-p "doomemacs/data" "doom")
-                                 "profiles.%d.el"))
-           emacs-major-version)
-   (or (if doom--system-windows-p (getenv-internal "LOCALAPPDATA"))
+   (or (getenv-internal "DOOMPROFILELOADFILE")
+       (file-name-concat (if doom--system-windows-p "doomemacs/data" "doom")
+                         "profiles.el"))
+   (or (if doom--system-windows-p
+           (getenv-internal "LOCALAPPDATA"))
        (getenv-internal "XDG_DATA_HOME")
        "~/.local/share"))
   "Where Doom writes its interactive profile loader script.
@@ -122,8 +122,7 @@ cannot bootload from an arbitrary location."
                                      `(,val)
                                    `(,(abbreviate-file-name path) ,val))))
                        (cons `(user-emacs-directory :path ,@val)
-                             (doom-rcfile-read
-                              'profile (doom-path path subdir)))))
+                             (doom-config `(,(doom-path path subdir) profile)))))
                profiles
                :test #'eq
                :key #'car)))))
@@ -287,7 +286,7 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
             (prin1 `(when (and (or initial-window-system
                                    (daemonp))
                                doom-env-file)
-                      (doom-load-envvars-file doom-env-file 'noerror))
+                      (doom-load doom-env-file t))
                    (current-buffer))
             (prin1 `(with-doom-context '(module init)
                       (doom-load (file-name-concat doom-user-dir ,doom-module-init-file) t))
@@ -303,6 +302,7 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
                       ;; init file.
                       (when (or (doom-context-p 'startup)
                                 (doom-context-p 'reload))
+                        (require 'doom-emacs)
                         ,@(cl-loop for (_ genfn initfn) in doom-profile-generators
                                    if initfn
                                    if (functionp genfn)
@@ -370,20 +370,13 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
     (letf! ((defun module-loader (key file)
               (let ((noextfile (file-name-sans-extension file)))
                 `(with-doom-module ',key
-                   ,(pcase key
-                      ('(:doom . nil)
-                       `(doom-load
-                         (file-name-concat
-                          doom-core-dir ,(file-name-nondirectory noextfile))
-                         t))
-                      ('(:user . nil)
-                       `(doom-load
-                         (file-name-concat
-                          doom-user-dir ,(file-name-nondirectory noextfile))
-                         t))
-                      (_
-                       (when (doom-file-cookie-p file "if" t)
-                         `(doom-load ,(abbreviate-file-name noextfile) t)))))))
+                   ,(if (equal key '(:user . nil))
+                        `(doom-load
+                          (file-name-concat
+                           doom-user-dir ,(file-name-nondirectory noextfile))
+                          t)
+                      (when (doom-file-cookie-p file "if" t)
+                        `(doom-load ,(abbreviate-file-name noextfile) t))))))
             (defun module-list-loader (modules file)
               (cl-loop for key in modules
                        if (doom-module-locate-path key file)
