@@ -661,6 +661,14 @@ tell you about it. Very annoying. This prevents that."
   (add-hook 'after-make-frame-functions #'doom--init-menu-bar-on-macos-h))
 
 
+;;; ** Disable mode-line & line numbers in some modes
+
+;; Hide mode-line and line numbers in completion popups and MAN pages because
+;; they serve little purpose there and only take up space.
+(add-hook! '(Man-mode-hook completion-list-mode-hook) #'mode-line-invisible-mode)
+(add-hook! '(Man-mode-hook completion-list-mode-hook) #'doom-disable-line-numbers-h)
+
+
 ;;; ** Scrolling
 
 (setq hscroll-margin 2
@@ -1737,14 +1745,6 @@ and whether the line count of the buffer exceeds that matching entry in
     '("*Compile-Log*" "*inferior-lisp*" "*Fuzzy Completions*"
       "*Apropos*" "*Help*" "*cvs*" "*Buffer List*" "*Ibuffer*"
       "*esh command on file*")))
-
-
-;;; ** Misc
-
-;; Hide mode-line and line numbers in completion popups and MAN pages because
-;; they serve little purpose there and only take up space.
-(add-hook! '(Man-mode-hook completion-list-mode-hook) #'mode-line-invisible-mode)
-(add-hook! '(Man-mode-hook completion-list-mode-hook) #'doom-disable-line-numbers-h)
 
 
 ;;
