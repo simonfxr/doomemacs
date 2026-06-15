@@ -1172,7 +1172,7 @@ Emacs' batch library lacks an implementation of the exec system call."
          (persisted-env
           (cl-remove-if-not
            #'cdr (append
-                  `(("DOOMPROFILE" . ,(doom-profile->id doom-profile))
+                  `(("DOOMPROFILE" . ,(if (getenv "DOOMPROFILE") (doom-profile->id doom-profile)))
                     ("EMACSDIR" . ,doom-emacs-dir)
                     ("DOOMDIR" . ,doom-user-dir)
                     ("DEBUG" . ,(if doom-debug-mode (number-to-string doom-log-level)))
