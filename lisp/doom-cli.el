@@ -2075,6 +2075,7 @@ substring is edited more than once."
         current))))
 
 ;;; Help: printers
+(autoload 'format-spec "format-spec")
 ;; TODO: Parameterize optional args with `cl-defun'
 (defun doom-cli-help--print (cli context &optional manpage? noglobal?)
   "Write CLI's documentation in a manpage-esque format to stdout."

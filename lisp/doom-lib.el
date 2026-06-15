@@ -8,10 +8,6 @@
 ;; Is never autoloaded
 (autoload 'map-nested-elt "map")
 
-;; `format-spec' wasn't autoloaded until 28.1
-(unless (fboundp 'format-spec)
-  (autoload 'format-spec "format-spec"))
-
 
 ;;
 ;;; Emacs forwards compatibility
