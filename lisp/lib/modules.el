@@ -35,7 +35,7 @@
                       :depth -115)
     ;; Load $DOOMDIR/init.el, where the user's `doom!' lives, which will inform
     ;; us of all desired modules.
-    (doom-load (file-name-concat doom-user-dir doom-module-init-file)
+    (doom-load (doom-user-dir doom-module-init-file)
                'noerror)))
 
 (cl-defun doom-module--put ((group . name) &rest plist)

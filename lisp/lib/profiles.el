@@ -13,12 +13,13 @@ example: '~/.local/share/doom/_/@/0/'")
   (append
    (when-let* ((path (getenv-internal "DOOMPROFILELOADPATH")))
      (mapcar #'doom-path (split-string-and-unquote path path-separator)))
-   (list (file-name-concat doom-user-dir "profiles.el")
-         (file-name-concat doom-emacs-dir "profiles.el")
-         (expand-file-name "doom-profiles.el" (or (getenv "XDG_CONFIG_HOME") "~/.config"))
+   (list (doom-user-dir "profiles.el")
+         (expand-file-name
+          "doom-profiles.el" (or (getenv "XDG_CONFIG_HOME") "~/.config"))
          (expand-file-name "~/.doom-profiles.el")
-         (file-name-concat doom-user-dir "profiles")
-         (file-name-concat doom-emacs-dir "profiles")))
+         (doom-emacs-dir "profiles.el")
+         (doom-user-dir "profiles")
+         (doom-emacs-dir "profiles")))
   "A list of profile config files or directories that house implicit profiles.
 
 `doom-profiles-initialize' loads and merges all profiles defined in the above
@@ -43,8 +44,7 @@ list of paths or profile config files (semi-colon delimited on Windows).")
 Can be changed externally by setting $DOOMPROFILELOADFILE.")
 
 (defvar doom-profile-cache-file
-  (file-name-concat
-   doom-cache-dir (format "profiles.%s.el" (or (car doom-profile) "@")))
+  (doom-cache-dir (format "profiles.%s.el" (car doom-profile)))
   "Where Doom writes its interactive profile loader script.
 
 Can be changed externally by setting $DOOMPROFILELOADFILE.")
@@ -289,7 +289,7 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
                       (doom-load doom-env-file t))
                    (current-buffer))
             (prin1 `(with-doom-context '(module init)
-                      (doom-load (file-name-concat doom-user-dir ,doom-module-init-file) t))
+                      (doom-load (doom-user-dir ,doom-module-init-file) t))
                    (current-buffer))
             (dolist (file (doom-glob init-dir "*.el"))
               (print-group! :level 'info
@@ -338,7 +338,7 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
                  unless (and site-run-dir (file-in-directory-p path site-run-dir))
                  collect `(add-to-list 'load-path ,path))
       ,@(cl-loop with v = (version-to-list doom-version)
-                 with emacs-dir = (doom-path doom-emacs-dir)
+                 with emacs-dir = (doom-emacs-dir)
                  with ref = (doom-call-process "git" "-C" emacs-dir "rev-parse" "HEAD")
                  with branch = (doom-call-process "git" "-C" emacs-dir "branch" "--show-current")
                  for (var . val)
@@ -372,8 +372,7 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
                 `(with-doom-module ',key
                    ,(if (equal key '(:user . nil))
                         `(doom-load
-                          (file-name-concat
-                           doom-user-dir ,(file-name-nondirectory noextfile))
+                          (doom-user-dir ,(file-name-nondirectory noextfile))
                           t)
                       (when (doom-file-cookie-p file "if" t)
                         `(doom-load ,(abbreviate-file-name noextfile) t))))))

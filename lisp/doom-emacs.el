@@ -3,6 +3,115 @@
 ;;; Code:
 
 ;;
+;;; * Emacs forwards compatibility
+
+(with-no-warnings
+  ;; Introduced in 29.1
+  (unless (boundp 'enable-theme-functions)
+    (defcustom enable-theme-functions nil
+      "Abnormal hook that is run after a theme has been enabled.
+The functions in the hook are called with one parameter -- the
+ name of the theme that's been enabled (as a symbol)."
+      :type 'hook
+      :group 'customize
+      :version "29.1")
+    (defcustom disable-theme-functions nil
+      "Abnormal hook that is run after a theme has been disabled.
+The functions in the hook are called with one parameter -- the
+ name of the theme that's been disabled (as a symbol)."
+      :type 'hook
+      :group 'customize
+      :version "29.1")
+    (define-advice enable-theme (:after (theme) trigger-hooks)
+      (run-hook-with-args 'enable-theme-functions theme))
+    (define-advice disable-theme (:around (fn theme) trigger-hooks)
+      (when (custom-theme-enabled-p theme)
+        (funcall fn theme)
+        (run-hook-with-args 'enable-theme-functions theme))))
+
+  ;; Introduced in 29.1
+  ;; In case of Emacs builds where treesit isn't built in (to avoid void-function
+  ;; errors and verbose, redundant checks everywhere).
+  (unless (fboundp 'treesit-available-p)
+    (defun treesit-available-p ()
+      "Return non-nil if tree-sitter support is built-in and available."
+      nil))
+
+  (unless (fboundp 'treesit-library-abi-version)
+    (defun treesit-library-abi-version (&optional _min-compatible)
+      0))
+
+  (unless (fboundp 'treesit-language-abi-version)
+    (defun treesit-language-abi-version (&optional _lang)
+      nil))
+
+  ;; Introduced in 30.1
+  (unless (fboundp 'major-mode-remap)
+    (defvar major-mode-remap-alist nil)  ; introduced in 29.1
+    (defvar major-mode-remap-defaults nil)
+    (defun major-mode-remap (mode)
+      "Return the function to use to enable MODE."
+      (or (cdr (or (assq mode major-mode-remap-alist)
+                   (assq mode major-mode-remap-defaults)))
+          mode))
+    (defvar-local set-auto-mode--last nil)
+    (define-advice set-auto-mode-0 (:override (mode &optional keep-mode-if-same) backport-major-mode-remap)
+      (unless (and keep-mode-if-same
+                   (or (eq (indirect-function mode)
+                           (indirect-function major-mode))
+                       (and set-auto-mode--last
+                            (eq mode (car set-auto-mode--last))
+                            (eq major-mode (cdr set-auto-mode--last)))))
+        (when mode
+          (funcall (major-mode-remap mode))
+          (unless (eq mode major-mode)
+            (setq set-auto-mode--last (cons mode major-mode)))
+          mode))))
+
+  ;; Introduced in 30.1
+  (unless (boundp 'safe-local-variable-directories)
+    (defvar safe-local-variable-directories ())
+    (define-advice hack-local-variables-filter
+        (:around (fn variables dir-name) backport-safe-local-variable-directories)
+      (let ((enable-local-variables
+             (if (delq nil (mapcar (lambda (dir)
+                                     (and dir-name dir
+                                          (file-equal-p dir dir-name)))
+                                   safe-local-variable-directories))
+                 :all
+               enable-local-variables)))
+        (funcall fn variables dir-name))))
+
+;;; From Emacs 31+
+  (unless (fboundp 'mode-line-invisible-mode)
+    (defvar-local mode-line-invisible--buf-state nil)
+    (define-minor-mode mode-line-invisible-mode
+      "Toggle the mode-line visibility of the current buffer.
+Hide the mode line if it is shown, and show it if it's hidden."
+      :global nil
+      :group 'mode-line
+      (if mode-line-invisible-mode
+          (progn
+            (add-hook 'after-change-major-mode-hook #'mode-line-invisible-mode nil t)
+            (setq mode-line-invisible--buf-state
+                  `(mode-line-format
+                    ,(local-variable-p 'mode-line-format)
+                    ,mode-line-format))
+            (setq-local mode-line-format nil))
+        (remove-hook 'after-change-major-mode-hook #'mode-line-invisible-mode t)
+        (when mode-line-invisible--buf-state
+          (setq mode-line-invisible--buf-state
+                (cl-destructuring-bind (var local val) mode-line-invisible--buf-state
+                  (if local (set var val) (kill-local-variable var)))))
+        (unless mode-line-format
+          (setq-local mode-line-format (default-value 'mode-line-format)))
+        (when (called-interactively-p 'any)
+          (force-mode-line-update))))
+    (put 'mode-line-invisible--buf-state 'permanent-local t)
+    (put 'mode-line-invisible-mode 'permanent-local-hook t)))
+
+
+;;
 ;;; * Variables
 
 (defcustom doom-theme nil
@@ -159,7 +268,7 @@ multiple frames focused at once)."
 ;;; * File/Directory paths
 
 ;; User themes should live in $DOOMDIR/themes, not ~/.emacs.d
-(setq custom-theme-directory (file-name-concat doom-user-dir "themes/"))
+(setq custom-theme-directory (doom-user-dir "themes/"))
 
 ;; Third party themes add themselves to `custom-theme-load-path', but the themes
 ;; living in $DOOMDIR/themes should always have priority.
@@ -170,12 +279,12 @@ multiple frames focused at once)."
 ;; If a packages doesn't use `user-emacs-directory' or `locate-user-emacs-file'
 ;; to set their file/dir variables, then we need to set them ourselves to avoid
 ;; littering in ~/.emacs.d/.
-(setq desktop-dirname  (file-name-concat doom-profile-state-dir "desktop")
-      pcache-directory (file-name-concat doom-profile-cache-dir "pcache/"))
+(setq desktop-dirname  (doom-profile-state-dir t "desktop")
+      pcache-directory (doom-profile-cache-dir t "pcache/"))
 
 ;; Write custom.el settings to $DOOMDIR/custom.el instead of $EMACSDIR/init.el,
 ;; allowing users to version control them and not interfere with Doom init.
-(setq custom-file (file-name-concat doom-user-dir "custom.el"))
+(setq custom-file (doom-user-dir "custom.el"))
 
 (define-advice en/disable-command (:around (fn &rest args) write-to-data-dir)
   "Save safe-local-variables to `custom-file' instead of `user-init-file'.
@@ -354,7 +463,7 @@ Otherwise, `en/disable-command' (in novice.el.gz) is hardcoded to write them to
       delete-old-versions t ; clean up after itself
       kept-old-versions 5
       kept-new-versions 5
-      backup-directory-alist `(("." . ,(file-name-concat doom-profile-cache-dir "backup/")))
+      backup-directory-alist `(("." . ,(doom-profile-cache-dir t "backup/")))
       tramp-backup-directory-alist backup-directory-alist)
 
 ;; But turn on auto-save, so we have a fallback in case of crashes or lost data.
@@ -365,7 +474,7 @@ Otherwise, `en/disable-command' (in novice.el.gz) is hardcoded to write them to
       ;; just deleted, but I believe that's VCS's jurisdiction, not ours.
       auto-save-include-big-deletions t
       ;; Keep it out of `doom-emacs-dir' or the local directory.
-      auto-save-list-file-prefix (file-name-concat doom-profile-cache-dir "autosave/")
+      auto-save-list-file-prefix (doom-profile-cache-dir t "autosave/")
       ;; This resolves two issue while ensuring auto-save files are still
       ;; reasonably recognizable at a glance:
       ;;
@@ -552,6 +661,14 @@ tell you about it. Very annoying. This prevents that."
   (add-hook 'after-make-frame-functions #'doom--init-menu-bar-on-macos-h))
 
 
+;;; ** Disable mode-line & line numbers in some modes
+
+;; Hide mode-line and line numbers in completion popups and MAN pages because
+;; they serve little purpose there and only take up space.
+(add-hook! '(Man-mode-hook completion-list-mode-hook) #'mode-line-invisible-mode)
+(add-hook! '(Man-mode-hook completion-list-mode-hook) #'doom-disable-line-numbers-h)
+
+
 ;;; ** Scrolling
 
 (setq hscroll-margin 2
@@ -711,7 +828,7 @@ tell you about it. Very annoying. This prevents that."
                  '(([C-i] [?\C-i] tab kp-tab)
                    ([C-m] [?\C-m] return kp-return)))
     (define-key
-     input-decode-map fallback
+     key-translation-map fallback
      (cmd! (if (when-let* ((keys (this-single-command-raw-keys)))
                  (and (display-graphic-p)
                       (not (cl-loop for event in events
@@ -1239,7 +1356,7 @@ triggering hooks during startup."
 
 
 ;;;###package bookmark
-(setq bookmark-default-file (file-name-concat doom-profile-data-dir "bookmarks"))
+(setq bookmark-default-file (doom-profile-data-dir t "bookmarks"))
 
 
 ;;;###package comint
@@ -1425,7 +1542,7 @@ triggering hooks during startup."
 
 
 ;;;###package project
-(setq project-list-file (file-name-concat doom-profile-state-dir "projects"))
+(setq project-list-file (doom-profile-state-dir t "projects"))
 (with-eval-after-load 'project
   ;; Not valid vc backends, but I use it to inform (global) file index
   ;; exclusions below and elsewhere.
@@ -1440,7 +1557,7 @@ triggering hooks during startup."
 ;;;###package recentf
 ;; Keep track of recently opened files
 (doom-load-packages-incrementally '(easymenu tree-widget timer recentf))
-(setq recentf-save-file (file-name-concat doom-profile-cache-dir "recentf"))
+(setq recentf-save-file (doom-profile-cache-dir t "recentf"))
 (add-hook 'doom-first-file-hook #'recentf-mode)
 (autoload 'recentf-open-files "recentf" nil t)
 (with-eval-after-load 'recentf
@@ -1487,7 +1604,7 @@ triggering hooks during startup."
 ;;;###package savehist
 ;; persist variables across sessions
 (doom-load-packages-incrementally '(custom))
-(setq savehist-file (file-name-concat doom-profile-cache-dir "savehist"))
+(setq savehist-file (doom-profile-cache-dir t "savehist"))
 (add-hook 'doom-first-input-hook #'savehist-mode)
 (with-eval-after-load 'savehist
   (setq savehist-save-minibuffer-history t
@@ -1521,7 +1638,7 @@ the unwritable tidbits."
 
 ;;;###package saveplace
 ;; persistent point location in buffers
-(setq save-place-file (file-name-concat doom-profile-cache-dir "saveplace"))
+(setq save-place-file (doom-profile-cache-dir t "saveplace"))
 (add-hook 'doom-first-input-hook #'savehist-mode)
 (with-eval-after-load 'savehist
   (defadvice! doom--recenter-on-load-saveplace-a (&rest _)
@@ -1628,14 +1745,6 @@ and whether the line count of the buffer exceeds that matching entry in
     '("*Compile-Log*" "*inferior-lisp*" "*Fuzzy Completions*"
       "*Apropos*" "*Help*" "*cvs*" "*Buffer List*" "*Ibuffer*"
       "*esh command on file*")))
-
-
-;;; ** Misc
-
-;; Hide mode-line and line numbers in completion popups and MAN pages because
-;; they serve little purpose there and only take up space.
-(add-hook! '(Man-mode-hook completion-list-mode-hook) #'mode-line-invisible-mode)
-(add-hook! '(Man-mode-hook completion-list-mode-hook) #'doom-disable-line-numbers-h)
 
 
 ;;

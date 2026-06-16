@@ -48,6 +48,13 @@
 ;; This is further increased elsewhere, where needed (like our LSP module).
 (setq read-process-output-max (* 64 1024))  ; 64kb
 
+;; Performance on Windows is considerably worse than elsewhere. We'll need
+;; everything we can get.
+(when (boundp 'w32-get-true-file-attributes)
+  (setq w32-get-true-file-attributes nil    ; reduce IO ops
+        w32-pipe-read-delay 0               ; faster IPC
+        w32-pipe-buffer-size (* 64 1024)))  ; read more at a time (was 4K)
+
 
 ;;; Emacs Fixes
 
@@ -110,13 +117,6 @@
   ;; useful, and often come from third party packages. They also trigger
   ;; redisplays, affecting startup time.
   (setq ad-redefinition-action 'accept)
-
-  ;; Performance on Windows is considerably worse than elsewhere. We'll need
-  ;; everything we can get.
-  (when (boundp 'w32-get-true-file-attributes)
-    (setq w32-get-true-file-attributes nil    ; decrease file IO workload
-          w32-pipe-read-delay 0               ; faster IPC
-          w32-pipe-buffer-size (* 64 1024)))  ; read more at a time (was 4K)
 
   (unless (daemonp)
     ;; PERF: `file-name-handler-alist' is consulted on every call to `require',

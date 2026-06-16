@@ -15,7 +15,7 @@
   "Hooks run before 'doom sync' synchronizes the user's config with Doom.")
 
 ;; DEPRECATED: Will be removed once `doom-profile' is a struct
-(defvar doom-sync-info-file (file-name-concat doom-profile-data-dir "sync"))
+(defvar doom-sync-info-file (doom-profile-data-dir t "sync"))
 
 
 ;;
@@ -75,7 +75,7 @@ OPTIONS:
       (call! '(profile sync "--all")))
     (run-hooks 'doom-before-sync-hook)
 
-    (print! (start "Synchronizing %S profile..." ) (or (car doom-profile) "default"))
+    (print! (start "Synchronizing %S profile..." ) (car doom-profile))
     (unwind-protect
         (print-group!
           ;; If the user has up/downgraded Emacs since last sync, or copied their
@@ -119,7 +119,7 @@ OPTIONS:
           (cond ((doom-cli-context-get context 'installing)
                  (print! (success "Doom successfully installed!"))
                  (with-temp-buffer
-                   (insert-file-contents (doom-path doom-emacs-dir "static/QUICKSTART_INTRO"))
+                   (insert-file-contents (doom-emacs-dir "static/QUICKSTART_INTRO"))
                    (print! "%s" (buffer-string))))
                 ((doom-cli-context-get context 'upgrading)
                  (print! (success "Doom successfully upgraded!"))))
