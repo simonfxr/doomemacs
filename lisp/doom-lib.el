@@ -1622,13 +1622,15 @@ If ENABLED-ONLY?, return nil if the containing module isn't enabled."
             ((file-in-directory-p path doom-user-dir)
              (cons :user nil))))))
 
+;; DEPRECATED: Remove in v3
 (defun doom-module-load-path (&optional module-load-path)
   "Return a list of file paths to activated modules.
 
 The list is in no particular order and its file paths are absolute. If
 MODULE-DIRS is non-nil, include all modules (even disabled ones) available in
 those directories."
-  (declare (pure t) (side-effect-free t))
+  (declare (side-effect-free t)
+           (obsolete "Use `doom-module-get' in a loop instead" "2.2.0"))
   (mapcar #'doom-module-locate-path
           (doom-module-list (or module-load-path doom-module-load-path))))
 
