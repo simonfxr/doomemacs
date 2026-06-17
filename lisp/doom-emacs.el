@@ -823,29 +823,22 @@ tell you about it. Very annoying. This prevents that."
 ;;   "<tab>" and "<return>"), which are only triggered in GUI frames, so here, I
 ;;   create one for C-i. Won't work in TTY frames, though. Doom's :os tty module
 ;;   has a workaround for that though.
-(defun doom-init-input-decode-map-h ()
-  (pcase-dolist (`(,key ,fallback . ,events)
-                 '(([C-i] [?\C-i] tab kp-tab)
-                   ([C-m] [?\C-m] return kp-return)))
-    (define-key
-     key-translation-map fallback
-     (cmd! (if (when-let* ((keys (this-single-command-raw-keys)))
-                 (and (display-graphic-p)
-                      (not (cl-loop for event in events
-                                    if (cl-position event keys)
-                                    return t))
-                      ;; Use FALLBACK if nothing is bound to KEY, otherwise
-                      ;; we've broken all pre-existing FALLBACK keybinds.
-                      (key-binding
-                       (vconcat (if (= 0 (length keys)) [] (cl-subseq keys 0 -1))
-                                key) nil t)))
-               key fallback)))))
-
-;; `input-decode-map' bindings are resolved on first invokation, and are
-;; frame-local, so they must be rebound on every new frame.
-(if (daemonp)
-    (add-hook 'server-after-make-frame-hook #'doom-init-input-decode-map-h)
-  (doom-init-input-decode-map-h))
+(pcase-dolist (`(,key ,fallback . ,events)
+               '(([C-i] [?\C-i] tab kp-tab)
+                 ([C-m] [?\C-m] return kp-return)))
+  (define-key
+   key-translation-map fallback
+   (cmd! (if (when-let* ((keys (this-single-command-raw-keys)))
+               (and (display-graphic-p)
+                    (not (cl-loop for event in events
+                                  if (cl-position event keys)
+                                  return t))
+                    ;; Use FALLBACK if nothing is bound to KEY, otherwise
+                    ;; we've broken all pre-existing FALLBACK keybinds.
+                    (key-binding
+                     (vconcat (if (= 0 (length keys)) [] (cl-subseq keys 0 -1))
+                              key) nil t)))
+             key fallback))))
 
 
 ;;; ** Universal, non-nuclear escape
@@ -1662,14 +1655,6 @@ the unwritable tidbits."
 files, so this replace calls to `pp' with the much faster `prin1'."
     :around #'save-place-alist-to-file
     (letf! ((#'pp #'prin1)) (funcall fn))))
-
-
-;;;###package server
-(when (display-graphic-p)
-  (add-hook 'doom-after-init-hook #'server-start)
-  (with-eval-after-load 'server
-    (when-let* ((name (getenv "EMACS_SERVER_NAME")))
-      (setq server-name name))))
 
 
 ;;;###package so-long

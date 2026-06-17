@@ -179,11 +179,14 @@ match one of the regexps in EXCLUDE -- a list of strings). If LITERAL is
 non-nil, treat FILES as pre-generated autoload files instead."
   (quiet! ; silence deprecation notices in 30+
     (require 'autoload))
-  (let (autoloads)
+  (let (seen autoloads)
     (dolist (file files (nreverse (delq nil autoloads)))
+      (setq file (file-truename file))
       (when (and (not (seq-find (doom-rpartial #'string-match-p file) exclude))
+                 (not (member file seen))
                  (file-readable-p file))
         (doom-log "loaddefs:scan: %s" file)
+        (push file seen)
         (with-temp-buffer
           (let (subautoloads)
             (if literal
