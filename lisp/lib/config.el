@@ -78,14 +78,18 @@
 (defun doom/reload ()
   "Reloads your private config.
 
-WARNING: This command is experimental! If you haven't configured your config to
-be idempotent, then this could cause compounding slowness or errors.
+WARNING: This command is experimental, and likely always will be! It executes
+\\='doom sync', reloads the active profile, re-evaluates all modules, then your
+config, but this isn't a perfect replication of the startup process (which is
+impossible in Emacs without a hard restart), so any misconfiguration on your
+part can have compounding, deleterious effects that may result in slowness,
+missing keybinds, or breakage. This is the best you can (or should) ever expect
+from a command like this (in any Emacs starter kit, for that matter).
 
-This is experimental! It will try to do as `bin/doom sync' does, but from within
-this Emacs session. i.e. it reload autoloads files (if necessary), reloads your
-package list, and lastly, reloads your private config.el.
+Otherwise, save yourself the headache and simply run \\='doom sync' outside of
+Emacs and restart. That will always work.
 
-Runs `doom-after-reload-hook' afterwards."
+Runs `doom-before-reload-hook' first, then `doom-after-reload-hook' afterwards."
   (interactive)
   (mapc #'require (cdr doom-incremental-packages))
   (doom--if-compile doom-reload-command
