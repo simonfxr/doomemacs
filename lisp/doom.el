@@ -501,10 +501,11 @@ safely cleaned up with \\='doom sync' or \\='doom gc'."
                 plist
                 files
                 print
-                autoloads
-                profiles
-                modules
-                packages))
+                autoloads))
+
+        (require 'doom-profiles)
+        (require 'doom-modules)
+        (require 'doom-packages)
 
         ;; Ensure the CLI framework is ready.
         (require 'doom-cli)

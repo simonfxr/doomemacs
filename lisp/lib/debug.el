@@ -235,9 +235,9 @@
   "Returns diagnostic information about the current Emacs session in markdown,
 ready to be pasted in a bug report on github."
   (require 'vc-git)
-  (doom-require 'doom-lib 'profiles)
-  (doom-require 'doom-lib 'modules)
-  (doom-require 'doom-lib 'packages)
+  (require 'doom-profiles)
+  (require 'doom-modules)
+  (require 'doom-packages)
   (let ((default-directory doom-emacs-dir))
     (letf! ((defun sh (&rest args) (cdr (apply #'doom-call-process args)))
             (defun cat (file &optional limit)

@@ -2,7 +2,7 @@
 ;;; Commentary:
 ;;; Code:
 
-(doom-require 'doom-lib 'packages)
+(require 'doom-packages)
 
 
 ;;

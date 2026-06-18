@@ -2,7 +2,7 @@
 ;;; Commentary:
 ;;; Code:
 
-(doom-require 'doom-lib 'profiles)
+(require 'doom-profiles)
 
 
 ;;

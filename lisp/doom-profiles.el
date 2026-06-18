@@ -1,8 +1,10 @@
-;;; lisp/lib/profiles.el -*- lexical-binding: t; -*-
+;;; lisp/doom-profiles.el -*- lexical-binding: t; -*-
 ;;; Commentary:
 ;;; Code:
 
-;;; File/directory variables
+;;
+;;; * Variables
+
 (defvar doom-profiles-generated-dir doom-data-dir
   "Where generated profiles are kept.
 
@@ -83,13 +85,13 @@ run.")
 
 
 ;;
-;;; Bootstrappers
+;;; * Bootstrappers
 
 ;; (defun doom-profile-initialize (profile &optional project-dir nocache?))
 
 
 ;;
-;;; Helpers
+;;; * Library
 
 (defun doom-profiles-bootloadable-p ()
   "Return non-nil if `doom-emacs-dir' can be a bootloader.
@@ -247,7 +249,7 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
            return t))
 
 
-;;; Generators
+;;; * Generators
 
 (defun doom-profile-generate (&optional _profile _regenerate-only?)
   "Generate profile init files."
@@ -461,5 +463,5 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
               (dolist (path ',(delete-dups info-dirs))
                 (add-to-list 'Info-directory-list path))))))))
 
-(provide 'doom-lib '(profiles))
-;;; profiles.el ends here
+(provide 'doom-profiles)
+;;; doom-profiles.el ends here
