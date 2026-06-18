@@ -160,34 +160,19 @@ the value of the last one, or nil if there are none."
 ;;
 ;;; Errors
 
-;;; Custom error types
 (define-error 'doom-error "An unexpected Doom error")
-(dolist (type '((doom-font-error "Could not find a font on your system" doom-error)
-                (doom-nosync-error "Doom hasn't been initialized yet; did you remember to run 'doom sync' in the shell?" doom-error)
-                (doom-core-error "Unexpected error in Doom's core" doom-error)
-                (doom-cli-error "Unexpected error in Doom's CLI" doom-error)
-                (doom-context-error "Incorrect context error" doom-error)
-                (doom-hook-error "Error in a Doom startup hook" doom-error)
-                (doom-autoload-error "Error in Doom's autoloads file" doom-error)
-                (doom-user-error "Error caused by user's config or system" doom-error)
-                (doom-profile-error "Error while processing profiles" doom-error)
-                (doom-module-error "Error in a Doom module" doom-profile-error)
-                (doom-source-error "Error in a Doom source" doom-profile-error)
-                (doom-package-error "Error with packages" doom-profile-error)))
-  (apply #'define-error type)
-  (fset (car type) (lambda (&rest data) (signal (car type) data))))
-
-(defmacro doom-error (type &rest data)
-  "Signal a Doom error of TYPE with DATA.
-
-TYPE should be a keyword of any of the known doom-*-error errors (e.g. :font,
-:module, etc), or the name of any error."
-  `(signal ,(if (keywordp type)
-                `(quote
-                  ,(or (intern-soft (format "doom-%s-error" (doom-keyword-name type)))
-                       (doom-core-error "Invalid error type" type)))
-              type)
-           (list ,@data)))
+(define-error 'doom-font-error "Could not find a font on your system" 'doom-error)
+(define-error 'doom-nosync-error "Doom hasn't been initialized yet; did you remember to run 'doom sync' in the shell?" 'doom-error)
+(define-error 'doom-core-error "Unexpected error in Doom's core" 'doom-error)
+(define-error 'doom-cli-error "Unexpected error in Doom's CLI" 'doom-error)
+(define-error 'doom-context-error "Incorrect context error" 'doom-error)
+(define-error 'doom-hook-error "Error in a Doom startup hook" 'doom-error)
+(define-error 'doom-autoload-error "Error in Doom's autoloads file" 'doom-error)
+(define-error 'doom-user-error "Error caused by user's config or system" 'doom-error)
+(define-error 'doom-profile-error "Error while processing profiles" 'doom-error)
+(define-error 'doom-module-error "Error in a Doom module" 'doom-profile-error)
+(define-error 'doom-source-error "Error in a Doom source" 'doom-profile-error)
+(define-error 'doom-package-error "Error with packages" 'doom-profile-error)
 
 
 ;;
@@ -954,7 +939,7 @@ issues."
        (dir  (if (stringp (car keys)) (pop keys) default-directory))
        (type (pop keys))
        (file (or (car (rassq type doom-config--alist))
-                 (doom-core-error 'invalid-config-type type)))
+                 (signal 'doom-core-error `(invalid-config-type ,type))))
        (dir  (locate-dominating-file dir file))
        (path (file-name-concat dir file))
        (cache (get 'doom-config 'cache))
@@ -1338,9 +1323,9 @@ CONTEXTS contains invalid contexts."
     (if (cl-loop for context in contexts
                  unless (doom-context-valid-p context)
                  return t)
-        (doom-context-error
-         (cl-remove-if #'doom-context-valid-p contexts)
-         "Unrecognized context")
+        (signal 'doom-context-error
+                (list (cl-remove-if #'doom-context-valid-p contexts)
+                      "Unrecognized context(s)"))
       (let (added)
         (dolist (context contexts)
           (unless (memq context doom-context)
@@ -1356,9 +1341,9 @@ CONTEXTS contains invalid contexts."
 Return list of removed contexts if successful. Throws `doom-context-error' if
 one of CONTEXTS isn't active."
   (if (not (doom-context-p contexts))
-      (doom-context-error
-       doom-context "Attempt to pop missing context"
-       contexts)
+      (signal 'doom-context-error
+              (list "Attempt to pop missing context"
+                    contexts doom-context))
     (let ((current-context (copy-sequence doom-context))
           removed)
       (dolist (context (ensure-list contexts))

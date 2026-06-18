@@ -120,12 +120,13 @@ localleader prefix."
       :prefix doom-localleader-alt-key
       ,@args)))
 
-;; PERF: We use a prefix commands instead of general's
-;;   :prefix/:non-normal-prefix properties because general is incredibly slow
-;;   binding keys en mass with them in conjunction with :states -- an effective
-;;   doubling of Doom's startup time!
-(define-prefix-command 'doom/leader 'doom-leader-map)
-(define-key doom-leader-map [override-state] 'all)
+(unless (doom-context-p 'reload)
+  ;; PERF: We use a prefix commands instead of general's
+  ;;   :prefix/:non-normal-prefix properties because general is incredibly slow
+  ;;   binding keys en mass with them in conjunction with :states -- an effective
+  ;;   doubling of Doom's startup time!
+  (define-prefix-command 'doom/leader 'doom-leader-map)
+  (define-key doom-leader-map [override-state] 'all))
 
 ;; Bind `doom-leader-key' and `doom-leader-alt-key' as late as possible to give
 ;; the user a chance to modify them.
