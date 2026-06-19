@@ -1604,16 +1604,14 @@ If ENABLED-ONLY?, return nil if the containing module isn't enabled."
              (cons :user nil))))))
 
 ;; DEPRECATED: Remove in v3
-(defun doom-module-load-path (&optional module-load-path)
+(defun doom-module-load-path (&optional module-load-path initorder?)
   "Return a list of file paths to activated modules.
 
-The list is in no particular order and its file paths are absolute. If
-MODULE-DIRS is non-nil, include all modules (even disabled ones) available in
-those directories."
-  (declare (side-effect-free t)
-           (obsolete "Use `doom-module-get' in a loop instead" "2.2.0"))
-  (mapcar #'doom-module-locate-path
-          (doom-module-list (or module-load-path doom-module-load-path))))
+The list is in no particular order and its file paths are absolute.
+MODULE-LOAD-PATH can be a list of module tree root directories or `t' (return
+all modules in all known sources, collapsed by precedence)."
+  (declare (side-effect-free t))
+  (mapcar #'doom-module-locate-path (doom-module-list module-load-path initorder?)))
 
 (put :if     'lisp-indent-function 2)
 (put :when   'lisp-indent-function 'defun)

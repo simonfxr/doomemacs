@@ -414,10 +414,8 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
         ,@(doom-autoloads--scan
            (append (doom-glob doom-core-dir "lib/*.el")
                    (cl-loop for dir
-                            in (append
-                                (mapcan (doom-rpartial #'doom-glob "*/*/")
-                                        doom-module-load-path)
-                                (list doom-user-dir))
+                            in (append (doom-module-load-path :all)
+                                       (list doom-user-dir))
                             if (doom-glob dir "autoload.el") collect (car it)
                             if (doom-glob dir "autoload/*.el") append it)
                    (mapcan #'doom-glob doom-autoloads-files))
