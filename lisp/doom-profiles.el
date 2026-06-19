@@ -370,17 +370,15 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
          (init-file   doom-module-init-file)
          (config-file doom-module-config-file))
     (letf! ((defun module-loader (key file)
-              (let ((noextfile (file-name-sans-extension file)))
+              (when (and (file-exists-p file)
+                         (doom-file-cookie file "if" t))
                 `(with-doom-module ',key
-                   ,(if (equal key '(:user . nil))
-                        `(doom-load
-                          (doom-user-dir ,(file-name-nondirectory noextfile))
-                          t)
-                      (when (doom-file-cookie-p file "if" t)
-                        `(doom-load ,(abbreviate-file-name noextfile) t))))))
+                   (doom-load ,(abbreviate-file-name
+                                (file-name-sans-extension file))
+                              t))))
             (defun module-list-loader (modules file)
               (cl-loop for key in modules
-                       if (doom-module-locate-path key file)
+                       if (doom-module-expand-path key file)
                        collect (module-loader key it))))
       ;; FIX: Same as above (see `doom-profile--generate-init-vars').
       `((set 'doom-modules ',doom-modules)
