@@ -557,7 +557,7 @@ safely cleaned up with \\='doom sync' or \\='doom gc'."
   "Finalize the current Doom session, marking the end of its startup process.
 
 Triggers `doom-after-init-hook' and sets `doom-init-time.'"
-  (when (doom-context-pop 'startup)
+  (when (doom-context-p 'startup)
     ;; If the user's already opened something (e.g. with command-line
     ;; arguments), then we should assume nothing about the user's intentions and
     ;; simply treat this session as fully initialized.
@@ -583,7 +583,7 @@ Triggers `doom-after-init-hook' and sets `doom-init-time.'"
         (setq-default gc-cons-threshold (* 16 1024 1024)))
     (if (= (default-value 'gc-cons-percentage) 1.0)
         (setq-default gc-cons-percentage 0.1))
-    t))
+    (doom-context-pop 'startup)))
 
 (defun doom-startup ()
   "Fully load enabled modules and $DOOMDIR/config.el."
