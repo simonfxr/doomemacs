@@ -76,6 +76,10 @@
 ;;   when loading elisp that lack 'lexical-binding: t' header line. Setting it
 ;;   here or in early-init.el is not enough, though I do it anyway.
 
+(unless default-directory
+  (message "Error: executed from a non-existent directory. CD somewhere safe, first!")
+  (kill-emacs 1))
+
 ;; Doom's core sets up everything we need; including `doom-*-dir' variables,
 ;; universal defaults, and autoloads for doom-*-initialize functions.
 (condition-case e
