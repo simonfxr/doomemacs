@@ -54,32 +54,34 @@ Can be changed externally by setting $DOOMPROFILELOADFILE.")
 (defvar doom-profile-env-file-name "init.env.el"
   "The filename for a Doom profile's envvar file.")
 
-(defvar doom-profile-init-dir-name (format "init.%d.d" emacs-major-version)
+(defvar doom-profile-init-dir-name "init.d"
   "The subdirectory of `doom-profile-dir'")
 
 (defvar doom-profile-rcfile ".doomprofile"
   "The filename for local user configuration of a Doom profile.")
 
 ;;; Profile storage variables
-(defvar doom-profile-generators
-  '(("05-vars.auto.el"              doom-profile--generate-vars               doom--startup-vars)
-    ("20-package-envs.auto.el"      doom-profile--generate-package-envs)
-    ("80-loaddefs.auto.el"          doom-profile--generate-loaddefs-doom      doom--startup-loaddefs-doom)
-    ("90-loaddefs-packages.auto.el" doom-profile--generate-loaddefs-packages  doom--startup-loaddefs-packages)
-    ("95-modules.auto.el"           doom-profile--generate-load-modules       doom--startup-modules))
+(define-obsolete-variable-alias 'doom-profile-generators 'doom-profile-generate-functions "2.3.0")
+(defvar doom-profile-generate-functions
+  '(doom-profile--generate-vars
+    doom-profile--generate-loaddefs-doom
+    doom-profile--generate-user-init-loader
+    doom-profile--generate-package-envs
+    doom-profile--generate-loaddefs-packages
+    doom-profile--generate-loaddefs-modules
+    doom-profile--generate-module-loader)
   "An alist mapping file names to generator functions.
 
-The file will be generated in `doom-profile-dir'/`doom-profile-init-dir-name',
-and later combined into `doom-profile-dir' in lexicographical order. These
-partials are left behind in case the use wants to load them directly (for
-whatever use), or for commands to use (e.g.  `doom/reload-autoloads' loads any
-file with a NN-loaddefs[-.] prefix to accomplish its namesake).
+Functions are responsible for generating the profile init files that will be
+concatenated into a single, monolithic one. Init files should be prefixed with a
+two digit number so they execute in the desired order. Init files with the
+following suffixes have special behaviors:
 
-Files with an .auto.el suffix will be automatically deleted whenever the profile
-is regenerated. Users (or Doom CLIs, like `doom env') may add their own
-generators to this list, or to `doom-profile-dir'/`doom-profile-init-dir-name',
-and they will be included in the profile init file next time `doom sync' is
-run.")
+  *.init.el -- will be concatenated verbatim into the profile init file.
+  *.load.el -- will be `doom-load'ed by the profile init file.
+
+These functions are executed in the context of the
+`doom-profile-dir'/`doom-profile-init-dir-name' directory.")
 
 (defvar doom--profiles ())
 
@@ -251,213 +253,232 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
 
 ;;; * Generators
 
-(defun doom-profile-generate (&optional _profile _regenerate-only?)
+(defun doom-profile-generate (&optional profile _regenerate-only?)
   "Generate profile init files."
   (doom-initialize-packages)
-  (let* ((default-directory doom-profile-dir)
-         (init-dir  doom-profile-init-dir-name)
-         (init-file (doom-profile-init-file doom-profile)))
-    (print! (start "(Re)building profile in %s/...") (path default-directory))
+  (let* ((p (or profile doom-profile))
+         (default-directory (doom-profile-init-dir p))
+         (init-dir  (doom-profile-init-dir p doom-profile-init-dir-name))
+         (init-dir* (doom-profile-dir p doom-profile-init-dir-name))
+         (init-file (doom-profile-init-file p)))
+    (print! (start "Generating profile: %s") (doom-profile->id p))
     (condition-case-unless-debug e
       (with-file-modes #o750
         (print-group!
+          (delete-directory init-dir t)
           (make-directory init-dir t)
-          (let ((auto-files (doom-glob init-dir "*.auto.el")))
-            (print! (start "Generating %d init files...") (length doom-profile-generators))
-            (print-group! :level 'info
-              (dolist (file auto-files)
-                (print! (item "Deleting %s...") file)
-                (delete-file file))
-              (pcase-dolist (`(,file ,fn _) doom-profile-generators)
-                (let ((file (doom-path init-dir file)))
+          ;; Where persisted profile files are preserved.
+          (when (file-directory-p init-dir*)
+            (copy-directory init-dir* init-dir nil t t))
+          (let ((default-directory (doom-path init-dir)))
+            ;; TODO: (run-hook-with-args 'doom-profile-generate-functions p)
+            (dolist (fn doom-profile-generate-functions)
+              (if (functionp fn)
+                  (funcall fn p)
+               ;; DEPRECATED: Backwards compatibility. Remove in v3.
+                (pcase-let* ((`(,file ,fn _) fn)
+                             (file (doom-path init-dir file)))
                   (doom-log "Building %s..." file)
-                  (doom-file-write file (funcall fn) :printfn #'prin1)))))
-          (with-file! init-file
-            (insert ";; -*- coding: utf-8; lexical-binding: t; -*-\n"
-                    ";; This file was autogenerated; do not edit it by hand!\n")
-            ;; Doom needs to be synced/rebuilt if either Doom or Emacs has been
-            ;; up/downgraded. This is because byte-code isn't backwards
-            ;; compatible, and many packages (including Doom), bake in absolute
-            ;; paths into their caches that need to be refreshed.
-            (prin1 `(or (equal doom-version ,doom-version)
-                        (error ,(concat
-                                 "The installed version of Doom has changed since the last 'doom sync'.\n\n"
-                                 "Run 'doom sync' to fix this.")
-                               ,doom-version doom-version))
-                   (current-buffer))
-            (prin1 `(when (and (or initial-window-system
-                                   (daemonp))
-                               doom-env-file)
-                      (doom-load doom-env-file t))
-                   (current-buffer))
-            (prin1 `(with-doom-context '(module init)
-                      (doom-load (doom-user-dir ,doom-module-init-file) t))
-                   (current-buffer))
-            (dolist (file (doom-glob init-dir "*.el"))
-              (print-group! :level 'info
-                (print! (start "Reading %s...") file))
-              (doom-file-read file :by 'insert))
-            (prin1 `(defun doom-startup ()
-                      ;; Make sure this only runs at startup to protect us
-                      ;; Emacs' interpreter re-evaluating this file when
-                      ;; lazy-loading dynamic docstrings from the byte-compiled
-                      ;; init file.
-                      (when (or (doom-context-p 'startup)
-                                (doom-context-p 'reload))
-                        (require 'doom-emacs)
-                        ,@(cl-loop for (_ genfn initfn) in doom-profile-generators
-                                   if initfn
-                                   if (functionp genfn)
-                                   collect (list initfn))))
-                   (current-buffer)))
+                  (doom-file-write file (funcall fn) :printfn #'prin1))))
+            (doom-file-write
+             init-file
+             `(";; -*- coding: utf-8; lexical-binding: t; no-byte-compile: t -*-"
+               ";; This file was autogenerated; do not edit it by hand!"
+               (when (and (or initial-window-system
+                              (daemonp))
+                          doom-env-file)
+                 (doom-load doom-env-file t))
+               ,@(cl-loop for file in (doom-glob init-dir "*.el")
+                          do (print! (start "Adding %s...") (filename file))
+                          if (and (or (string-suffix-p ".init.el" file)
+                                      ;; DEPRECATED: Backwards compatibility.
+                                      ;;   Remove in v3.
+                                      (string-suffix-p ".auto.el" file))
+                                  (doom-file-cookie-p file "if" t))
+                          append (doom-file-read file :by 'read*)
+                          else if (string-suffix-p ".load.el" file)
+                          collect `(if ,(doom-file-cookie file "if" t)
+                                       (doom-load ,(abbreviate-file-name file)
+                                                  t)))
+               ;; DEPRECATED: Backwards compatibility. Remove in v3.
+               ,@(cl-loop for fn in doom-profile-generate-functions
+                          if (not (functionp fn))
+                          if (functionp (nth 2 fn))
+                          collect `(add-hook 'doom-startup-functions ',(nth 2 fn) 'append)))))
           (print! (success "Built %s") (filename init-file))))
       (error (delete-file init-file)
              (signal 'doom-autoload-error (list init-file e))))))
 
-(defun doom-profile--generate-vars ()
-  `((defun doom--startup-vars ()
-      (when (doom-context-p 'reload)
-        (set-default-toplevel-value 'load-path (get 'load-path 'initial-value)))
-      ,@(cl-loop for var in '(auto-mode-alist
-                              interpreter-mode-alist
-                              magic-mode-alist
-                              magic-fallback-mode-alist)
-                 collect `(set-default-toplevel-value ',var ',(symbol-value var)))
-      ;; Ensure site lisp entries are placed at the end of `load-path' in
-      ;; interactive sessions, or malformed/strange EMACSLOADPATH values could
-      ;; mess with load order expectations.
-      ,@(cl-loop for path in (reverse (get 'load-path 'initial-value))
-                 collect `(add-to-list 'load-path ,path))
-      ,@(cl-loop with init-load-path = (get 'load-path 'initial-value)
-                 with site-run-dir =
-                 (ignore-errors
-                   (directory-file-name (file-name-directory
-                                         (locate-library site-run-file))))
-                 for path in load-path
-                 unless (member path init-load-path)
-                 unless (file-equal-p path doom-core-dir)
-                 unless (file-in-directory-p path data-directory)
-                 unless (and site-run-dir (file-in-directory-p path site-run-dir))
-                 collect `(add-to-list 'load-path ,path))
-      ,@(cl-loop with v = (version-to-list doom-version)
-                 with emacs-dir = (doom-emacs-dir)
-                 with ref = (doom-call-process "git" "-C" emacs-dir "rev-parse" "HEAD")
-                 with branch = (doom-call-process "git" "-C" emacs-dir "branch" "--show-current")
-                 for (var . val)
-                 in `((major  . ,(nth 0 v))
-                      (minor  . ,(nth 1 v))
-                      (build  . ,(nth 2 v))
-                      (tag    . ,(ignore-errors (cadr (split-string doom-version "-" t))))
-                      (ref    . ,(if (zerop (car ref)) (cdr ref)))
-                      (branch . ,(if (zerop (car branch)) (cdr branch))))
-                 collect `(put 'doom-version ',var ',val)))))
+(defun doom-profile--generate-vars (_profile)
+  (doom-file-write
+   "05-vars.init.el"
+   `((defun doom--startup-vars (_profile)
+       (when (doom-context-p 'reload)
+         (set-default-toplevel-value 'load-path (get 'load-path 'initial-value)))
+       ,@(cl-loop for var in '(auto-mode-alist
+                               interpreter-mode-alist
+                               magic-mode-alist
+                               magic-fallback-mode-alist)
+                  collect `(set-default-toplevel-value ',var ',(symbol-value var)))
+       ;; Ensure site lisp entries are placed at the end of `load-path' in
+       ;; interactive sessions, or malformed/strange EMACSLOADPATH values could
+       ;; mess with load order expectations.
+       ,@(cl-loop for path in (reverse (get 'load-path 'initial-value))
+                  collect `(add-to-list 'load-path ,path))
+       ,@(cl-loop with init-load-path = (get 'load-path 'initial-value)
+                  with site-run-dir =
+                  (ignore-errors
+                    (directory-file-name (file-name-directory
+                                          (locate-library site-run-file))))
+                  for path in load-path
+                  unless (member path init-load-path)
+                  unless (file-equal-p path doom-core-dir)
+                  unless (file-in-directory-p path data-directory)
+                  unless (and site-run-dir (file-in-directory-p path site-run-dir))
+                  collect `(add-to-list 'load-path ,path))
+       ,@(cl-loop with v = (version-to-list doom-version)
+                  with emacs-dir = (doom-emacs-dir)
+                  with ref = (doom-call-process "git" "-C" emacs-dir "rev-parse" "HEAD")
+                  with branch = (doom-call-process "git" "-C" emacs-dir "branch" "--show-current")
+                  for (var . val)
+                  in `((major  . ,(nth 0 v))
+                       (minor  . ,(nth 1 v))
+                       (build  . ,(nth 2 v))
+                       (tag    . ,(ignore-errors (cadr (split-string doom-version "-" t))))
+                       (ref    . ,(if (zerop (car ref)) (cdr ref)))
+                       (branch . ,(if (zerop (car branch)) (cdr branch))))
+                  collect `(put 'doom-version ',var ',val)))
+     (add-hook 'doom-startup-functions #'doom--startup-vars 5))))
 
-(defun doom-profile--generate-load-modules ()
-  (let* ((init-modules-list (doom-module-list nil t))
-         (config-modules-list (doom-module-list))
-         (pre-init-modules
-          (seq-filter (fn! (<= (car (doom-module-get % :depth)) -100))
-                      (remove '(:user . nil) init-modules-list)))
-         (init-modules
-          (seq-filter (fn! (<= 0 (car (doom-module-get % :depth)) 100))
-                      init-modules-list))
-         (config-modules
-          (seq-filter (fn! (<= 0 (cdr (doom-module-get % :depth)) 100))
-                      config-modules-list))
-         (post-config-modules
-          (seq-filter (fn! (>= (cdr (doom-module-get % :depth)) 100))
-                      config-modules-list))
-         (init-file   doom-module-init-file)
-         (config-file doom-module-config-file))
-    (letf! ((defun module-loader (key file)
-              (when (and (file-exists-p file)
-                         (doom-file-cookie file "if" t))
-                `(with-doom-module ',key
-                   (doom-load ,(abbreviate-file-name
-                                (file-name-sans-extension file))
-                              t))))
-            (defun module-list-loader (modules file)
-              (cl-loop for key in modules
-                       if (doom-module-expand-path key file)
-                       collect (module-loader key it))))
-      ;; FIX: Same as above (see `doom-profile--generate-init-vars').
-      `((set 'doom-modules ',doom-modules)
-        (set 'doom-disabled-packages ',doom-disabled-packages)
-        ;; Cache module state and flags in symbol plists for quick lookup by
-        ;; `modulep!' later.
-        ,@(cl-loop
-           for (category . modules) in (seq-group-by #'car config-modules-list)
-           collect
-           `(setplist ',category
-                      (quote ,(cl-loop for (_ . module) in modules
-                                       nconc `(,module ,(doom-module->context (cons category module)))))))
+(defun doom-profile--generate-loaddefs-doom (_profile)
+  (doom-file-write
+   "10-doom-loaddefs.init.el"
+   (doom-autoloads--scan
+    (append (doom-glob doom-core-dir "doom-*.el")
+            (mapcan #'doom-glob doom-autoloads-files))
+    nil)
+   :printfn #'pp))
 
-        (defun doom--startup-modules ()
-          (with-doom-context 'module
-            (let ((old-custom-file custom-file))
-              (with-doom-context 'init
-                ,@(module-list-loader pre-init-modules init-file)
-                (doom-run-hooks 'doom-before-modules-init-hook)
-                ,@(module-list-loader init-modules init-file)
-                (doom-run-hooks 'doom-after-modules-init-hook))
-              (with-doom-context 'config
-                (doom-run-hooks 'doom-before-modules-config-hook)
-                ,@(module-list-loader config-modules config-file)
-                (doom-run-hooks 'doom-after-modules-config-hook)
-                ,@(module-list-loader post-config-modules config-file))
-              (when (eq custom-file old-custom-file)
-                (doom-load custom-file 'noerror)))))))))
+(defun doom-profile--generate-user-init-loader (_profile)
+  (doom-file-write
+   "20-user.init.el"
+   `((with-doom-context '(module init)
+       (doom-load (doom-user-dir ,doom-module-init-file) t)))))
 
-(defun doom-profile--generate-loaddefs-doom ()
-  `((defun doom--startup-loaddefs-doom ()
-      (let ((load-in-progress t))
-        ,@(doom-autoloads--scan
-           (append (doom-glob doom-core-dir "lib/*.el")
-                   (cl-loop for dir
-                            in (append (doom-module-load-path :all)
-                                       (list doom-user-dir))
-                            if (doom-glob dir "autoload.el") collect (car it)
-                            if (doom-glob dir "autoload/*.el") append it)
-                   (mapcan #'doom-glob doom-autoloads-files))
-           nil)))))
+(defun doom-profile--generate-package-envs (_profile)
+  (doom-file-write
+   "30-package-envs.init.el"
+   `((unless noninteractive
+       ,@(cl-loop for (_ . plist) in doom-packages
+                  if (plist-get plist :env)
+                  append (cl-loop for (var . val) in it
+                                  if (and (stringp var) val)
+                                  collect `(setenv ,var ,val)
+                                  else if (and (symbolp var)
+                                               (string-prefix-p "_" (symbol-name var)))
+                                  collect `(setq-default ,var ,val)))))))
 
-(defun doom-profile--generate-package-envs ()
-  (cl-loop for (_ . plist) in doom-packages
-           if (plist-get plist :env)
-           append (cl-loop for (var . val) in it
-                           if (and (stringp var) val)
-                           collect `(setenv ,var ,val)
-                           else if (and (symbolp var)
-                                        (string-prefix-p "_" (symbol-name var)))
-                           collect `(setq-default ,var ,val))))
+(defun doom-profile--generate-loaddefs-modules (_profile)
+  (doom-file-write
+   "60-module-loaddefs.init.el"
+   `((defun doom--startup-loaddefs-modules (_profile)
+       ,@(doom-autoloads--scan
+          (append (doom-glob doom-core-dir "lib/*.el")
+                  (cl-loop for dir
+                           in (append (doom-module-load-path :all t)
+                                      (list doom-user-dir))
+                           if (doom-glob dir "autoload.el") collect (car it)
+                           if (doom-glob dir "autoload/*.el") append it))
+          nil))
+     (add-hook 'doom-startup-functions #'doom--startup-loaddefs-modules 60))))
 
-(defun doom-profile--generate-loaddefs-packages ()
-  `((defun doom--startup-loaddefs-packages ()
-      (let ((load-in-progress t))
-        ,@(doom-autoloads--scan
-           ;; Create a list of packages starting with the Nth-most dependencies
-           ;; by walking the package dependency tree depth-first. This ensures
-           ;; any load-order constraints in package autoloads are always met.
-           (let (packages)
-             (letf! (defun* walk-packages (pkglist)
-                      (cond ((null pkglist) nil)
-                            ((stringp pkglist)
-                             (walk-packages (nth 1 (gethash pkglist straight--build-cache)))
-                             (cl-pushnew pkglist packages :test #'equal))
-                            ((listp pkglist)
-                             (mapc #'walk-packages (reverse pkglist)))))
-               (walk-packages (mapcar #'symbol-name (mapcar #'car doom-packages))))
-             (mapcar #'straight--autoloads-file (nreverse packages)))
-           doom-autoloads-excluded-files
-           'literal))
-      ,@(when-let* ((info-dirs
-                     (cl-loop for dir in load-path
-                              if (file-exists-p (doom-path dir "dir"))
-                              collect dir)))
-          `((with-eval-after-load 'info
-              (info-initialize)
-              (dolist (path ',(delete-dups info-dirs))
-                (add-to-list 'Info-directory-list path))))))))
+(defun doom-profile--generate-loaddefs-packages (_profile)
+  (doom-file-write
+   "70-package-loaddefs.init.el"
+   `((defun doom--startup-loaddefs-packages (_profile)
+       ,@(doom-autoloads--scan
+          ;; Create a list of packages starting with the Nth-most dependencies
+          ;; by walking the package dependency tree depth-first. This ensures
+          ;; any load-order constraints in package autoloads are always met.
+          (let (packages)
+            (letf! (defun* walk-packages (pkglist)
+                     (cond ((null pkglist) nil)
+                           ((stringp pkglist)
+                            (walk-packages (nth 1 (gethash pkglist straight--build-cache)))
+                            (cl-pushnew pkglist packages :test #'equal))
+                           ((listp pkglist)
+                            (mapc #'walk-packages (reverse pkglist)))))
+              (walk-packages (mapcar #'symbol-name (mapcar #'car doom-packages))))
+            (mapcar #'straight--autoloads-file (nreverse packages)))
+          doom-autoloads-excluded-files
+          'literal)
+       ,@(when-let* ((info-dirs
+                      (cl-loop for dir in load-path
+                               if (file-exists-p (doom-path dir "dir"))
+                               collect dir)))
+           `((with-eval-after-load 'info
+               (info-initialize)
+               (dolist (path ',(delete-dups info-dirs))
+                 (add-to-list 'Info-directory-list path))))))
+     (add-hook 'doom-startup-functions #'doom--startup-loaddefs-packages 70))))
+
+(defun doom-profile--generate-module-loader (_profile)
+  (doom-file-write
+   "80-modules.init.el"
+   (let* ((init-modules-list (doom-module-list nil t))
+          (config-modules-list (doom-module-list))
+          (pre-init-modules
+           (seq-filter (fn! (<= (car (doom-module-get % :depth)) -100))
+                       (remove '(:user . nil) init-modules-list)))
+          (init-modules
+           (seq-filter (fn! (<= 0 (car (doom-module-get % :depth)) 100))
+                       init-modules-list))
+          (config-modules
+           (seq-filter (fn! (<= 0 (cdr (doom-module-get % :depth)) 100))
+                       config-modules-list))
+          (post-config-modules
+           (seq-filter (fn! (>= (cdr (doom-module-get % :depth)) 100))
+                       config-modules-list))
+          (init-file   doom-module-init-file)
+          (config-file doom-module-config-file))
+     (letf! ((defun module-loader (key file)
+               (when (and (file-exists-p file)
+                          (doom-file-cookie-p file "if" t))
+                 `(with-doom-module ',key
+                    (doom-load ,(abbreviate-file-name
+                                 (file-name-sans-extension file))))))
+             (defun module-list-loader (modules file)
+               (cl-loop for key in modules
+                        if (or (doom-module-expand-path key file)
+                               (doom-module-locate-path key file))
+                        collect (module-loader key it))))
+       ;; FIX: Same as above (see `doom-profile--generate-init-vars').
+       `((set 'doom-modules ',doom-modules)
+         (set 'doom-disabled-packages ',doom-disabled-packages)
+         ;; Cache module state and flags in symbol plists for quick lookup by
+         ;; `modulep!' later.
+         ,@(cl-loop
+            for (category . modules) in (seq-group-by #'car config-modules-list)
+            collect
+            `(setplist ',category
+              (quote ,(cl-loop for (_ . module) in modules
+                               nconc `(,module ,(doom-module->context (cons category module)))))))
+         (defun doom--startup-modules (_profile)
+           (with-doom-context 'module
+             (let ((old-custom-file custom-file))
+               (with-doom-context 'init
+                 ,@(module-list-loader pre-init-modules init-file)
+                 (doom-run-hooks 'doom-before-modules-init-hook)
+                 ,@(module-list-loader init-modules init-file)
+                 (doom-run-hooks 'doom-after-modules-init-hook))
+               (with-doom-context 'config
+                 (doom-run-hooks 'doom-before-modules-config-hook)
+                 ,@(module-list-loader config-modules config-file)
+                 (doom-run-hooks 'doom-after-modules-config-hook)
+                 ,@(module-list-loader post-config-modules config-file))
+               (when (eq custom-file old-custom-file)
+                 (doom-load custom-file 'noerror)))))
+         (add-hook 'doom-startup-functions #'doom--startup-modules 80))))))
 
 (provide 'doom-profiles)
 ;;; doom-profiles.el ends here

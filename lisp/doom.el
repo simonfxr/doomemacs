@@ -387,6 +387,12 @@ appropriately against `noninteractive' or the `cli' context."
   "Hooks run after module config.el files are loaded (but before the user's)."
   :type 'hook)
 
+(defcustom doom-startup-functions nil
+  "Functions run to start up an interactive session of Doom.
+
+Each function is passed one argument: the doom-profile being started up."
+  :type 'hook)
+
 
 ;;
 ;;; Initializers
@@ -568,6 +574,16 @@ Triggers `doom-after-init-hook' and sets `doom-init-time.'"
     (if (= (default-value 'gc-cons-percentage) 1.0)
         (setq-default gc-cons-percentage 0.1))
     t))
+
+(defun doom-startup ()
+  "Fully load enabled modules and $DOOMDIR/config.el."
+  ;; Make sure this only runs at startup to protect us Emacs' interpreter
+  ;; re-evaluating `doom-startup-functions' when lazy-loading dynamic docstrings
+  ;; from the byte-compiled init file.
+  (when (or (doom-context-p 'startup)
+            (doom-context-p 'reload))
+    (require 'doom-emacs)  ; if called from CLI
+    (run-hook-with-args 'doom-startup-functions doom-profile)))
 
 (defun doom-display-benchmark-h (&optional return-p)
   "Display a benchmark including number of packages and modules loaded.
