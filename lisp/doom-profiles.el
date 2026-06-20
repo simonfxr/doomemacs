@@ -251,7 +251,7 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
            return t))
 
 
-;;; * Generators
+;;; ** Generators
 
 (defun doom-profile-generate (&optional profile _regenerate-only?)
   "Generate profile init files."

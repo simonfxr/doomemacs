@@ -10,7 +10,7 @@
 ;;; Code:
 
 ;;
-;;; Variables
+;;; * Variables
 
 ;; TODO: Implement me
 (defvar doom-test-backend 'ert
@@ -29,7 +29,7 @@ Should be one of:
 
 
 ;;
-;;; Commands
+;;; * Commands
 
 ;; FIXME: Will be fixed in v3.1
 (defcli-stub! test
@@ -40,7 +40,7 @@ Should be one of:
 
 
 ;;
-;;; Helpers
+;;; * Helpers
 
 ;; Nothing here yet
 

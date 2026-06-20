@@ -3,7 +3,7 @@
 ;;; Code:
 
 ;;
-;;; Variables
+;;; * Variables
 
 ;; (defvar doom-env-file
 ;;   (doom-path doom-profile-dir
@@ -48,7 +48,7 @@ variable names to omit from `doom-env-file'.")
 
 
 ;;
-;;; Commands
+;;; * Commands
 
 (defcli! env
     ((allow-only  ("--allow-all"))

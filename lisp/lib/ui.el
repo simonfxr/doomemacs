@@ -1,7 +1,7 @@
 ;;; lisp/lib/ui.el -*- lexical-binding: t; -*-
 
 ;;
-;;; Public library
+;;; * Public library
 
 ;;;###autoload
 (defun doom-resize-window (window new-size &optional horizontal force-p)
@@ -29,7 +29,7 @@ are open."
 
 
 ;;
-;;; Advice
+;;; * Advice
 
 ;;;###autoload
 (defun doom-recenter-a (&rest _)
@@ -58,7 +58,7 @@ In tty Emacs, messages are suppressed completely."
 
 
 ;;
-;;; Hooks
+;;; * Hooks
 
 ;;;###autoload
 (defun doom-apply-ansi-color-to-compilation-buffer-h ()
@@ -98,7 +98,7 @@ In tty Emacs, messages are suppressed completely."
 
 
 ;;
-;;; Commands
+;;; * Commands
 
 (defvar display-line-numbers-type)
 ;;;###autoload

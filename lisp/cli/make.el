@@ -8,12 +8,12 @@
 
 
 ;;
-;;; Variables
+;;; * Variables
 
 
 
 ;;
-;;; Commands
+;;; * Commands
 
 (defcli! make
     ((dryrun? ("--dryrun"))
@@ -50,7 +50,7 @@
 
 
 ;;
-;;; Helpers
+;;; * Helpers
 
 (defmacro doom-make--with-file (file &rest body)
   (declare (indent 1))

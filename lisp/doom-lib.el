@@ -3,16 +3,16 @@
 ;;; Code:
 
 ;;
-;;; Autoload the unautoloaded
+;;; * Autoload the unautoloaded
 
 ;; Is never autoloaded
 (autoload 'map-nested-elt "map")
 
 
 ;;
-;;; Emacs forwards compatibility
+;;; * Emacs forwards compatibility
 
-;;; From Emacs >= 28
+;;; ** From Emacs >= 28
 ;; Introduced in 28.1
 (unless (fboundp 'ensure-list)
   (defun ensure-list (object)
@@ -91,7 +91,7 @@ See also `file-name-sans-extension'."
             ((concat (file-name-sans-extension filename) "." extn))))))
 
 
-;;; From Emacs >= 29
+;;; ** From Emacs >= 29
 ;; Introduced in Emacs 29.1
 (unless (fboundp 'with-memoization)
   (defmacro with-memoization (place &rest code)
@@ -111,7 +111,7 @@ and return the value found in PLACE instead."
 (unless (fboundp 'pos-eol) (defalias 'pos-eol #'line-end-position))
 
 
-;;; From Emacs >= 30
+;;; ** From Emacs >= 30
 ;; Introduced in 30.1
 (unless (fboundp 'static-if)
   (defmacro static-if (condition then-form &rest else-forms)
@@ -126,7 +126,7 @@ enclosed in a `progn' form.  ELSE-FORMS may be empty."
       (cons 'progn else-forms))))
 
 
-;;; From Emacs 31+
+;;; ** From Emacs >= 31
 (unless (fboundp 'static-when)
   (defmacro static-when (condition &rest body)
     "A conditional compilation macro.
@@ -141,7 +141,6 @@ the value of the last one, or nil if there are none."
       (macroexp-warn-and-return (format-message "`static-when' with empty body")
                                 (list 'progn nil nil) '(empty-body static-when) t))))
 
-;;; From Emacs 31+
 (unless (fboundp 'static-unless)
   (defmacro static-unless (condition &rest body)
     "A conditional compilation macro.
@@ -158,7 +157,7 @@ the value of the last one, or nil if there are none."
 
 
 ;;
-;;; Errors
+;;; * Errors
 
 (define-error 'doom-error "An unexpected Doom error")
 (define-error 'doom-font-error "Could not find a font on your system" 'doom-error)
@@ -176,7 +175,7 @@ the value of the last one, or nil if there are none."
 
 
 ;;
-;;; Logging
+;;; * Logging
 
 (defvar doom-inhibit-log (not (or noninteractive init-file-debug))
   "If non-nil, suppress `doom-log' output completely.")
@@ -235,7 +234,7 @@ the value of the last one, or nil if there are none."
 
 
 ;;
-;;; Helpers
+;;; * Helpers
 
 (defun doom--resolve-hook-forms (hooks)
   "Converts a list of modes into a list of hook symbols.
@@ -273,7 +272,7 @@ list is returned as-is."
 
 
 ;;
-;;; Public library
+;;; * Public library
 
 (defun doom-unquote (exp)
   "Return EXP unquoted."
@@ -430,8 +429,7 @@ TRIGGER-HOOK is a list of quoted hooks and/or sharp-quoted functions."
       fn)))
 
 
-;;
-;;; Directory helpers
+;;; ** Directory helpers
 
 ;; These are intentional facsimiles of their final implementations, meant solely
 ;; for forward-compatibility with v3.
@@ -495,8 +493,7 @@ If PROFILE is t, default to the active profile."
                                 emacs-minor-version))))
 
 
-;;
-;;; Deep copying
+;;; ** Deep copying
 
 (cl-defgeneric doom-copy (val &optional deep?)
   "Return a (optionally deep) copy of VAL."
@@ -535,8 +532,7 @@ If PROFILE is t, default to the active profile."
     table))
 
 
-;;
-;;; Sugars
+;;; ** Sugars
 
 (defmacro file! ()
   "Return the file of the file this macro was called."
@@ -685,7 +681,8 @@ Can chain these comparisons by adding more (COMPn Vn) pairs afterwards.
                        =  version-list-=
                        /= version-list-=))
 
-;;; Closure factories
+;;; ** Closure factories
+
 (defmacro lambda! (arglist &rest body)
   "Returns (cl-function (lambda ARGLIST BODY...))
 The closure is wrapped in `cl-function', meaning ARGLIST will accept anything
@@ -858,7 +855,7 @@ See `general-key-dispatch' for what other arguments it accepts in BRANCHES."
   `(doom-struct doom-module ,@fields))
 
 
-;;; `doom-config'
+;;; ** `doom-config'
 
 (defvar doom-config-read-functions
   `(;;,(lambda (type version alist) (list version body))
@@ -961,7 +958,7 @@ issues."
 (put 'doom-config 'cache (make-hash-table :test 'equal))
 
 
-;;; Loading
+;;; ** Loading
 
 (defmacro add-load-path! (&rest dirs)
   "Add DIRS to `load-path', relative to the current file.
@@ -1071,7 +1068,8 @@ to reverse this and trigger `after!' blocks at a more reasonable time."
              (advice-remove fn #',advice-fn)))))))
 
 
-;;; Hooks
+;;; ** Hooks
+
 (defmacro add-transient-hook! (hook-or-function &rest forms)
   "Attaches a self-removing function to HOOK-OR-FUNCTION.
 
@@ -1185,7 +1183,8 @@ If N and M = 1, there's no benefit to using this macro over `remove-hook'.
             collect `(remove-hook ',hook #',fn))))
 
 
-;;; Definers
+;;; ** Definers
+
 (defmacro defadvice! (symbol arglist &optional docstring &rest body)
   "Define an advice called SYMBOL and add it to PLACES.
 
@@ -1227,7 +1226,8 @@ interactively testing (and toggling) advice.
          (advice-remove target #',symbol)))))
 
 
-;;; Types
+;;
+;;; * Types
 
 (cl-defstruct doom-module
   "TODO"
@@ -1254,7 +1254,7 @@ interactively testing (and toggling) advice.
   index key path flags features)
 
 
-;;; `doom-context'
+;;; ** `doom-context'
 
 (defvar doom-context '(t)
   "A list of symbols identifying all active Doom execution contexts.
@@ -1362,7 +1362,7 @@ one of CONTEXTS isn't active."
      ,@body))
 
 
-;;; `doom-module-context'
+;;; ** `doom-module-context'
 
 (defvar doom-module-context (make-doom-module-context)
   "A `doom-module-context' for the module associated with the current file.
@@ -1430,7 +1430,7 @@ Return its PROPERTY, if specified."
       context)))
 
 
-;;; `doom-module'
+;;; ** `doom-module'
 
 (defun doom-module-key (key)
   "Normalize KEY into a (GROUP . MODULE) tuple representing a Doom module key."
@@ -1685,7 +1685,7 @@ For more about modules and flags, see `doom!'."
                     (backquote ,flags) (abbreviate-file-name file))))))))
 
 
-;;; `doom-package'
+;;; ** `doom-package'
 
 (cl-defmacro package!
     (name &rest plist &key built-in recipe ignore _type _pin _disable _env _freeze)
@@ -1840,7 +1840,7 @@ should use it!"
                collect target)))))
 
 
-;;; `doom-profile'
+;;; ** `doom-profile'
 
 (defun doom-profile-key (profile &optional default?)
   "Normalize PROFILE into a (NAME . REF) doom-profile key.

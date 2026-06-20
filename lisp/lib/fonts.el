@@ -18,7 +18,7 @@ If nil, `doom-font' will be used, scaled up by `doom-big-font-increment'. See
 
 
 ;;
-;;; Library
+;;; * Library
 
 ;;;###autoload
 (defun doom-normalize-font (font)
@@ -117,7 +117,7 @@ Doesn't work in terminal Emacs."
 
 
 ;;
-;;; Commands
+;;; * Commands
 
 ;;;###autoload
 (defun doom/reload-font ()

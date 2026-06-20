@@ -24,7 +24,7 @@
 
 
 ;;
-;;; Managements
+;;; * Config reloading
 
 (defmacro doom--if-compile (command on-success &optional on-failure)
   (declare (indent 2))

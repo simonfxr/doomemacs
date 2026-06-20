@@ -193,7 +193,7 @@ in some cases."
 
 
 ;;
-;;; Commands
+;;; * Commands
 
 (defun doom--bol-bot-eot-eol (&optional pos)
   (save-mark-and-excursion
@@ -316,7 +316,7 @@ Respects `require-final-newline'."
 
 
 ;;
-;;; Hooks
+;;; * Hooks
 
 ;;;###autoload
 (defun doom-enable-show-trailing-whitespace-h ()

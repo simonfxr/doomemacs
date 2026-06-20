@@ -1,6 +1,4 @@
 ;;; lisp/lib/packages.el -*- lexical-binding: t; -*-
-;;; Commentary:
-;;; Code:
 
 ;;;###autoload
 (defun doom/reload-packages ()

@@ -6,13 +6,13 @@
 
 
 ;;
-;;; Variables
+;;; * Variables
 
 ;; None yet!
 
 
 ;;
-;;; Commands
+;;; * Commands
 
 (defcli! install
     ((aot?     ("--aot") "Enable ahead-of-time native-compilation (if available)")

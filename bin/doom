@@ -107,7 +107,7 @@
 
 
 ;;
-;;; Entry point
+;;; * Entry point
 
 (defcli! doom (&args _command)
   "A command line interface to Doom Emacs.
@@ -248,7 +248,7 @@ SEE ALSO:
 
 
 ;;
-;;; Load user config + commands
+;;; * Load user config + commands
 
 ;; Load $DOOMDIR/init.el, to read the user's `doom!' block and give users an
 ;; opportunity to customize the CLI environment, if they like. Otherwise, they
@@ -315,7 +315,7 @@ SEE ALSO:
 
 
 ;;
-;;; Let 'er rip
+;;; * Let 'er rip
 
 (run! "doom" (cdr (member "--" argv)))
 

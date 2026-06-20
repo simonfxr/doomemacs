@@ -1,6 +1,4 @@
 ;;; lisp/lib/autoloads.el -*- lexical-binding: t; -*-
-;;; Commentary:
-;;; Code:
 
 (defvar doom-autoloads-excluded-packages ()
   "Which packages to exclude from Doom's autoloads files.
@@ -25,7 +23,7 @@ hoist buggy forms into autoloads.")
 
 
 ;;
-;;; Library
+;;; * Library
 
 (defun doom-autoloads--write (file &rest forms)
   (make-directory (file-name-directory file) 'parents)

@@ -8,12 +8,13 @@
 ;; drop-in replacement.
 ;;
 ;;; Code:
+
 (eval-when-compile (require 'doom)) ; be silent, o'byte-compiler
 (require 'ansi-color)
 
 
 ;;
-;;; Variables
+;;; * Variables
 
 (defvar doom-print-ansi-alist
   '(;; fx
@@ -141,7 +142,7 @@ variable don't survive translation units.")
 
 
 ;;
-;;; Library
+;;; * Library
 
 ;;;###autoload
 (cl-defun doom-print
@@ -248,7 +249,7 @@ based on the print level of the message. For example:
 
 
 ;;
-;;; Helpers
+;;; * Helpers
 
 (defun doom-print--redirect-streams (streamspec level)
   (if (or (eq streamspec t)
