@@ -48,6 +48,7 @@ and Emacs states, and for non-evil users."
 ;; Convenience aliases
 (defalias 'define-key! #'general-def)
 (defalias 'undefine-key! #'general-unbind)
+(defalias 'kbd! #'general-simulate-key)
 ;; Prevent "X starts with non-prefix key Y" errors except at startup.
 (add-hook 'doom-after-modules-init-hook #'general-auto-unbind-keys)
 
