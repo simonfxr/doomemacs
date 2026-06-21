@@ -76,6 +76,10 @@
 ;;   when loading elisp that lack 'lexical-binding: t' header line. Setting it
 ;;   here or in early-init.el is not enough, though I do it anyway.
 
+(unless default-directory
+  (message "Error: executed from a non-existent directory. CD somewhere safe, first!")
+  (kill-emacs 1))
+
 ;; Doom's core sets up everything we need; including `doom-*-dir' variables,
 ;; universal defaults, and autoloads for doom-*-initialize functions.
 (condition-case e
@@ -107,7 +111,7 @@
 
 
 ;;
-;;; Entry point
+;;; * Entry point
 
 (defcli! doom (&args _command)
   "A command line interface to Doom Emacs.
@@ -248,7 +252,7 @@ SEE ALSO:
 
 
 ;;
-;;; Load user config + commands
+;;; * Load user config + commands
 
 ;; Load $DOOMDIR/init.el, to read the user's `doom!' block and give users an
 ;; opportunity to customize the CLI environment, if they like. Otherwise, they
@@ -315,7 +319,7 @@ SEE ALSO:
 
 
 ;;
-;;; Let 'er rip
+;;; * Let 'er rip
 
 (run! "doom" (cdr (member "--" argv)))
 

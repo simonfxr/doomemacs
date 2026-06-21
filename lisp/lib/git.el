@@ -1,6 +1,4 @@
 ;;; lisp/lib/git.el -*- lexical-binding: t; -*-
-;;; Commentary:
-;;; Code:
 
 ;;;###autoload
 (defun doom-git-toplevel (&rest segments)

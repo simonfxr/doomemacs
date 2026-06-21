@@ -1,4 +1,4 @@
-;;; core/lib/docs.el -- a reader mode for Doom's Org docs -*- lexical-binding: t; -*-
+;;; lisp/lib/docs.el -- a reader mode for Doom's docs -*- lexical-binding: t; -*-
 ;;; Commentary:
 ;;
 ;; This file defines `doom-docs-org-mode', a major mode derived from org-mode,
@@ -196,7 +196,7 @@
 
 
 ;;
-;;; `doom-docs-mode'
+;;; * doom-docs-mode
 
 (defun doom-docs--display-menu-h ()
   "Toggle virtual menu line at top of buffer."
@@ -456,7 +456,7 @@ This primes `org-mode' for reading."
 
 
 ;;
-;;; `doom-docs-org-mode'
+;;; * doom-docs-org-mode
 
 ;;;###autoload
 (defun doom-docs-generate-id (&optional force?)

@@ -25,7 +25,7 @@
 
 
 ;;
-;;; Macros
+;;; * Macros
 
 ;;;###autoload
 (defmacro project-file-exists-p! (files &optional base-directory)
@@ -48,7 +48,7 @@ unless they begin with a slash."
 
 
 ;;
-;;; Commands
+;;; * Commands
 
 ;;;###autoload
 (defun doom/find-file-in-other-project (project-root)
@@ -109,7 +109,7 @@ mask DIR)."
 
 
 ;;
-;;; Library
+;;; * Library
 
 ;;;###autoload
 (defun doom-project-p (&optional dir)

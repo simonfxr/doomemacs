@@ -2,11 +2,11 @@
 ;;; Commentary:
 ;;; Code:
 
-(doom-require 'doom-lib 'profiles)
+(require 'doom-profiles)
 
 
 ;;
-;;; doom profile ...
+;;; * doom profile ...
 
 (defcli! ((profile pf)) ()
   "Emacs profile management commands."

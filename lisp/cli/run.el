@@ -3,13 +3,13 @@
 ;;; Code:
 
 ;;
-;;; Variables
+;;; * Variables
 
 ;; None yet!
 
 
 ;;
-;;; Commands
+;;; * Commands
 
 ;; (defcli! run
 ;;     (&rest tasks)
@@ -19,7 +19,7 @@
 
 
 ;;
-;;; Helpers
+;;; * Helpers
 
 
 (provide 'doom-cli '(run))

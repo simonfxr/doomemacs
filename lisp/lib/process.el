@@ -1,6 +1,4 @@
 ;;; lisp/lib/process.el -*- lexical-binding: t; -*-
-;;; Commentary:
-;;; Code:
 
 ;;;###autoload
 (defun doom-call-process (command &rest args)

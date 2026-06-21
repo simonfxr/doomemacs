@@ -89,7 +89,7 @@ Respects `doom-scratch-initial-major-mode' configuration."
 
 
 ;;
-;;; Persistent scratch buffer
+;;; * Persistent scratch buffer
 
 ;;;###autoload
 (defun doom-persist-scratch-buffer-h ()
@@ -129,7 +129,7 @@ Respects `doom-scratch-initial-major-mode' configuration."
 
 
 ;;
-;;; Commands
+;;; * Commands
 
 (defvar projectile-enable-caching)
 ;;;###autoload

@@ -102,7 +102,10 @@
                 "to diagnose common issues with your config and system.")))))
   nil)
 
-;;; Custom features & global constants
+
+;;
+;;; * Custom features & global constants
+
 ;; Doom has its own features that its modules, CLI, and user extensions can
 ;; announce, and don't belong in `features', so they are stored here, which can
 ;; include information about the external system environment.
@@ -143,14 +146,15 @@
   (make-obsolete-variable 'IS-WINDOWS "Use (featurep :system 'windows) instead" "2.1.0")
   (make-obsolete-variable 'IS-BSD     "Use (featurep :system 'bsd) instead" "2.1.0"))
 
+
 ;;
-;;; Load Doom's stdlib
+;;; * Load Doom's stdlib
 
 (require 'doom-lib)
 
 
 ;;
-;;; Core globals
+;;; * Core globals
 
 (defgroup doom nil
   "A development framework for Emacs configurations and Emacs Lisp projects."
@@ -163,7 +167,7 @@
 (defvar doom-init-time nil
   "The time it took, in seconds (as a float), for Doom Emacs to start up.")
 
-;;; DEPRECATED: Will be removed in v3
+;; DEPRECATED: Will be removed in v3
 (defconst doom--noprofile nil)
 (defconst doom--profile-default (cons "_default" "0"))
 
@@ -178,7 +182,9 @@
     doom--profile-default)
   "The active profile as a cons cell (NAME . VERSION).")
 
-;;; Data directory variables
+
+;;; ** Data directory variables
+
 (defvar doom-emacs-dir user-emacs-directory
   "The path to the currently loaded .emacs.d directory. Must end with a slash.")
 
@@ -287,26 +293,28 @@ projects, recent files, bookmarks.
 
 For profile-local state files, use `doom-profile-state-dir' instead.")
 
-;;; Profile file/directory variables
-;;; DEPRECATED: To be replaced with `doom-profile-cache-dir' function in v3
+
+;;; ** Profile file/directory variables
+
+;; DEPRECATED: To be replaced with `doom-profile-cache-dir' function in v3
 (defvar doom-profile-cache-dir
   (file-name-concat
    doom-cache-dir (unless doom--noprofile (car doom-profile)))
   "For profile-local cache files under `doom-cache-dir'.")
 
-;;; DEPRECATED: To be replaced with `doom-profile-data-dir' function in v3
+;; DEPRECATED: To be replaced with `doom-profile-data-dir' function in v3
 (defvar doom-profile-data-dir
   (file-name-concat
    doom-data-dir (unless doom--noprofile (car doom-profile)))
   "For profile-local data files under `doom-data-dir'.")
 
-;;; DEPRECATED: To be replaced with `doom-profile-state-dir' function in v3
+;; DEPRECATED: To be replaced with `doom-profile-state-dir' function in v3
 (defvar doom-profile-state-dir
   (file-name-concat
    doom-state-dir (unless doom--noprofile (car doom-profile)))
   "For profile-local state files under `doom-state-dir'.")
 
-;;; DEPRECATED: To be replaced with `doom-profile-dir' function in v3
+;; DEPRECATED: To be replaced with `doom-profile-dir' function in v3
 (defconst doom-profile-dir
   (file-name-concat doom-profile-data-dir "@" (unless doom--noprofile (cdr doom-profile)))
   "Where generated files for the active profile (for Doom's core) are kept.")
@@ -324,7 +332,9 @@ which is loaded at startup (if it exists). This is helpful if Emacs can't
 \(easily) be launched from the correct shell session (particularly for MacOS
 users).")
 
-;;; Module file variables
+
+;;; ** Module file variables
+
 (defvar doom-module-init-file "init.el"
   "The filename for module early initialization config files.
 
@@ -347,7 +357,7 @@ uses a straight or package.el command directly).")
 
 
 ;;
-;;; Custom hooks
+;;; * Custom hooks
 
 (defcustom doom-before-init-hook ()
   "A hook run after Doom's core has initialized; before user configuration.
@@ -387,9 +397,15 @@ appropriately against `noninteractive' or the `cli' context."
   "Hooks run after module config.el files are loaded (but before the user's)."
   :type 'hook)
 
+(defcustom doom-startup-functions nil
+  "Functions run to start up an interactive session of Doom.
+
+Each function is passed one argument: the doom-profile being started up."
+  :type 'hook)
+
 
 ;;
-;;; Initializers
+;;; * Initializers
 
 (defun doom-initialize (&optional interactive?)
   "Bootstrap the Doom session ahead."
@@ -501,10 +517,11 @@ safely cleaned up with \\='doom sync' or \\='doom gc'."
                 plist
                 files
                 print
-                autoloads
-                profiles
-                modules
-                packages))
+                autoloads))
+
+        (require 'doom-profiles)
+        (require 'doom-modules)
+        (require 'doom-packages)
 
         ;; Ensure the CLI framework is ready.
         (require 'doom-cli)
@@ -540,7 +557,7 @@ safely cleaned up with \\='doom sync' or \\='doom gc'."
   "Finalize the current Doom session, marking the end of its startup process.
 
 Triggers `doom-after-init-hook' and sets `doom-init-time.'"
-  (when (doom-context-pop 'startup)
+  (when (doom-context-p 'startup)
     ;; If the user's already opened something (e.g. with command-line
     ;; arguments), then we should assume nothing about the user's intentions and
     ;; simply treat this session as fully initialized.
@@ -566,7 +583,17 @@ Triggers `doom-after-init-hook' and sets `doom-init-time.'"
         (setq-default gc-cons-threshold (* 16 1024 1024)))
     (if (= (default-value 'gc-cons-percentage) 1.0)
         (setq-default gc-cons-percentage 0.1))
-    t))
+    (doom-context-pop 'startup)))
+
+(defun doom-startup ()
+  "Fully load enabled modules and $DOOMDIR/config.el."
+  ;; Make sure this only runs at startup to protect us Emacs' interpreter
+  ;; re-evaluating `doom-startup-functions' when lazy-loading dynamic docstrings
+  ;; from the byte-compiled init file.
+  (when (or (doom-context-p 'startup)
+            (doom-context-p 'reload))
+    (require 'doom-emacs)  ; if called from CLI
+    (run-hook-with-args 'doom-startup-functions doom-profile)))
 
 (defun doom-display-benchmark-h (&optional return-p)
   "Display a benchmark including number of packages and modules loaded.

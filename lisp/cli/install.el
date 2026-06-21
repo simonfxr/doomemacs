@@ -2,17 +2,17 @@
 ;;; Commentary:
 ;;; Code:
 
-(doom-require 'doom-lib 'packages)
+(require 'doom-packages)
 
 
 ;;
-;;; Variables
+;;; * Variables
 
 ;; None yet!
 
 
 ;;
-;;; Commands
+;;; * Commands
 
 (defcli! install
     ((aot?     ("--aot") "Enable ahead-of-time native-compilation (if available)")

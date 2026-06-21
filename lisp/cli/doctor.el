@@ -7,7 +7,7 @@
 
 
 ;;
-;;; DSL
+;;; * DSL
 
 (defun elc-check-dir (dir)
   (when (file-directory-p dir)
@@ -39,7 +39,7 @@
 
 
 ;;
-;;; CLI commands
+;;; * CLI commands
 
 (defcli! ((doctor doc)) ()
   "Diagnoses common issues on your system.

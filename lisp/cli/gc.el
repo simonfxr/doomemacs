@@ -2,17 +2,17 @@
 ;;; Commentary:
 ;;; Code:
 
-(doom-require 'doom-lib 'packages)
+(require 'doom-packages)
 
 
 ;;
-;;; Variables
+;;; * Variables
 
 ;; None yet!
 
 
 ;;
-;;; Helpers
+;;; * Helpers
 
 (defun doom-gc--build (build)
   (let ((build-dir (straight--build-dir build)))
@@ -124,8 +124,9 @@
                     before-size after-size
                     (- after-size before-size))))))))
 
+
 ;;
-;;; Commands
+;;; * Commands
 
 (defcli! (gc)
     ((nobuilds-p  ("-b" "--no-builds")  "Don't purge unneeded (built) packages")

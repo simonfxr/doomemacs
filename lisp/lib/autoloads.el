@@ -1,6 +1,4 @@
 ;;; lisp/lib/autoloads.el -*- lexical-binding: t; -*-
-;;; Commentary:
-;;; Code:
 
 (defvar doom-autoloads-excluded-packages ()
   "Which packages to exclude from Doom's autoloads files.
@@ -25,7 +23,7 @@ hoist buggy forms into autoloads.")
 
 
 ;;
-;;; Library
+;;; * Library
 
 (defun doom-autoloads--write (file &rest forms)
   (make-directory (file-name-directory file) 'parents)
@@ -180,7 +178,8 @@ non-nil, treat FILES as pre-generated autoload files instead."
   (quiet! ; silence deprecation notices in 30+
     (require 'autoload))
   (let (seen autoloads)
-    (dolist (file files (nreverse (delq nil autoloads)))
+    (dolist (file files `((let ((load-in-progress t))
+                            ,@(nreverse (delq nil autoloads)))))
       (setq file (file-truename file))
       (when (and (not (seq-find (doom-rpartial #'string-match-p file) exclude))
                  (not (member file seen))

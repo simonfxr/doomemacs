@@ -2,11 +2,11 @@
 ;;; Commentary:
 ;;; Code:
 
-(doom-require 'doom-lib 'packages)
+(require 'doom-packages)
 
 
 ;;
-;;; Variables
+;;; * Variables
 
 (defvar doom-after-sync-hook ()
   "Hooks run after 'doom sync' synchronizes the user's config with Doom.")
@@ -19,7 +19,7 @@
 
 
 ;;
-;;; Commands
+;;; * Commands
 
 (defcli! ((sync s))
     ((noenvvar? ("-e") "Don't regenerate the envvar file")
@@ -128,7 +128,7 @@ OPTIONS:
 
 
 ;;
-;;; Helpers
+;;; * Helpers
 
 (defun doom-sync--system-hash ()
   (secure-hash

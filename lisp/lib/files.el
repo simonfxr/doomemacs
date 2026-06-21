@@ -1,6 +1,4 @@
 ;;; lisp/lib/files.el -*- lexical-binding: t; -*-
-;;; Commentary:
-;;; Code:
 
 (defun doom-files--build-checks (spec &optional directory)
   "Converts simple nested series of/and forms into a series of `file-exists-p'
@@ -218,7 +216,7 @@ single file or nested compound statement of `and' and `or' statements."
 
 
 ;;
-;;; File read/write
+;;; * File read/write
 
 (defmacro doom--with-prepared-file-buffer (file coding mode &rest body)
   "Create a temp buffer and prepare it for file IO in BODY."
@@ -387,7 +385,7 @@ some optimizations for `binary' IO."
 
 
 ;;
-;;; Helpers
+;;; * Helpers
 
 (defun doom-files--update-refs (&rest files)
   "Ensure FILES are updated in `recentf', `magit' and `save-place'."
@@ -415,7 +413,7 @@ some optimizations for `binary' IO."
 
 
 ;;
-;;; Commands
+;;; * Commands
 
 ;;;###autoload
 (defun doom/delete-this-file (&optional path force-p)
@@ -590,7 +588,7 @@ which case it will save it without prompting."
 
 
 ;;
-;;; Backports
+;;; * Backports
 
 ;; Introduced in Emacs 29.
 ;;;###autoload

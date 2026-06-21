@@ -1,11 +1,9 @@
 ;;; lisp/lib/plist.el -*- lexical-binding: t; -*-
-;;; Commentary:
-;;; Code:
 
 ;;
-;;; Macros
+;;; * Macros
 
-;;; DEPRECATED: In favor of `cl-callf'
+;; DEPRECATED: In favor of `cl-callf'
 ;;;###autoload
 (defmacro plist-put! (plist &rest rest)
   "Set each PROP VALUE pair in REST to PLIST in-place."
@@ -17,7 +15,7 @@
 
 
 ;;
-;;; Library
+;;; * Library
 
 ;;;###autoload
 (defun doom-plist-map (fn plist)

@@ -3,13 +3,13 @@
 ;;; Code:
 
 ;;
-;;; Variables
+;;; * Variables
 
 ;; None yet!
 
 
 ;;
-;;; Commands
+;;; * Commands
 
 (defcli! info
     ((format ("--lisp" "--json") "What format to dump info into")

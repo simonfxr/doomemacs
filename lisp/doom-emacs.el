@@ -82,7 +82,9 @@ The functions in the hook are called with one parameter -- the
                enable-local-variables)))
         (funcall fn variables dir-name))))
 
-;;; From Emacs 31+
+
+  ;;; ** From Emacs 31+
+
   (unless (fboundp 'mode-line-invisible-mode)
     (defvar-local mode-line-invisible--buf-state nil)
     (define-minor-mode mode-line-invisible-mode
@@ -317,7 +319,9 @@ Otherwise, `en/disable-command' (in novice.el.gz) is hardcoded to write them to
 ;; complete. Not worth the extra stress when on battery power.
 (setq native-comp-async-on-battery-power nil)  ; introduced in Emacs 31.1
 
+
 ;;; ** Stricter security defaults
+
 ;; Emacs is essentially one huge security vulnerability, what with all the
 ;; dependencies it pulls in from all corners of the globe. Let's try to be a
 ;; *little* more discerning.

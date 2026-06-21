@@ -83,7 +83,7 @@ with `set-indent-vars!'."
 
 
 ;;
-;;; Commands
+;;; * Commands
 
 ;;;###autoload
 (defun doom/set-indent-width (width)

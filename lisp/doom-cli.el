@@ -26,7 +26,7 @@ semicolon otherwise)."
 
 
 ;;
-;;; CLI definition variables
+;;; * CLI definition variables
 
 (defvar doom-cli-argument-types
   '(&args
@@ -138,7 +138,9 @@ Recognizies the following properies:
   :error STR
     The message to display if a value fails :test.")
 
-;;; Post-script settings
+
+;;; ** Post-script settings
+
 (defvar doom-cli-exit-commands
   '(;; (:editor  . doom-cli--exit-editor)
     ;; (:emacs   . doom-cli--exit-emacs)
@@ -161,7 +163,9 @@ Only applies if (exit! :pager) or (exit! :pager?) are called."
   :type 'float
   :group 'doom-cli)
 
-;;; Logger settings
+
+;;; ** Logger settings
+
 (defvar doom-cli-log-file-format (doom-state-dir "logs/cli.%s.%s.%s")
   "Where to write any output/log file to.
 
@@ -191,7 +195,9 @@ If set to `always', show the benchmark no matter what.")
 
 Can be `pwsh' if invoked via bin/doom.ps1, or `sh' in unix environments.")
 
-;;; Internal variables
+
+;;; ** Internal variables
+
 (defvar doom-cli--context nil)
 (defvar doom-cli--exit-code 255)
 (defvar doom-cli--group-plist nil)
@@ -199,7 +205,7 @@ Can be `pwsh' if invoked via bin/doom.ps1, or `sh' in unix environments.")
 
 
 ;;
-;;; Custom hooks
+;;; * Custom hooks
 
 (defcustom doom-cli-initialize-hook ()
   "TODO"
@@ -234,7 +240,7 @@ the return value of the executed CLI."
 
 
 ;;
-;;; Errors
+;;; * Errors
 
 (define-error 'doom-cli-definition-error "Invalid CLI definition" 'doom-cli-error)
 (define-error 'doom-cli-autoload-error "Failed to autoload deferred command" 'doom-cli-error)
@@ -246,7 +252,9 @@ the return value of the executed CLI."
 
 
 ;;
-;;; `doom-cli'
+;;; * CLI Library
+
+;;; ** `doom-cli'
 
 (cl-defstruct doom-cli
   "An executable CLI command."
@@ -541,8 +549,7 @@ If RECURSIVE, includes breadcrumbs leading up to COMMANDSPEC."
           ,@(nreverse sections))))))
 
 
-;;
-;;; `doom-cli-option'
+;;; ** `doom-cli-option'
 
 (cl-defstruct doom-cli-option
   "A switch specification dictating the characteristics of a recognized option."
@@ -641,8 +648,7 @@ Throws `doom-cli-invalid-option-error' for illegal values."
    :arguments (doom-cli--read-option-args spec)))
 
 
-;;
-;;; `doom-cli-context'
+;;; ** `doom-cli-context'
 
 (cl-defstruct doom-cli-context
   "A CLI context, containing all state pertinent to the current session."
@@ -952,8 +958,7 @@ considered as well."
             (doom-cli-context-pid context))))
 
 
-;;
-;;; Output management
+;;; ** Output management
 
 (defun doom-cli-debugger (type data &optional context)
   "Print a more presentable backtrace to terminal and write it to file."
@@ -1100,8 +1105,7 @@ benchmark be shown."
                                   seconds)))))))
 
 
-;;
-;;; Session management
+;;; ** Session management
 
 (defun doom-cli-initialize ()
   "TODO"
@@ -1384,8 +1388,7 @@ ARGS are options passed to less. If DOOMPAGER is set, ARGS are ignored."
 ;; (defun doom-cli--exit-emacs (args context))   ; TODO: Launch Emacs subsession
 
 
-;;
-;;; Misc
+;;; ** Misc
 
 (defun doom-cli-load (cli)
   "If CLI is autoloaded, load it, otherwise return it unchanged."
@@ -1478,8 +1481,7 @@ ARGS are options passed to less. If DOOMPAGER is set, ARGS are ignored."
     4))
 
 
-;;
-;;; DSL
+;;; ** DSL
 
 (defmacro defcli! (commandspec arglist &rest body)
   "Defines a CLI command.
@@ -1965,9 +1967,8 @@ errors to `doom-cli-error-file')."
 (defun put! (key val) (doom-cli-context-put doom-cli--context key val))
 
 
-;;
-;;; doom-cli-help
-;;
+;;; ** doom-cli-help
+
 ;; This file defines special commands that the Doom CLI will invoke when a
 ;; command is passed with -?, --help, or --version. They can also be aliased to
 ;; a sub-command to make more of its capabilities accessible to users, with:
@@ -1979,8 +1980,6 @@ errors to `doom-cli-error-file')."
 ;;    (defcli! (:help myscript subcommand) () ...)
 ;;
 ;; And it will be invoked instead of the generic one.
-;;
-;;; Code:
 
 (defun doom-cli-help (cli)
   "Return an alist of documentation summarizing CLI (a `doom-cli')."
@@ -2074,7 +2073,9 @@ substring is edited more than once."
             (aset v0 (- j start) current)))
         current))))
 
-;;; Help: printers
+
+;;; *** Help: printers
+
 (autoload 'format-spec "format-spec")
 ;; TODO: Parameterize optional args with `cl-defun'
 (defun doom-cli-help--print (cli context &optional manpage? noglobal?)
@@ -2125,7 +2126,9 @@ substring is edited more than once."
             (print! (bold "%s:") label)
             (print-group! (printsection contents))))))))
 
-;;; Help: synopsis
+
+;;; *** Help: synopsis
+
 (defun doom-cli-help--synopsis (cli &optional all-options?)
   (let* ((rcli (doom-cli-get cli))
          (opts (doom-cli-help--options rcli))
@@ -2168,7 +2171,9 @@ substring is edited more than once."
                                              .rest))))
                       80 (1+ (length (concat prefix command)))))))))
 
-;;; Help: arguments
+
+;;; *** Help: arguments
+
 (defun doom-cli-help--arguments (cli &optional _all?)
   (doom-cli-help--parse-docs (doom-cli-find cli t) "ARGUMENTS"))
 
@@ -2183,7 +2188,9 @@ substring is edited more than once."
              arguments
              "\n"))
 
-;;; Help: commands
+
+;;; *** Help: commands
+
 (cl-defun doom-cli-help--render-commands (commands &key prefix grouped? docs? (inline? t))
   (with-temp-buffer
     (let* ((doom-print-indent 0)
@@ -2227,7 +2234,9 @@ substring is edited more than once."
               (insert "\n")))))
       (string-trim-right (buffer-string)))))
 
-;;; Help: options
+
+;;; *** Help: options
+
 (defun doom-cli-help--options (cli &optional noformatting?)
   "Return an alist summarizing CLI's options.
 
@@ -2305,7 +2314,9 @@ The alist's CAR are lists of formatted switches plus their arguments, e.g.
             (print-group! (printopts global)))
           (string-trim-right (buffer-string)))))))
 
-;;; Help: internal
+
+;;; *** Help: internal
+
 (defun doom-cli-help--parse-args (args &optional noformatting?)
   (cl-loop for arg in args
            if (listp arg)
@@ -2344,8 +2355,9 @@ The alist's CAR are lists of formatted switches plus their arguments, e.g.
                                       (string-trim-right (buffer-string))))))
                        "\n\n"))))))))))
 
+
 ;;
-;;; Predefined CLIs (:help, :version, and :dump)
+;;; * Predefined CLIs (:help, :version, and :dump)
 
 (defvar doom-help-commands '("%p %c {-?,--help}")
   "A list of help commands recognized for the running script.

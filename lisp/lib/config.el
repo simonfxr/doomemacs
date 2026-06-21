@@ -24,7 +24,7 @@
 
 
 ;;
-;;; Managements
+;;; * Config reloading
 
 (defmacro doom--if-compile (command on-success &optional on-failure)
   (declare (indent 2))
@@ -115,7 +115,7 @@ remove orphaned ones. It also doesn't reload your private config.
 It is useful to only pull in changes performed by \\='doom sync' on the command
 line."
   (interactive)
-  (doom-require 'doom-lib 'profiles)
+  (require 'doom-profiles)
   ;; TODO: Make this more robust
   (with-doom-context 'reload
     (dolist (file (mapcar #'car doom-profile-generators))

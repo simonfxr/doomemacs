@@ -6,13 +6,13 @@
 (require 'doom-cli)
 
 ;;
-;;; Variables
+;;; * Variables
 
 ;; None yet!
 
 
 ;;
-;;; Commands
+;;; * Commands
 
 (defcli! emacs
     (;; TODO: Implement sandbox functionality post-3.0
@@ -83,7 +83,7 @@ performance, it is best to run Doom out of ~/.config/emacs or ~/.emacs.d."
 
 
 ;;
-;;; Helpers
+;;; * Helpers
 
 (defun doom-emacs-repl (_context)
   "Launch a rudimentary Elisp REPL."

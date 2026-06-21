@@ -1,6 +1,9 @@
-;;; lib/modules.el -*- lexical-binding: t; -*-
+;;; lisp/doom-modules.el -*- lexical-binding: t; -*-
 ;;; Commentary:
 ;;; Code:
+
+;;
+;;; * Variables
 
 (defvar doom-modules nil
   "A table of enabled modules and metadata. See `doom-modules-initialize'.")
@@ -11,7 +14,9 @@
 
 
 ;;
-;;; API
+;;; * Library
+
+;;; ** doom-modules
 
 ;;;###autoload
 (defun doom-modules-initialize (&optional force?)
@@ -151,5 +156,5 @@ properties:
       (setq doom-inhibit-module-warnings t))
     (nreverse results)))
 
-(provide 'doom-lib '(modules))
-;;; modules.el ends here
+(provide 'doom-modules)
+;;; doom-modules.el ends here

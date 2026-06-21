@@ -7,7 +7,7 @@
 
 
 ;;
-;;; Helpers
+;;; * Helpers
 
 ;;;###autoload
 (defun doom-session-file (&optional name)
@@ -83,7 +83,7 @@
 
 
 ;;
-;;; Commands
+;;; * Commands
 
 ;;;###autoload
 (defun doom/quickload-session (force)

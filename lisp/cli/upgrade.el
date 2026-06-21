@@ -2,11 +2,11 @@
 ;;; Commentary:
 ;;; Code:
 
-(doom-require 'doom-lib 'packages)
+(require 'doom-packages)
 
 
 ;;
-;;; Variables
+;;; * Variables
 
 (defvar doom-upgrade-url "https://github.com/doomemacs/core"
   "The git repo url for Doom Emacs.")
@@ -16,7 +16,7 @@
 
 
 ;;
-;;; Commands
+;;; * Commands
 
 (defcli! ((upgrade up))
     ((aot?       ("--aot") "Natively compile packages ahead-of-time (if available)")
@@ -70,7 +70,7 @@ libraries. It is the equivalent of the following shell commands:
 
 
 ;;
-;;; Helpers
+;;; * Helpers
 
 (defun doom-cli-upgrade (context &optional auto-accept-p force-p)
   "Upgrade Doom to the latest version non-destructively."

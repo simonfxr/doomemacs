@@ -71,7 +71,7 @@ the current major-modea.")
 
 
 ;;
-;;; Helpers
+;;; * Helpers
 
 ;;;###autoload
 (defun doom-active-minor-modes ()
@@ -82,7 +82,7 @@ the current major-modea.")
 
 
 ;;
-;;; Custom describe commands
+;;; * Custom describe commands
 
 ;;;###autoload (defalias 'doom/describe-autodefs #'doom/help-autodefs)
 ;;;###autoload (defalias 'doom/describe-module   #'doom/help-modules)
@@ -129,7 +129,7 @@ selection of all minor-modes, active or not."
 
 
 ;;
-;;; Documentation commands
+;;; * Documentation commands
 
 (defvar org-agenda-files)
 (cl-defun doom--org-headings (files &key depth mindepth include-files &allow-other-keys)
@@ -468,7 +468,7 @@ customized (defined with `defcustom')."
 
 
 ;;
-;;; `doom/help-packages'
+;;; * doom/help-packages
 
 (defun doom--help-insert-button (label &optional uri line)
   "Helper function to insert a button at point.

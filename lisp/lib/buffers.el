@@ -40,7 +40,7 @@ it if it doesn't exist).")
 
 
 ;;
-;;; Functions
+;;; * Functions
 
 ;;;###autoload
 (defun doom-buffer-frame-predicate (buf)

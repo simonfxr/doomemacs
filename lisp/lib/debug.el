@@ -1,9 +1,4 @@
 ;;; lisp/lib/debug.el -*- lexical-binding: t; -*-
-;;; Commentary:
-;;; Code:
-
-;;
-;;; Doom's debug mode
 
 ;;;###autoload
 (defvar doom-debug--variables
@@ -122,7 +117,7 @@
 
 
 ;;
-;;; Custom debugger
+;;; * Custom debugger
 
 ;; HACK: I advise `debug' instead of changing `debugger' to hide the debugger
 ;;   itself from the backtrace. Doing it manually would require reimplementing
@@ -193,7 +188,7 @@
 
 
 ;;
-;;; Hooks
+;;; * Hooks
 
 ;;;###autoload
 (defun doom-run-all-startup-hooks-h ()
@@ -213,7 +208,7 @@
 
 
 ;;
-;;; Helpers
+;;; * Helpers
 
 (defsubst doom--collect-forms-in (file form)
   (when (file-readable-p file)
@@ -235,9 +230,9 @@
   "Returns diagnostic information about the current Emacs session in markdown,
 ready to be pasted in a bug report on github."
   (require 'vc-git)
-  (doom-require 'doom-lib 'profiles)
-  (doom-require 'doom-lib 'modules)
-  (doom-require 'doom-lib 'packages)
+  (require 'doom-profiles)
+  (require 'doom-modules)
+  (require 'doom-packages)
   (let ((default-directory doom-emacs-dir))
     (letf! ((defun sh (&rest args) (cdr (apply #'doom-call-process args)))
             (defun cat (file &optional limit)
@@ -387,7 +382,7 @@ FILL-COLUMN determines the column at which lines will be broken."
 
 
 ;;
-;;; Commands
+;;; * Commands
 
 ;;;###autoload
 (defun doom/version ()
@@ -441,7 +436,7 @@ anywhere!"
 
 
 ;;
-;;; Profiling
+;;; * Profiling
 
 (defvar doom--profiler nil)
 ;;;###autoload

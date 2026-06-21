@@ -38,7 +38,7 @@ name under `pcache-directory' (by default a subdirectory under
 
 
 ;;
-;;; Library
+;;; * Library
 
 ;;;###autoload
 (defun doom-store-persist (location variables)

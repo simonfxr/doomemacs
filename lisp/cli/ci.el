@@ -1,7 +1,7 @@
 ;;; lisp/cli/ci.el -*- lexical-binding: t; -*-
 
 ;;
-;;; Variables
+;;; * Variables
 
 (defvar doom-ci-commit-trailer-keys
   '(("Fix" ref hash url)
@@ -252,9 +252,8 @@ Note: warnings are not considered failures.")
 
 
 ;;
-;;; Commands
+;;; * Commands
 
-;;; doom ci
 (defcli! ci (&args _)
   "Commands that automate development processes."
   :partial t)
@@ -368,7 +367,7 @@ Prevents pushing if there are unrebased or WIP commits."
 
 
 ;;
-;;; Helpers
+;;; * Helpers
 
 (cl-defun doom-ci-enforce-scopeless-types (scope (&key type scopes summary &allow-other-keys))
   "Complain about scoped commit types that shouldn't be scoped."

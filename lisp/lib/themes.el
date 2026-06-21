@@ -85,7 +85,7 @@ doom-themes' API without worry."
 
 
 ;;
-;;; Helpers
+;;; * Helpers
 
 ;;;###autoload
 (defun doom-theme-face-attribute (theme face attribute &optional recursive)

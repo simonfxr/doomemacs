@@ -92,7 +92,7 @@
 
 
 ;;
-;;; Hacks
+;;; * Hacks
 
 ;; Straight was designed primarily for interactive use, in an interactive Emacs
 ;; session, but Doom does its package management in the terminal. Some things
