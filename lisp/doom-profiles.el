@@ -407,10 +407,8 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
 (defun doom-profile--generate-loaddefs-doom (_profile)
   (doom-file-write
    "10-doom-loaddefs.init.el"
-   (doom-autoloads--scan
-    (doom-glob doom-core-dir "doom-*.el")
-    nil)
-   :printfn #'pp))
+   (doom-autoloads--scan (doom-glob doom-core-dir "doom-*.el")
+                         nil)))
 
 (defun doom-profile--generate-user-init-loader (_profile)
   (doom-file-write
