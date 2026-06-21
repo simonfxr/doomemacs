@@ -45,12 +45,14 @@
 ;;; * Variables
 
 ;; DEPRECATED: Will be stored in the local profile in v3.0
+;;;###autoload
 (defvar doom-packages ()
   "A list of enabled packages. Each element is a sublist, whose CAR is the
 package's name as a symbol, and whose CDR is the plist supplied to its
 `package!' declaration. Set by `doom-initialize-packages'.")
 
 ;; DEPRECATED: Will be stored in the local profile in v3.0
+;;;###autoload
 (defvar doom-disabled-packages ()
   "A list of packages that should be ignored by `use-package!' and `after!'.")
 
@@ -931,6 +933,165 @@ keys."
                (hash-table-count packages-to-rebuild))
        (doom-packages-ensure)
        t))))
+
+
+;;
+;;; * Module DSL
+
+;;;###autoload
+(cl-defmacro package!
+    (name &rest plist &key built-in recipe ignore _type _pin _disable _env _freeze)
+  "Declares a package and how to install it (if applicable).
+
+This macro is declarative and does not load nor install packages. It is used to
+populate `doom-packages' with metadata about the packages Doom needs to keep
+track of.
+
+Only use this macro in a module's packages.el file.
+
+Accepts the following properties:
+
+ :type core|local|built-in|virtual
+   Specifies what kind of package this is. Can be a symbol or a list thereof.
+     `core' = this is a protected package and cannot be disabled!
+     `local' = this package is being modified in-place. This package's repo is
+       unshallowed and will be skipped when you update packages.
+     `built-in' = this package is already built-in (otherwise, will be
+       installed)
+     `virtual' = this package is not tracked by Doom's package manager. It won't
+       be installed or uninstalled. Use this to pin 2nd order dependencies.
+ :recipe RECIPE
+   Specifies a straight.el recipe to allow you to acquire packages from external
+   sources. See https://github.com/radian-software/straight.el#the-recipe-format
+   for details on this recipe.
+ :disable BOOL
+   Do not install or update this package AND disable all of its `use-package!'
+   and `after!' blocks.
+ :ignore FORM
+   Do not install this package.
+ :pin STR|nil
+   Pin this package to commit hash STR. Setting this to nil will unpin this
+   package if previously pinned.
+ :built-in BOOL|'prefer
+   Same as :ignore if the package is a built-in Emacs package. This is more to
+   inform help commands like `doom/help-packages' that this is a built-in
+   package. If set to \\='prefer, the package will not be installed if it is
+   already provided by Emacs.
+ :env ALIST
+   Parameters and envvars to set while the package is building. If these values
+   change, the package will be rebuilt on next \\='doom sync'.
+ :freeze BOOL
+   Whether or not bump commands will touch this package.
+
+Returns t if package is successfully registered, and nil if it was disabled
+elsewhere."
+  (declare (indent defun))
+  (when (and recipe (keywordp (car-safe recipe)))
+    (cl-callf plist-put plist :recipe `(quote ,recipe)))
+  ;; :built-in t is basically an alias for :ignore (locate-library NAME)
+  (when built-in
+    (when (and (not ignore)
+               (equal built-in '(quote prefer)))
+      (setq built-in `(locate-library ,(symbol-name name) nil (get 'load-path 'initial-value))))
+    (cl-callf map-delete plist :built-in)
+    (cl-callf plist-put plist :ignore built-in))
+  `(let* ((name ',name)
+          (plist (cdr (assq name doom-packages)))
+          (dir (dir!))
+          (module (doom-module-from-path dir)))
+     (unless (doom-context-p 'package)
+       (signal 'doom-module-error
+               (list module "package! can only be used in packages.el files")))
+     ;; Record what module this declaration was found in
+     (let ((module-list (plist-get plist :modules)))
+       (unless (member module module-list)
+         (cl-callf plist-put plist :modules
+                   (append module-list
+                           (list module)
+                           (when (file-in-directory-p dir doom-user-dir)
+                             '((:user . modules)))
+                           nil))))
+     ;; Merge given plist with pre-existing one
+     (cl-loop for (key value) on (list ,@plist) by 'cddr
+              when (or (eq key :pin) value)
+              do (cl-callf plist-put plist key value))
+     ;; Some basic key validation; throws an error on invalid properties
+     (condition-case e
+         (when-let* ((recipe (plist-get plist :recipe)))
+           (cl-destructuring-bind
+               (&key local-repo _files _flavor _build _pre-build _post-build
+                     _includes _type _repo _host _branch _protocol _remote
+                     _nonrecursive _fork _depth _source _inherit)
+               recipe
+             ;; Expand :local-repo from current directory
+             (when local-repo
+               (cl-callf plist-put plist :recipe
+                         (plist-put recipe :local-repo
+                                    (let ((local-path (expand-file-name local-repo dir)))
+                                      (if (file-directory-p local-path)
+                                          local-path
+                                        local-repo)))))))
+       (error
+        (signal 'doom-package-error
+                (cons ,(symbol-name name)
+                      (error-message-string e)))))
+     ;; These are the only side-effects of this macro!
+     (setf (alist-get name doom-packages) plist)
+     (if (plist-get plist :disable)
+         (add-to-list 'doom-disabled-packages name)
+       (with-no-warnings
+         (cons name plist)))))
+
+;; DEPRECATED: Will be replaced in v3
+;;;###autoload
+(defmacro disable-packages! (&rest packages)
+  "A convenience macro for disabling packages in bulk.
+Only use this macro in a module's (or your private) packages.el file."
+  (macroexp-progn
+   (mapcar (lambda (p) `(package! ,p :disable t))
+           packages)))
+
+  ;; DEPRECATED: Will be replaced in v3
+;;;###autoload
+(defmacro unpin! (&rest targets)
+  "Unpin packages in TARGETS.
+
+This unpins packages, so that `doom upgrade' or `doom sync -u' will update them
+to the latest commit available. Some examples:
+
+- To disable pinning wholesale: (unpin! t)
+- To unpin individual packages: (unpin! packageA packageB ...)
+- To unpin all packages in a group of modules: (unpin! :lang :tools ...)
+- To unpin packages in individual modules:
+    (unpin! (:lang python javascript) (:tools docker))
+
+Or any combination of the above.
+
+This macro should only be used from the user's private packages.el. No module
+should use it!"
+  (if (memq t targets)
+      `(mapc (doom-rpartial #'doom-package-set :unpin t)
+             (mapcar #'car doom-packages))
+    (macroexp-progn
+     (mapcar
+      (lambda (target)
+        (when target
+          `(doom-package-set ',target :unpin t)))
+      (cl-loop for target in targets
+               if (or (keywordp target) (listp target))
+               append
+               (cl-loop with (category . modules) = (ensure-list target)
+                        for (name . plist) in doom-packages
+                        for pkg-modules = (plist-get plist :modules)
+                        if (and (assq category pkg-modules)
+                                (or (null modules)
+                                    (cl-loop for module in modules
+                                             if (member (cons category module) pkg-modules)
+                                             return t))
+                                name)
+                        collect it)
+               else if (symbolp target)
+               collect target)))))
 
 (provide 'doom-packages)
 ;;; doom-packages.el ends here

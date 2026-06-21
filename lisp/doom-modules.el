@@ -5,6 +5,7 @@
 ;;
 ;;; * Variables
 
+;;;###autoload
 (defvar doom-modules nil
   "A table of enabled modules and metadata. See `doom-modules-initialize'.")
 
@@ -16,9 +17,8 @@
 ;;
 ;;; * Library
 
-;;; ** doom-modules
+;;; ** Bootstrapper
 
-;;;###autoload
 (defun doom-modules-initialize (&optional force?)
   "Initializes module metadata."
   (when (or (null doom-modules) force?)
@@ -155,6 +155,392 @@ properties:
     (when noninteractive
       (setq doom-inhibit-module-warnings t))
     (nreverse results)))
+
+
+;;; ** doom-module
+
+;;;###autoload
+(eval-and-compile
+  (cl-defstruct doom-module
+    "TODO"
+    (index 0 :read-only t)
+    ;; source
+    group
+    name
+    depth
+    flags
+    features
+    ;; sources
+    path
+    ;; disabled-p
+    ;; frozen-p
+    ;; layer-p
+    ;; recipe
+    ;; alist
+    ;; package
+    ;; if
+    )
+
+  (pcase-defmacro doom-module (&rest fields)
+    `(doom-struct doom-module ,@fields))
+
+  (defun doom-module-key (key)
+    "Normalize KEY into a (GROUP . MODULE) tuple representing a Doom module key."
+    (declare (pure t) (side-effect-free t))
+    (cond ((doom-module-p key)
+           (cons (doom-module-group key) (doom-module-name key)))
+          ((doom-module-context-p key)
+           (doom-module-context-key key))
+          ((car-safe key)
+           (if (nlistp (cdr-safe key))
+               key
+             (cons (car key) (cadr key))))
+          ((error "Invalid key: %S" key))))
+
+  (defun doom-module--has-flag-p (flags wanted-flags)
+    "Return t if the list of WANTED-FLAGS satisfies the list of FLAGS."
+    (declare (pure t) (side-effect-free error-free))
+    (cl-loop with flags = (ensure-list flags)
+             for flag in (ensure-list wanted-flags)
+             for flagstr = (symbol-name flag)
+             if (if (eq ?- (aref flagstr 0))
+                    (memq (intern (concat "+" (substring flagstr 1)))
+                          flags)
+                  (not (memq flag flags)))
+             return nil
+             finally return t))
+
+  (defun doom-module--fold-flags (flags)
+    "Returns a collapsed list of FLAGS (a list of +/- prefixed symbols).
+
+FLAGS is read in sequence, cancelling out negated flags and removing
+duplicates."
+    (declare (pure t) (side-effect-free error-free))
+    (let (newflags)
+      (while flags
+        (let* ((flag (car flags))
+               (flagstr (symbol-name flag)))
+          (when-let* ((sym (intern-soft
+                            (concat (if (eq ?- (aref flagstr 0)) "+" "-")
+                                    (substring flagstr 1)))))
+            (setq newflags (delq sym newflags)))
+          (cl-pushnew flag newflags :test 'eq))
+        (setq flags (cdr flags)))
+      (nreverse newflags)))
+
+  (cl-defun doom-module--depth< (keya keyb &optional initorder?)
+    "Return t if module with KEY-A comes before another with KEY-B.
+
+If INITORDER? is non-nil, grab the car of the module's :depth, rather than it's
+cdr. See `doom-module-put' for details about the :depth property."
+    (declare (pure t) (side-effect-free t))
+    (let* ((adepth (doom-module-get keya :depth))
+           (bdepth (doom-module-get keyb :depth))
+           (adepth (if initorder? (car adepth) (cdr adepth)))
+           (bdepth (if initorder? (car bdepth) (cdr bdepth))))
+      (if (or (null adepth) (null bdepth)
+              (= adepth bdepth))
+          (< (or (doom-module-get keya :index) 0)
+             (or (doom-module-get keyb :index) 0))
+        (< adepth bdepth))))
+
+  (defun doom-module-get (key &optional property)
+    "Returns the plist for GROUP MODULE. Gets PROPERTY, specifically, if set."
+    (declare (side-effect-free t))
+    (when-let* ((m (gethash key doom-modules)))
+      (if property
+          (aref
+           m (or (plist-get
+                  (eval-when-compile
+                    (cl-loop with i = 1
+                             for info in (cdr (cl-struct-slot-info 'doom-module))
+                             nconc (list (doom-keyword-intern (symbol-name (car info)))
+                                         (prog1 i (cl-incf i)))))
+                  property)
+                 (error "Unknown doom-module property: %s" property)))
+        m)))
+
+  (defun doom-module-active-p (group module &optional flags)
+    "Return t if GROUP MODULE is active, and with FLAGS (if given)."
+    (declare (side-effect-free t))
+    (when-let* ((val (doom-module-get (cons group module) (if flags :flags))))
+      (or (null flags)
+          (doom-module--has-flag-p flags val))))
+
+  (defun doom-module-exists-p (group module)
+    "Returns t if GROUP MODULE is present in any active source."
+    (declare (side-effect-free t))
+    (if (doom-module-get group module) t))
+
+  (cl-defun doom-module--depth< (keya keyb &optional initorder?)
+    "Return t if module with KEY-A comes before another with KEY-B.
+
+If INITORDER? is non-nil, grab the car of the module's :depth, rather than it's
+cdr. See `doom-module-put' for details about the :depth property."
+    (declare (pure t) (side-effect-free t))
+    (let* ((adepth (doom-module-get keya :depth))
+           (bdepth (doom-module-get keyb :depth))
+           (adepth (if initorder? (car adepth) (cdr adepth)))
+           (bdepth (if initorder? (car bdepth) (cdr bdepth))))
+      (if (or (null adepth) (null bdepth)
+              (= adepth bdepth))
+          (< (or (doom-module-get keya :index) 0)
+             (or (doom-module-get keyb :index) 0))
+        (< adepth bdepth))))
+
+  (defun doom-module-list (&optional paths-or-all initorder?)
+    "Return a list of (:group . name) module keys in order of their :depth.
+
+PATHS-OR-ALL can either be a non-nil value or a list of directories. If given a
+list of directories, return a list of module keys for all modules present
+underneath it.  If non-nil, return the same, but search `doom-module-load-path'
+(includes :doom and :user). Modules that are enabled are sorted first by their
+:depth, followed by disabled modules in lexicographical order (unless a :depth
+is specified in their .doommodule).
+
+If INITORDER? is non-nil, sort modules by the CAR of that module's :depth."
+    (sort (if paths-or-all
+              (delete-dups
+               (append (seq-remove #'cdr (doom-module-list nil initorder?))
+                       (doom-files-in (if (listp paths-or-all)
+                                          paths-or-all
+                                        doom-module-load-path)
+                                      :map #'doom-module-from-path
+                                      :type 'dirs
+                                      :mindepth 1
+                                      :depth 1)))
+            (hash-table-keys doom-modules))
+          (doom-rpartial #'doom-module--depth< initorder?)))
+
+  (defun doom-module-expand-path (key &optional file)
+    "Expands a path to FILE relative to KEY, a cons cell: (GROUP . NAME)
+
+GROUP is a keyword. MODULE is a symbol. FILE is an optional string path.
+If the group isn't enabled this returns nil. For finding disabled modules use
+`doom-module-locate-path' instead."
+    (when-let* ((path (doom-module-get key :path)))
+      (if file
+          (file-name-concat path file)
+        path)))
+
+  (defun doom-module-locate-path (key &optional file)
+    "Searches `doom-module-load-path' to find the path to a module by KEY.
+
+KEY is a cons cell (GROUP . NAME), where GROUP is a keyword (e.g. :lang) and
+NAME is a symbol (e.g. \\='python). FILE is a string that will be appended to
+the resulting path. If said path doesn't exist, this returns nil, otherwise an
+absolute path."
+    (let (file-name-handler-alist)
+      (cl-destructuring-bind (group . module) (doom-module-key key)
+        (when-let*
+            ((default-directory
+              (cl-loop with group = (doom-keyword-name group)
+                       with module = (if module (symbol-name module))
+                       with dir = (file-name-concat group module)
+                       for default-directory in doom-module-load-path
+                       if (file-directory-p dir)
+                       return (expand-file-name dir))))
+          (if file
+              (when (file-exists-p file)
+                (expand-file-name file))
+            default-directory)))))
+
+  (defun doom-module-locate-paths (module-list file)
+    "Return all existing paths to FILE under each module in MODULE-LIST.
+
+MODULE-LIST is a list of cons cells (GROUP . NAME). See `doom-module-list' for
+an example."
+    (cl-loop for key in (or module-list (doom-module-list))
+             if (doom-module-locate-path key file)
+             collect it))
+
+  (defun doom-module-from-path (path &optional enabled-only?)
+    "Returns a cons cell (GROUP . NAME) derived from PATH (a file path).
+If ENABLED-ONLY?, return nil if the containing module isn't enabled."
+    (let* ((file-name-handler-alist nil)
+           (path (expand-file-name path)))
+      (save-match-data
+        (cond ((string-match "/\\(?:modules/\\)+\\([^/]+\\)/\\([^/]+\\)\\(?:/.*\\)?$" path)
+               (when-let* ((group (doom-keyword-intern (match-string 1 path)))
+                           (name  (intern (match-string 2 path))))
+                 (and (or (null enabled-only?)
+                          (doom-module-active-p group name))
+                      (cons group name))))
+              ((file-in-directory-p path doom-core-dir)
+               (cons :doom nil))
+              ((file-in-directory-p path doom-user-dir)
+               (cons :user nil))))))
+
+  ;; DEPRECATED: Remove in v3
+  (defun doom-module-load-path (&optional module-load-path initorder?)
+    "Return a list of file paths to activated modules.
+
+The list is in no particular order and its file paths are absolute.
+MODULE-LOAD-PATH can be a list of module tree root directories or `t' (return
+all modules in all known sources, collapsed by precedence)."
+    (declare (side-effect-free t))
+    (mapcar #'doom-module-locate-path (doom-module-list module-load-path initorder?))))
+
+
+;;; ** doom-module-context
+
+;;;###autoload
+(eval-and-compile
+  (cl-defstruct doom-module-context
+    "Hot cache object for the containing Doom module."
+    index key path flags features)
+
+  (defvar doom-module-context (make-doom-module-context)
+    "A `doom-module-context' for the module associated with the current file.
+
+Never set this variable directly, use `with-doom-module'.")
+
+  (pcase-defmacro doom-module-context (&rest fields)
+    `(doom-struct doom-module-context ,@fields))
+
+  (defmacro with-doom-module (key &rest body)
+    "Evaluate BODY with `doom-module-context' informed by KEY."
+    (declare (indent 1))
+    `(let ((doom-module-context
+            (let ((key ,key))
+              (if key
+                  (doom-module-context key)
+                (make-doom-module-context)))))
+       (doom-log 3 ":context:module: =%s" doom-module-context)
+       ,@body))
+
+  (defun doom-module-context (key)
+    "Return a `doom-module-context' from KEY.
+
+KEY can be a `doom-module-context', `doom-module', or a `doom-module-key' cons
+cell."
+    (declare (side-effect-free t))
+    (or (pcase (type-of key)
+          (`doom-module-context key)
+          (`doom-module (ignore-errors (doom-module->context key)))
+          (`cons (doom-module (car key) (cdr key))))
+        (make-doom-module-context :key (doom-module-key key))))
+
+  (defun doom-module<-context (context)
+    "Return a `doom-module' plist from CONTEXT."
+    (declare (side-effect-free t))
+    (doom-module-get (doom-module-context-key context)))
+
+  (defun doom-module->context (key)
+    "Change a `doom-module' into a `doom-module-context'."
+    (declare (side-effect-free t))
+    ;; (let ((module (if (doom-module-p key)
+    ;;                   key (doom-module-get (doom-module-key key)))))
+    ;;   (make-doom-module-context
+    ;;    :index (doom-module-index module)
+    ;;    :key (cons (doom-module-group module) (doom-module-name module))
+    ;;    :path (doom-module-path module)
+    ;;    :flags (doom-module-flags module)))
+    (pcase-let
+        (((doom-module index path flags group name)
+          (if (doom-module-p key)
+              key (doom-module-get (doom-module-key key)))))
+      (make-doom-module-context
+       :index index
+       :key (cons group name)
+       :path path
+       :flags flags)))
+
+  (defun doom-module (group name &optional property)
+    "Return the `doom-module-context' for any active module by GROUP NAME.
+
+Return its PROPERTY, if specified."
+    (declare (side-effect-free t))
+    (when-let* ((context (get group name)))
+      (if property
+          (aref
+           context
+           (or (plist-get
+                (eval-when-compile
+                  (cl-loop with i = 1
+                           for info in (cdr (cl-struct-slot-info 'doom-module-context))
+                           nconc (list (doom-keyword-intern (symbol-name (car info)))
+                                       (prog1 i (cl-incf i)))))
+                property)
+               (error "Unknown doom-module-context property: %s" property)))
+        context))))
+
+
+;;
+;;; * Module DSL
+
+;;;###autoload
+(eval-and-compile
+  (put :if     'lisp-indent-function 2)
+  (put :when   'lisp-indent-function 'defun)
+  (put :unless 'lisp-indent-function 'defun)
+
+  (defmacro doom! (&rest modules)
+    "Bootstraps DOOM Emacs and its modules.
+
+If the first item in MODULES doesn't satisfy `keywordp', MODULES is evaluated,
+otherwise, MODULES is a variadic-property list (a plist whose key may be
+followed by one or more values).
+
+This macro does nothing in interactive sessions, but in noninteractive session
+iterates through MODULES, enabling and initializing them. The order of modules
+in these blocks dictates their load order (unless given an explicit :depth)."
+    `(when noninteractive
+       ;; REVIEW: A temporary fix for flycheck until I complete backporting
+       ;;   module/profile architecture from v3.0.
+       (when (fboundp 'doom-module-mplist-map)
+         (doom-module-mplist-map
+          #'doom-module--put
+          ,@(if (keywordp (car modules))
+                (list (list 'quote modules))
+              modules)))
+       t))
+
+  (defmacro modulep! (group &optional module &rest flags)
+    "Return t if :GROUP MODULE (and +FLAGS) are enabled.
+
+If FLAGS is provided, returns t if GROUP MODULE has all of FLAGS enabled.
+
+  (modulep! :config default +flag)
+  (modulep! :config default +flag1 +flag2 +flag3)
+
+GROUP and MODULE may be omitted when this macro is used from a Doom module's
+source (except your $DOOMDIR, which is a special module). Like so:
+
+  (modulep! +flag3 +flag1 +flag2)
+  (modulep! +flag)
+
+FLAGS can be negated. E.g. This will return non-nil if ':tools lsp' is enabled
+without `+eglot':
+
+  (modulep! :tools lsp -eglot)
+
+To interpolate dynamic values, use comma:
+
+  (let ((flag '-eglot))
+    (modulep! :tools lsp ,flag))
+
+For more about modules and flags, see `doom!'."
+    (if (keywordp group)
+        (let ((ctxtform `(get (backquote ,group) (backquote ,module))))
+          (if flags
+              `(when-let* ((ctxt ,ctxtform))
+                 (doom-module--has-flag-p
+                  (doom-module-context-flags ctxt)
+                  (backquote ,flags)))
+            `(and ,ctxtform t)))
+      (let ((flags (delq nil (cons group (cons module flags)))))
+        (if (doom-module-context-index doom-module-context)
+            `(doom-module--has-flag-p
+              ',(doom-module-context-flags doom-module-context)
+              (backquote ,flags))
+          `(let ((file (file!)))
+             (if-let* ((module (doom-module-from-path file)))
+                 (doom-module--has-flag-p
+                  (doom-module (car module) (cdr module) :flags)
+                  (backquote ,flags))
+               (error "(modulep! %s) couldn't resolve current module from %s"
+                      (backquote ,flags) (abbreviate-file-name file)))))))))
 
 (provide 'doom-modules)
 ;;; doom-modules.el ends here
