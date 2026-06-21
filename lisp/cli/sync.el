@@ -146,8 +146,9 @@ OPTIONS:
          "")))
 
 (defun doom-sync--abort-warning-h ()
-  (print! (warn "Script was abruptly aborted, leaving Doom in an incomplete state!"))
-  (print! (item "Run 'doom sync' to repair it.")))
+  (when (/= doom-cli-exit-code 254)
+    (print! (warn "Script was abruptly aborted, leaving Doom in an incomplete state!"))
+    (print! (item "Run 'doom sync' to repair it."))))
 
 (provide 'doom-cli-sync)
 ;;; sync.el ends here
