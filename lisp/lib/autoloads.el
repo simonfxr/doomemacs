@@ -18,9 +18,6 @@ hoist buggy forms into autoloads.")
     Info-directory-list)
   "A list of variables to be cached in `doom-autoloads-file'.")
 
-(defvar doom-autoloads-files ()
-  "A list of additional files or file globs to scan for autoloads.")
-
 
 ;;
 ;;; * Library

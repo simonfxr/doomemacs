@@ -408,8 +408,7 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
   (doom-file-write
    "10-doom-loaddefs.init.el"
    (doom-autoloads--scan
-    (append (doom-glob doom-core-dir "doom-*.el")
-            (mapcan #'doom-glob doom-autoloads-files))
+    (doom-glob doom-core-dir "doom-*.el")
     nil)
    :printfn #'pp))
 
