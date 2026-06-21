@@ -381,8 +381,10 @@ keys."
         doom-packages)
     (letf! (defun read-packages (key)
              (with-doom-module key
-               (when-let* ((file (doom-module-locate-path
-                                  key doom-module-packages-file)))
+               (when-let* ((file (or (doom-module-expand-path
+                                      key doom-module-packages-file)
+                                     (doom-module-locate-path
+                                      key doom-module-packages-file))))
                  (doom-packages--read file nil 'noerror))))
       (with-doom-context 'package
         (let ((user? (assq :user module-list)))

@@ -331,19 +331,21 @@ NAME is a symbol (e.g. \\='python). FILE is a string that will be appended to
 the resulting path. If said path doesn't exist, this returns nil, otherwise an
 absolute path."
     (let (file-name-handler-alist)
-      (cl-destructuring-bind (group . module) (doom-module-key key)
-        (when-let*
-            ((default-directory
-              (cl-loop with group = (doom-keyword-name group)
-                       with module = (if module (symbol-name module))
-                       with dir = (file-name-concat group module)
-                       for default-directory in doom-module-load-path
-                       if (file-directory-p dir)
-                       return (expand-file-name dir))))
-          (if file
-              (when (file-exists-p file)
-                (expand-file-name file))
-            default-directory)))))
+      (if (equal key '(:user))
+          (doom-module-expand-path key file)
+        (cl-destructuring-bind (group . module) (doom-module-key key)
+          (when-let*
+              ((default-directory
+                (cl-loop with group = (doom-keyword-name group)
+                         with module = (if module (symbol-name module))
+                         with dir = (file-name-concat group module)
+                         for default-directory in doom-module-load-path
+                         if (file-directory-p dir)
+                         return (expand-file-name dir))))
+            (if file
+                (when (file-exists-p file)
+                  (expand-file-name file))
+              default-directory))))))
 
   (defun doom-module-locate-paths (module-list file)
     "Return all existing paths to FILE under each module in MODULE-LIST.
