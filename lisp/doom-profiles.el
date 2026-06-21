@@ -63,7 +63,7 @@ Can be changed externally by setting $DOOMPROFILELOADFILE.")
 ;;; Profile storage variables
 (define-obsolete-variable-alias 'doom-profile-generators 'doom-profile-generate-functions "2.3.0")
 (defvar doom-profile-generate-functions
-  '(doom-profile--generate-vars
+  '(doom-profile--generate-init
     doom-profile--generate-loaddefs-doom
     doom-profile--generate-user-init-loader
     doom-profile--generate-package-envs
@@ -363,9 +363,9 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
       (error (delete-file init-file)
              (signal 'doom-autoload-error (list init-file e))))))
 
-(defun doom-profile--generate-vars (_profile)
+(defun doom-profile--generate-init (_profile)
   (doom-file-write
-   "05-vars.init.el"
+   "05-doom.init.el"
    `((defun doom--startup-vars (_profile)
        (when (doom-context-p 'reload)
          (set-default-toplevel-value 'load-path (get 'load-path 'initial-value)))
@@ -418,7 +418,7 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
 
 (defun doom-profile--generate-package-envs (_profile)
   (doom-file-write
-   "30-package-envs.init.el"
+   "30-doom-package-envs.init.el"
    `((unless noninteractive
        ,@(cl-loop for (_ . plist) in doom-packages
                   if (plist-get plist :env)
@@ -431,7 +431,7 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
 
 (defun doom-profile--generate-loaddefs-modules (_profile)
   (doom-file-write
-   "60-module-loaddefs.init.el"
+   "60-doom-module-loaddefs.init.el"
    `((defun doom--startup-loaddefs-modules (_profile)
        ,@(doom-autoloads--scan
           (append (doom-glob doom-core-dir "lib/*.el")
@@ -445,7 +445,7 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
 
 (defun doom-profile--generate-loaddefs-packages (_profile)
   (doom-file-write
-   "70-package-loaddefs.init.el"
+   "70-doom-package-loaddefs.init.el"
    `((defun doom--startup-loaddefs-packages (_profile)
        ,@(doom-autoloads--scan
           ;; Create a list of packages starting with the Nth-most dependencies
@@ -475,7 +475,7 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
 
 (defun doom-profile--generate-module-loader (_profile)
   (doom-file-write
-   "80-modules.init.el"
+   "80-doom-modules.init.el"
    (let* ((init-modules-list (doom-module-list nil t))
           (config-modules-list (doom-module-list))
           (pre-init-modules
