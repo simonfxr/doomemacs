@@ -506,23 +506,6 @@ safely cleaned up with \\='doom sync' or \\='doom gc'."
         (doom-require 'doom-lib 'debug)
         (if init-file-debug (doom-debug-mode +1))
 
-        ;; Then load the rest of Doom's libs eagerly, since autoloads may not
-        ;; be generated/loaded yet.
-        (require 'seq)
-        (require 'map)
-        (mapc (apply-partially #'doom-require 'doom-lib)
-              '(process
-                system
-                git
-                plist
-                files
-                print
-                autoloads))
-
-        (require 'doom-profiles)
-        (require 'doom-modules)
-        (require 'doom-packages)
-
         ;; Ensure the CLI framework is ready.
         (require 'doom-cli)
         (doom-cli-initialize)
