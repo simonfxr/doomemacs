@@ -87,6 +87,7 @@ OPTIONS:
                (print! (success "Deleted envvar file"))))
             ((or (file-exists-p env-file)
                  (eq env :yes))
+             (make-directory (file-name-directory env-file) t)
              (call! `(env "--reload" ,env-file)))))
 
     (unless reload?

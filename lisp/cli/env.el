@@ -126,6 +126,10 @@ Why this over exec-path-from-shell?
             (current-buffer))
         (if (equal output-file "-")
             (print! "%s" (string-trim-right (buffer-string)))
+          (let ((dir (file-name-directory output-file)))
+            (unless (file-directory-p dir)
+              (print! (error "Containing directory does not exist: %s" dir))
+              (exit! 1)))
           (write-region nil nil output-file)
           (print-group!
             (print! (success "Wrote %s") (filename output-file))))))
