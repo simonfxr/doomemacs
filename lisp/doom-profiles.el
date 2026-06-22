@@ -95,6 +95,60 @@ These functions are executed in the context of the
 ;;
 ;;; * Library
 
+;;;###autoload
+(progn
+  (defun doom-profile-key (profile &optional default?)
+    "Normalize PROFILE into a (NAME . REF) doom-profile key.
+
+PROFILE can be a `doom-profile', a profile id (i.e. a string in the NAME@REF
+format), or a (NAME . REF) cons cell.
+
+If DEFAULT? is non-nil, an unspecified CAR/CDR will fall bakc to (_default .
+0)."
+    (declare (pure t) (side-effect-free t))
+    (let ((default-name (if default? "_default"))
+          (default-ref  (if default? "0")))
+      (cond ((eq profile t) (cons default-name default-ref))
+            ;; ((doom-profile-p profile)
+            ;;  (cons (or (doom-profile-name profile) default-name)
+            ;;        (or (doom-profile-ref profile)  default-ref)))
+            ((stringp profile)
+             (save-match-data
+               (let (case-fold-search)
+                 (if (string-match "^\\([^@]+\\)@\\(.+\\)$" profile)
+                     (cons (match-string 1 profile)
+                           (match-string 2 profile))
+                   (cons profile default-ref)))))
+            ((and (consp profile) (nlistp (cdr profile)))
+             (cons (or (car profile) default-name)
+                   (or (cdr profile) default-ref)))
+            ((and (null profile) default?)
+             (cons default-name default-ref))
+            ((signal 'wrong-type-argument
+                     (list "Expected PROFILE to be a string, cons cell, or `doom-profile'"
+                           (type-of profile) profile))))))
+
+  (defun doom-profile-get (profile-name &optional property null-value)
+    "Return PROFILE-NAME's PROFILE, otherwise its PROPERTY, otherwise NULL-VALUE."
+    (when (stringp profile-name)
+      (setq profile-name (intern profile-name)))
+    (if-let* ((profile (assq profile-name (doom-profiles))))
+        (if property
+            (if-let* ((propval (assq property (cdr profile))))
+                (cdr propval)
+              null-value)
+          profile)
+      null-value))
+
+  (defun doom-profile->id (profile)
+    "Return a NAME@VERSION id string from profile cons cell (NAME . VERSION)."
+    (cl-check-type profile cons)
+    (cl-destructuring-bind (name . ref) (doom-profile-key profile)
+      (format "%s@%s" name ref))))
+
+
+;;; ** Profile load file
+
 (defun doom-profiles-bootloadable-p ()
   "Return non-nil if `doom-emacs-dir' can be a bootloader.
 
@@ -251,7 +305,7 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
            return t))
 
 
-;;; ** Generators
+;;; ** Profile Generators
 
 (defun doom-profile-generate (&optional profile _regenerate-only?)
   "Generate profile init files."
@@ -353,11 +407,8 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
 (defun doom-profile--generate-loaddefs-doom (_profile)
   (doom-file-write
    "10-doom-loaddefs.init.el"
-   (doom-autoloads--scan
-    (append (doom-glob doom-core-dir "doom-*.el")
-            (mapcan #'doom-glob doom-autoloads-files))
-    nil)
-   :printfn #'pp))
+   (doom-autoloads--scan (doom-glob doom-core-dir "doom-*.el")
+                         nil)))
 
 (defun doom-profile--generate-user-init-loader (_profile)
   (doom-file-write

@@ -163,6 +163,9 @@ Only applies if (exit! :pager) or (exit! :pager?) are called."
   :type 'float
   :group 'doom-cli)
 
+(defvar doom-cli-exit-code 255
+  "The exit code used last time `exit!' was called.")
+
 
 ;;; ** Logger settings
 
@@ -199,7 +202,6 @@ Can be `pwsh' if invoked via bin/doom.ps1, or `sh' in unix environments.")
 ;;; ** Internal variables
 
 (defvar doom-cli--context nil)
-(defvar doom-cli--exit-code 255)
 (defvar doom-cli--group-plist nil)
 (defvar doom-cli--table (make-hash-table :test 'equal))
 
@@ -1056,7 +1058,7 @@ See `doom-cli-log-file-format' for details."
 
 (defun doom-cli--output-write-logs-h (context)
   "Write all log buffers to their appropriate files."
-  (when (/= doom-cli--exit-code 254)
+  (when (/= doom-cli-exit-code 254)
     ;; Delete the last `doom-cli-log-retain' logs
     (mapc #'delete-file
           (let ((prefix (doom-cli-context-prefix context)))
@@ -1083,7 +1085,7 @@ command takes >5s to run. If :benchmark is explicitly set to nil (or
 `doom-cli-log-benchmark-threshold' is nil), under no condition should a
 benchmark be shown."
   (doom-log "%s (GCs: %d, elapsed: %.6fs)"
-            (if (= doom-cli--exit-code 254) "Restarted" "Finished")
+            (if (= doom-cli-exit-code 254) "Restarted" "Finished")
             gcs-done gc-elapsed)
   (when-let* ((init-time (doom-cli-context-init-time context))
               (cli       (doom-cli-get context))
@@ -1091,7 +1093,7 @@ benchmark be shown."
               (hours     (/ (truncate duration) 60 60))
               (minutes   (- (/ (truncate duration) 60) (* hours 60)))
               (seconds   (- duration (* hours 60 60) (* minutes 60))))
-    (when (and (/= doom-cli--exit-code 254)
+    (when (and (/= doom-cli-exit-code 254)
                (or (eq (doom-cli-prop cli :benchmark) t)
                    (eq doom-cli-log-benchmark-threshold 'always)
                    (and (eq (doom-cli-prop cli :benchmark :null) :null)
@@ -1265,7 +1267,7 @@ Emacs' batch library lacks an implementation of the exec system call."
     (pcase command
       ;; If an integer, treat it as an exit code.
       ((pred (integerp))
-       (setq doom-cli--exit-code command)
+       (setq doom-cli-exit-code command)
        (kill-emacs command))
 
       ;; Otherwise, run a command verbatim.
