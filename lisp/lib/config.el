@@ -104,21 +104,20 @@ Runs `doom-before-reload-hook' first, then `doom-after-reload-hook' afterwards."
         (message "Config successfully reloaded!"))
     (user-error "Failed to reload your config")))
 
+;; DEPRECATED: Replaced in v3
 ;;;###autoload
 (defun doom/reload-env ()
   "Reloads your envvar file.
 
-DOES NOT REGENERATE IT. You must run \\='doom env' in your shell OUTSIDE of
-Emacs. Doing so from within Emacs will taint your shell environment.
+DOES NOT REGENERATE IT. You must run \\='doom sync --env' in your shell OUTSIDE
+of Emacs. Doing so from within Emacs will taint your shell environment.
 
 An envvar file contains a snapshot of your shell environment, which can be
 imported into Emacs."
   (interactive)
   (with-doom-context 'reload
-    (let ((default-directory doom-emacs-dir))
-      (with-temp-buffer
-        (doom-load doom-env-file)
-        (message "Reloaded %S" (abbreviate-file-name doom-env-file))))))
+    (require 'doom-profiles)
+    (load-file (doom-profile-dir t doom-profile-init-dir-name "05-doom-env.load.el"))))
 
 (provide 'doom-lib '(config))
 ;;; config.el ends here

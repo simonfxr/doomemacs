@@ -22,8 +22,7 @@
 ;;; * Commands
 
 (defcli! ((sync s))
-    ((noenvvar? ("-e") "Don't regenerate the envvar file")
-     (update?   ("-u") "Update all installed packages after syncing")
+    ((update?   ("-u") "Update all installed packages after syncing")
      (noupdate? ("-U") "Don't update any packages")
      (purge?    ("--gc") "Purge orphaned package repos & regraft them")
      (jobs      ("-j" "--jobs" num) "How many threads to use for native compilation")
@@ -31,6 +30,8 @@
      (rebuild?  ("-b" "--rebuild") "Rebuild all installed packages, unconditionally")
      (nobuild?  ("-B") "Don't rebuild packages when hostname or Emacs version has changed")
      (aot?      ("--aot") "Natively compile packages ahead-of-time (if available)")
+     &flags
+     (env       ("-e" "--env") "Generate an envvar file or delete existing one")
      &context context)
   "Synchronize your config with Doom Emacs.
 
@@ -73,16 +74,26 @@ OPTIONS:
     (add-hook 'kill-emacs-hook #'doom-sync--abort-warning-h)
     (unless (> (doom-cli-context-step context) 0)
       (print! (item "Using Emacs %s @ %s") emacs-version (path invocation-directory invocation-name)))
+
     (when (doom-profiles-bootloadable-p)
       (call! '(profile sync "--all")))
-    (run-hooks 'doom-before-sync-hook)
 
+    (let ((env-file
+           (doom-profile-dir t doom-profile-init-dir-name "05-doom-env.load.el")))
+      (cond ((eq env :no)
+             (if (not (file-exists-p env-file))
+                 (print! (item "No envvar file to delete. Skipping..."))
+               (delete-file env-file)
+               (print! (success "Deleted envvar file"))))
+            ((or (file-exists-p env-file)
+                 (eq env :yes))
+             (call! `(env "--reload" ,env-file)))))
+
+    (unless reload?
+      (run-hooks 'doom-before-sync-hook))
     (print! (start "Synchronizing %S profile..." ) (car doom-profile))
     (unwind-protect
         (print-group!
-          (when (and (not noenvvar?)
-                     (file-exists-p doom-env-file))
-            (call! '(env)))
           (unless reload?
             ;; If the user has up/downgraded Emacs since last sync, or copied
             ;; their config to a different system, then their packages need to
