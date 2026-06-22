@@ -307,7 +307,7 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
 
 ;;; ** Profile Generators
 
-(defun doom-profile-generate (&optional profile _regenerate-only?)
+(defun doom-profile-generate (&optional profile reload?)
   "Generate profile init files."
   (doom-initialize-packages)
   (let* ((p (or profile doom-profile))
@@ -317,23 +317,26 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
          (init-file (doom-profile-init-file p)))
     (print! (start "Generating profile: %s") (doom-profile->id p))
     (condition-case-unless-debug e
-      (with-file-modes #o750
-        (print-group!
-          (delete-directory init-dir t)
-          (make-directory init-dir t)
-          ;; Where persisted profile files are preserved.
-          (when (file-directory-p init-dir*)
-            (copy-directory init-dir* init-dir nil t t))
-          (let ((default-directory (doom-path init-dir)))
-            ;; TODO: (run-hook-with-args 'doom-profile-generate-functions p)
-            (dolist (fn doom-profile-generate-functions)
-              (if (functionp fn)
-                  (funcall fn p)
-               ;; DEPRECATED: Backwards compatibility. Remove in v3.
-                (pcase-let* ((`(,file ,fn _) fn)
-                             (file (doom-path init-dir file)))
-                  (doom-log "Building %s..." file)
-                  (doom-file-write file (funcall fn) :printfn #'prin1))))
+        (with-file-modes #o750
+          (print-group!
+            (if reload?
+                (unless (file-directory-p init-dir)
+                  (user-error "No pre-existing profile to reload"))
+              (delete-directory init-dir t)
+              (make-directory init-dir t)
+              ;; Where persisted profile files are preserved.
+              (when (file-directory-p init-dir*)
+                (copy-directory init-dir* init-dir nil t t))
+              (let ((default-directory (doom-path init-dir)))
+                ;; TODO: (run-hook-with-args 'doom-profile-generate-functions p)
+                (dolist (fn doom-profile-generate-functions)
+                  (if (symbolp fn)
+                      (funcall fn p)
+                    ;; DEPRECATED: Backwards compatibility. Remove in v3.
+                    (pcase-let* ((`(,file ,fn _) fn)
+                                 (file (doom-path init-dir file)))
+                      (doom-log "Building %s..." file)
+                      (doom-file-write file (funcall fn) :printfn #'prin1))))))
             (doom-file-write
              init-file
              `(";; -*- coding: utf-8; lexical-binding: t; no-byte-compile: t -*-"
@@ -358,8 +361,8 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
                ,@(cl-loop for fn in doom-profile-generate-functions
                           if (not (functionp fn))
                           if (functionp (nth 2 fn))
-                          collect `(add-hook 'doom-startup-functions ',(nth 2 fn) 'append)))))
-          (print! (success "Built %s") (filename init-file))))
+                          collect `(add-hook 'doom-startup-functions ',(nth 2 fn) 'append))))
+            (print! (success "Built %s") (filename init-file))))
       (error (delete-file init-file)
              (signal 'doom-autoload-error (list init-file e))))))
 
