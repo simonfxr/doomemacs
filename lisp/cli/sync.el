@@ -22,14 +22,16 @@
 ;;; * Commands
 
 (defcli! ((sync s))
-    ((noenvvar? ("-e") "Don't regenerate the envvar file")
-     (update?   ("-u") "Update all installed packages after syncing")
+    ((update?   ("-u") "Update all installed packages after syncing")
      (noupdate? ("-U") "Don't update any packages")
      (purge?    ("--gc") "Purge orphaned package repos & regraft them")
      (jobs      ("-j" "--jobs" num) "How many threads to use for native compilation")
+     (reload?   ("-r" "--reload") "Regenerate the existing profile & envvar files only")
      (rebuild?  ("-b" "--rebuild") "Rebuild all installed packages, unconditionally")
      (nobuild?  ("-B") "Don't rebuild packages when hostname or Emacs version has changed")
      (aot?      ("--aot") "Natively compile packages ahead-of-time (if available)")
+     &flags
+     (env       ("-e" "--env") "Generate an envvar file or delete existing one")
      &context context)
   "Synchronize your config with Doom Emacs.
 
@@ -72,58 +74,73 @@ OPTIONS:
     (add-hook 'kill-emacs-hook #'doom-sync--abort-warning-h)
     (unless (> (doom-cli-context-step context) 0)
       (print! (item "Using Emacs %s @ %s") emacs-version (path invocation-directory invocation-name)))
+
     (when (doom-profiles-bootloadable-p)
       (call! '(profile sync "--all")))
-    (run-hooks 'doom-before-sync-hook)
 
+    (let ((env-file
+           (doom-profile-dir t doom-profile-init-dir-name "05-doom-env.load.el")))
+      (cond ((eq env :no)
+             (if (not (file-exists-p env-file))
+                 (print! (item "No envvar file to delete. Skipping..."))
+               (delete-file env-file)
+               (print! (success "Deleted envvar file"))))
+            ((or (file-exists-p env-file)
+                 (eq env :yes))
+             (make-directory (file-name-directory env-file) t)
+             (call! `(env "--reload" ,env-file)))))
+
+    (unless reload?
+      (run-hooks 'doom-before-sync-hook))
     (print! (start "Synchronizing %S profile..." ) (car doom-profile))
     (unwind-protect
         (print-group!
-          ;; If the user has up/downgraded Emacs since last sync, or copied their
-          ;; config to a different system, then their packages need to be
-          ;; recompiled. This is necessary because Emacs byte-code is not
-          ;; necessarily back/forward compatible across major versions, and many
-          ;; packages bake in hardcoded data at compile-time.
-          (pcase-let ((`(,old-version . ,hash)
-                       (doom-file-read doom-sync-info-file :by 'read :noerror t))
-                      (to-rebuild nil))
-            (when (and old-version (not (equal old-version emacs-version)))
-              (print! (warn "Emacs version has changed since last sync (from %s to %s)") old-version emacs-version)
-              (setq to-rebuild t))
-            (when (and (stringp hash)
-                       (not (equal hash (doom-sync--system-hash))))
-              (print! (warn "Your system has changed since last sync"))
-              (setq to-rebuild t))
-            (when (and to-rebuild (not rebuild?) (not (doom-cli-context-suppress-prompts-p context)))
-              (cond (nobuild?
-                     (print! (warn "Packages must be rebuilt, but -B has prevented it. Skipping...")))
-                    ((doom-cli-context-get context 'upgrading)
-                     (print! (warn "Packages will be rebuilt"))
-                     (setq rebuild? t))
-                    ((y-or-n-p (format! "  %s" "Installed packages must be rebuilt. Do so now?"))
-                     (setq rebuild? t))
-                    ((exit! 0)))))
-          (when (and (not noenvvar?)
-                     (file-exists-p doom-env-file))
-            (call! '(env)))
-          (doom-packages-ensure rebuild?)
-          (unless noupdate? (doom-packages-update (not update?)))
-          (call! `(gc ,(unless purge? "-begpr")))
-          (when (doom-profile-generate)
+          (unless reload?
+            ;; If the user has up/downgraded Emacs since last sync, or copied
+            ;; their config to a different system, then their packages need to
+            ;; be recompiled. This is necessary because Emacs byte-code is not
+            ;; necessarily back/forward compatible across major versions, and
+            ;; many packages bake in hardcoded data at compile-time.
+            (pcase-let ((`(,old-version . ,hash)
+                         (doom-file-read doom-sync-info-file :by 'read :noerror t))
+                        (to-rebuild nil))
+              (when (and old-version (not (equal old-version emacs-version)))
+                (print! (warn "Emacs version has changed since last sync (from %s to %s)") old-version emacs-version)
+                (setq to-rebuild t))
+              (when (and (stringp hash)
+                         (not (equal hash (doom-sync--system-hash))))
+                (print! (warn "Your system has changed since last sync"))
+                (setq to-rebuild t))
+              (when (and to-rebuild (not rebuild?) (not (doom-cli-context-suppress-prompts-p context)))
+                (cond (nobuild?
+                       (print! (warn "Packages must be rebuilt, but -B has prevented it. Skipping...")))
+                      ((doom-cli-context-get context 'upgrading)
+                       (print! (warn "Packages will be rebuilt"))
+                       (setq rebuild? t))
+                      ((y-or-n-p (format! "  %s" "Installed packages must be rebuilt. Do so now?"))
+                       (setq rebuild? t))
+                      ((exit! 0)))))
+            (doom-packages-ensure rebuild?)
+            (unless noupdate? (doom-packages-update (not update?)))
+            (call! `(gc ,(unless purge? "-begpr"))))
+          (when (doom-profile-generate nil reload?)
             (when emacs-running?
               (print! (item "Restart Emacs for changes to take effect")))
-            (run-hooks 'doom-after-sync-hook))
-          (when (or rebuild? (not (file-exists-p doom-sync-info-file)))
-            (with-temp-file doom-sync-info-file
-              (prin1 (cons emacs-version (doom-sync--system-hash))
-                     (current-buffer))))
-          (cond ((doom-cli-context-get context 'installing)
-                 (print! (success "Doom successfully installed!"))
-                 (with-temp-buffer
-                   (insert-file-contents (doom-emacs-dir "static/QUICKSTART_INTRO"))
-                   (print! "%s" (buffer-string))))
-                ((doom-cli-context-get context 'upgrading)
-                 (print! (success "Doom successfully upgraded!"))))
+            (unless reload?
+              (run-hooks 'doom-after-sync-hook)))
+          (if reload?
+              (print! (success "Reloaded profile!"))
+            (when (or rebuild? (not (file-exists-p doom-sync-info-file)))
+              (with-temp-file doom-sync-info-file
+                (prin1 (cons emacs-version (doom-sync--system-hash))
+                       (current-buffer))))
+            (cond ((doom-cli-context-get context 'installing)
+                   (print! (success "Doom successfully installed!"))
+                   (with-temp-buffer
+                     (insert-file-contents (doom-emacs-dir "static/QUICKSTART_INTRO"))
+                     (print! "%s" (buffer-string))))
+                  ((doom-cli-context-get context 'upgrading)
+                   (print! (success "Doom successfully upgraded!")))))
           t)
       (remove-hook 'kill-emacs-hook #'doom-sync--abort-warning-h))))
 

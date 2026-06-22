@@ -30,7 +30,7 @@ This command does the following:
   2. Copies ~/.config/emacs/static/init.example.el to `$DOOMDIR'/init.el (if
      it doesn't exist),
   3. Creates dummy files for `$DOOMDIR'/{config,packages}.el,
-  4. Prompts you to generate an envvar file (same as `$ doom env`),
+  4. Prompts you to generate an envvar file (same as `$ doom sync --env`),
   5. Installs any dependencies of enabled modules (specified by `$DOOMDIR'/init.el),
 
 This command is idempotent and safe to reuse.
@@ -86,10 +86,12 @@ Change `$DOOMDIR' with the `--doomdir' option, e.g.
     ;; Ask if user would like an envvar file generated
     (if (eq envfile? :no)
         (print! (warn "Not generating envvars file, as requested"))
-      (when (or yes?
-                (eq envfile? :yes)
-                (y-or-n-p "Generate an envvar file? (see `doom help env` for details)"))
-        (call! '(env))))
+      (setq envfile?
+            (if (or yes?
+                    (eq envfile? :yes)
+                    (y-or-n-p "Generate an envvar file? (see `doom help env` for details)"))
+                :yes
+              :no)))
 
     (when aot?
       (after! straight
@@ -113,7 +115,7 @@ Change `$DOOMDIR' with the `--doomdir' option, e.g.
       (or (zerop (car (sh! "git" "submodule" "update" "-f" "--init" "--recursive")))
           (error "Failed to update submodules"))
       (doom-cli-context-put context 'installing t)
-      (exit! "doom" "sync" (if aot? "--aot")))))
+      (exit! "doom" "sync" (if aot? "--aot") (if (eq envfile? :yes) "--env")))))
 
 (provide 'doom-cli-install)
 ;;; install.el ends here

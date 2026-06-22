@@ -7,6 +7,26 @@
 ;;
 ;;; Code:
 
+(require 'seq)
+(require 'map)
+
+(eval-and-compile
+  (doom-require 'doom-lib 'process)
+  (doom-require 'doom-lib 'system)
+  (doom-require 'doom-lib 'git)
+  (doom-require 'doom-lib 'plist)
+  (doom-require 'doom-lib 'files)
+  (doom-require 'doom-lib 'print)
+  (doom-require 'doom-lib 'autoloads))
+
+(require 'doom-profiles)
+(require 'doom-modules)
+(require 'doom-packages)
+
+
+;;
+;;; * Variables
+
 (defgroup doom-cli nil
   "Doom's command-line interface framework."
   :link '(url-link "https://doomemacs.org/cli")
