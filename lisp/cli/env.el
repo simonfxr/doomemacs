@@ -5,7 +5,8 @@
 ;;
 ;;; * Variables
 
-(defvar doom-env-deny
+;;;###autoload
+(defcustom doom-env-deny
   '(;; Unix/shell state that shouldn't be persisted
     "^HOME$" "^\\(OLD\\)?PWD$" "^SHLVL$" "^PS1$" "^R?PROMPT$" "^TERM\\(CAP\\)?$"
     "^USER$" "^GIT_CONFIG" "^INSIDE_EMACS$"
@@ -26,13 +27,17 @@
     "^DOOM\\(PATH\\|PROFILE\\)$" "^__")
   "Environment variables to omit from envvar files.
 
-Each string is a regexp, matched against variable names.")
+Each string is a regexp, matched against variable names."
+  :type '(repeat regexp)
+  :group 'doom-cli)
 
 (defvar doom-env-allow '()
   "Environment variables to include in envvar files.
 
 This overrules `doom-env-deny'. Each string is a regexp, matched against
-variable names.")
+variable names."
+  :type '(repeat regexp)
+  :group 'doom-cli)
 
 
 ;;

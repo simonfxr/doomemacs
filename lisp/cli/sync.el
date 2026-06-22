@@ -8,11 +8,17 @@
 ;;
 ;;; * Variables
 
-(defvar doom-after-sync-hook ()
-  "Hooks run after 'doom sync' synchronizes the user's config with Doom.")
+;;;###autoload
+(defcustom doom-after-sync-hook ()
+  "Hooks run after \\='doom sync' synchronizes the user's config with Doom."
+  :type 'hook
+  :group 'doom-cli)
 
-(defvar doom-before-sync-hook ()
-  "Hooks run before 'doom sync' synchronizes the user's config with Doom.")
+;;;###autoload
+(defcustom doom-before-sync-hook ()
+  "Hooks run before \\='doom sync' synchronizes the user's config with Doom."
+  :type 'hook
+  :group 'doom-cli)
 
 ;; DEPRECATED: Will be removed once `doom-profile' is a struct
 (defvar doom-sync-info-file (doom-profile-data-dir t "sync"))

@@ -8,8 +8,11 @@
 ;;
 ;;; * Variables
 
-(defvar doom-upgrade-url "https://github.com/doomemacs/core"
-  "The git repo url for Doom Emacs.")
+;;;###autoload
+(defcustom doom-upgrade-url "https://github.com/doomemacs/core"
+  "The git repo url for Doom Emacs."
+  :type 'string
+  :group 'doom-cli)
 
 (defvar doom-upgrade-remote "_upgrade"
   "The name to use as our staging remote.")
