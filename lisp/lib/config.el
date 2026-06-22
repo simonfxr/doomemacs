@@ -117,7 +117,10 @@ imported into Emacs."
   (interactive)
   (with-doom-context 'reload
     (require 'doom-profiles)
-    (load-file (doom-profile-dir t doom-profile-init-dir-name "05-doom-env.load.el"))))
+    (let ((env-file (doom-profile-dir t doom-profile-init-dir-name "05-doom-env.load.el")))
+      (if (file-exists-p env-file)
+          (load-file env-file)
+        (user-error "No envvar file found! Run 'doom sync --env' in your shell to generate one!")))))
 
 (provide 'doom-lib '(config))
 ;;; config.el ends here
