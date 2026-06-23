@@ -424,7 +424,6 @@ safely cleaned up with \\='doom sync' or \\='doom gc'."
 
     (if interactive?
         (when (doom-context-push 'emacs)
-          (add-hook 'doom-after-init-hook #'doom-load-packages-incrementally-h 100)
           (add-hook 'doom-after-init-hook #'doom-display-benchmark-h 110)
           (doom-run-hook-on 'doom-first-file-hook   '(find-file-hook dired-initial-position-hook))
           (doom-run-hook-on 'doom-first-input-hook  '(pre-command-hook))
@@ -432,11 +431,6 @@ safely cleaned up with \\='doom sync' or \\='doom gc'."
                             (lambda ()
                               (not (member (buffer-name)
                                            `("*scratch*" ,doom-fallback-buffer-name)))))
-
-          ;; These fire `MAJOR-MODE-local-vars-hook' hooks, which is a Doomism.
-          ;; See the `MODE-local-vars-hook' section above.
-          (add-hook 'after-change-major-mode-hook #'doom-run-local-var-hooks-maybe-h 100)
-          (add-hook 'hack-local-variables-hook #'doom-run-local-var-hooks-h)
 
           ;; This is the absolute latest a hook can run in Emacs' startup
           ;; process.
