@@ -1,4 +1,6 @@
 ;;; lisp/cli/ci.el -*- lexical-binding: t; -*-
+;;; Commentary:
+;;; Code:
 
 ;;
 ;;; * Variables

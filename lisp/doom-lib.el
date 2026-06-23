@@ -1,4 +1,4 @@
-;;; doom-lib.el --- Doom's core standard library -*- lexical-binding: t; -*-
+;;; doom-lib.el --- Doom's core standard library -*- lexical-binding: t -*-
 ;;; Commentary:
 ;;; Code:
 
