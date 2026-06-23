@@ -356,7 +356,7 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
                           if (functionp (nth 2 fn))
                           collect `(add-hook 'doom-startup-functions ',(nth 2 fn) 'append))))
             (print! (success "Built %s") (filename init-file))))
-      (error (delete-file init-file)
+      (error (ignore-errors (delete-file init-file))
              (signal 'doom-autoload-error (list init-file e))))))
 
 (defun doom-profile--generate-init (_profile)
