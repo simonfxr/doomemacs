@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-:; # -*- mode: emacs-lisp; lexical-binding: t -*-
+:; # -*- mode: emacs-lisp; lexical-binding: t; no-byte-compile: t -*-
 :; case "$EMACS" in *term*) EMACS=emacs ;; *) EMACS="${EMACS:-emacs}" ;; esac
 :; [ "x$EMACS" = xemacs ] && { type emacs >/dev/null 2>&1 || err=1; }
 :; [ "x$err" = x ] || { echo "Error: failed to run Emacs with command '$EMACS'"; echo; echo "Are you sure Emacs is installed and in your \$PATH?"; exit 1; } >&2

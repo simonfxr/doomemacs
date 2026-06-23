@@ -1,4 +1,4 @@
-;;; early-init.el --- Doom's universal bootstrapper -*- lexical-binding: t -*-
+;;; early-init.el --- Doom's universal bootstrapper -*- lexical-binding: t; no-byte-compile: t -*-
 ;;; Commentary:
 ;;
 ;; This is Doom's "universal bootstrapper" for both interactive and
