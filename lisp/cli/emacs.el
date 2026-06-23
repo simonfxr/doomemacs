@@ -2,9 +2,6 @@
 ;;; Commentary:
 ;;; Code:
 
-(require 'doom)
-(require 'doom-cli)
-
 ;;
 ;;; * Variables
 
