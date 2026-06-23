@@ -36,6 +36,10 @@ Package files are read whenever Doom's package manager wants a manifest of all
 desired packages. They are rarely read in interactive sessions (unless the user
 uses a straight or package.el command directly).")
 
+;;;###autoload
+(defvar doom-module-cli-file "cli.el"
+  "The CLI configuration filename.")
+
 
 ;;
 ;;; * Library

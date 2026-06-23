@@ -301,13 +301,12 @@ SEE ALSO:
     ;; TODO Post-3.0 commands
     (defcli-stub! test))
 
-  (let ((cli-file "cli.el"))
-    (defcli-group! "Module commands"
-      (with-doom-context 'module
-        (dolist (key (doom-module-list))
-          (when-let* ((path (doom-module-locate-path key cli-file)))
-            (defcli-group! :prefix (if (cdr key) (format "+%s" (cdr key)))
-              (doom-load (file-name-sans-extension path))))))))
+  (defcli-group! "Module commands"
+    (with-doom-context 'module
+      (dolist (key (doom-module-list))
+        (when-let* ((path (doom-module-locate-path key doom-module-cli-file)))
+          (defcli-group! :prefix (if (cdr key) (format "+%s" (cdr key)))
+            (doom-load (file-name-sans-extension path)))))))
 
   ;; Execute arbitrary CLI configuration in a local .doom.el file
   (let (doomrc)
