@@ -115,7 +115,10 @@
         ((memq system-type '(gnu gnu/linux))              '(linux))
         ((memq system-type '(gnu/kfreebsd berkeley-unix)) '(linux bsd))
         ((eq system-type 'android)                        '(android)))
-  "A list of symbols denoting available features in the active Doom profile.")
+  "A list of symbols indicating the features in the active Doom profile.
+
+The first element should always be one of `macos', `windows', `linux', or
+`android'.")
 
 ;; Convenience aliases for internal use only (may be removed later).
 (defconst doom--system-windows-p (eq 'windows (car doom-system)))
