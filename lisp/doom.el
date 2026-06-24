@@ -530,13 +530,8 @@ Triggers `doom-after-init-hook' and sets `doom-init-time.'"
 
 (defun doom-startup ()
   "Fully load enabled modules and $DOOMDIR/config.el."
-  ;; Make sure this only runs at startup to protect us Emacs' interpreter
-  ;; re-evaluating `doom-startup-functions' when lazy-loading dynamic docstrings
-  ;; from the byte-compiled init file.
-  (when (or (doom-context-p 'startup)
-            (doom-context-p 'reload))
-    (require 'doom-emacs)  ; if called from CLI
-    (run-hook-with-args 'doom-startup-functions doom-profile)))
+  (require 'doom-emacs)  ; if called from CLI
+  (run-hook-with-args 'doom-startup-functions doom-profile))
 
 (defun doom-display-benchmark-h (&optional return-p)
   "Display a benchmark including number of packages and modules loaded.

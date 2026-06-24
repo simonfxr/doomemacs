@@ -1789,7 +1789,12 @@ and whether the line count of the buffer exceeds that matching entry in
               (setq load-history
                     (delete (assoc init-file-name load-history)
                             load-history))
-              (doom-startup)))
+              ;; Make sure this only runs at startup to protect from Emacs'
+              ;; interpreter re-evaluating `doom-startup-functions' when
+              ;; lazy-loading dynamic docstrings from a byte-compiled init file.
+              (when (or (doom-context-p 'startup)
+                        (doom-context-p 'reload))
+                (doom-startup))))
         ;; TODO: Add safe-mode profile.
         ;; (error
         ;;  ;; HACK: This is not really this variable's intended purpose, but it
