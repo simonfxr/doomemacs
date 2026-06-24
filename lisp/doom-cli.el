@@ -41,8 +41,7 @@
 
 It is prefilled by the DOOMPATH envvar (a colon-separated list on Linux/macOS,
 semicolon otherwise)."
-  :type '(repeat directory)
-  :group 'doom-cli)
+  :type '(repeat directory))
 
 
 ;;
@@ -173,15 +172,13 @@ Recognizies the following properies:
   "The PAGER command to use.
 
 If nil, falls back to less."
-  :type 'string
-  :group 'doom-cli)
+  :type 'string)
 
 (defcustom doom-cli-pager-ratio 1.0
   "If output exceeds TTY height times this ratio, the pager is invoked.
 
 Only applies if (exit! :pager) or (exit! :pager?) are called."
-  :type 'float
-  :group 'doom-cli)
+  :type 'float)
 
 (defvar doom-cli-exit-code 255
   "The exit code used last time `exit!' was called.")
@@ -231,8 +228,7 @@ Can be `pwsh' if invoked via bin/doom.ps1, or `sh' in unix environments.")
 
 (defcustom doom-cli-initialize-hook ()
   "TODO"
-  :type 'hook
-  :group 'doom-cli)
+  :type 'hook)
 
 (defcustom doom-cli-create-context-functions ()
   "A hook executed once a new context has been generated.
@@ -242,23 +238,20 @@ Called by `doom-cli-context-parse' and `doom-cli-context-restore', once a
 has).
 
 Hooks are run with one argument: the newly created context."
-  :type 'hook
-  :group 'doom-cli)
+  :type 'hook)
 
 (defcustom doom-cli-before-run-functions ()
   "Hooks run before `run!' executes the command.
 
 Runs with a single argument: the active context (a `doom-cli-context' struct)."
-  :type 'hook
-  :group 'doom-cli)
+  :type 'hook)
 
 (defcustom doom-cli-after-run-functions ()
   "Hooks run after `run!' has executed the command.
 
 Runs with two arguments: the active context (a `doom-cli-context' struct) and
 the return value of the executed CLI."
-  :type 'hook
-  :group 'doom-cli)
+  :type 'hook)
 
 
 ;;
