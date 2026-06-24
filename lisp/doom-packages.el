@@ -233,11 +233,12 @@ processed."
 (defun doom-package-recipe (package &optional prop nil-value)
   "Returns the `straight' recipe PACKAGE was registered with."
   (let* ((recipe (straight-recipes-retrieve package))
-         (plist (doom-plist-merge
-                 (plist-get (alist-get package doom-packages) :recipe)
-                 (cdr (if (memq (car recipe) '(quote \`))
-                          (eval recipe t)
-                        recipe)))))
+         (plist
+          (map-merge 'plist
+                     (cdr (if (memq (car recipe) '(quote \`))
+                              (eval recipe t)
+                            recipe))
+                     (plist-get (alist-get package doom-packages) :recipe))))
     (if prop
         (if (plist-member plist prop)
             (plist-get plist prop)
