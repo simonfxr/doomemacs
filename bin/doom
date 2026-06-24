@@ -305,8 +305,10 @@ SEE ALSO:
     (with-doom-context 'module
       (dolist (key (doom-module-list))
         (when-let* ((path (doom-module-locate-path key doom-module-cli-file)))
-          (defcli-group! :prefix (if (cdr key) (format "+%s" (cdr key)))
-            (doom-load (file-name-sans-extension path)))))))
+          (if (eq (car key) :doom)
+              (doom-load (file-name-sans-extension path))
+            (defcli-group! :prefix (if (cdr key) (format "+%s" (cdr key)))
+              (doom-load (file-name-sans-extension path))))))))
 
   ;; Execute arbitrary CLI configuration in a local .doom.el file
   (let (doomrc)
