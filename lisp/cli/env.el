@@ -104,7 +104,8 @@ Why this over exec-path-from-shell?
               ";;;###if (or initial-window-system (daemonp))\n"
               ";;;###allow " (prin1-to-string allow) "\n"
               ";;;###deny "  (prin1-to-string deny) "\n"
-              ";;;###date "  (format-time-string "%Y-%m-%d %H:%M:%S") "\n\n")
+              ";;;###date "  (format-time-string "%Y-%m-%d %H:%M:%S") "\n"
+              "(put 'process-environment 'doom t)\n")
       (let ((deny  (append deny doom-env-deny))
             (allow (append allow doom-env-allow))
             envvars)
