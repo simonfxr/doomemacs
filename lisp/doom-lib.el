@@ -544,10 +544,13 @@ If PROFILE is t, default to the active profile."
         (if (stringp file) file))
       (error "file!: cannot deduce the current file path")))
 
-(defmacro dir! ()
+(defmacro dir! (&rest segments)
   "Return the directory of the file in which this macro was called."
-  (let (file-name-handler-alist)
-    (file-name-directory (macroexpand '(file!)))))
+  (let* ((file-name-handler-alist nil)
+         (dir (file-name-directory (macroexpand '(file!)))))
+    (if segments
+        `(doom--dir ,dir (list ,@segments))
+      dir)))
 
 (put 'defun* 'lisp-indent-function 'defun)
 (defmacro letf! (bindings &rest body)
