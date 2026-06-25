@@ -2267,19 +2267,18 @@ substring is edited more than once."
                      (rcli (doom-cli-get command))
                      (summary (doom-cli-short-docs rcli))
                      (subcommands? (doom-cli-subcommands cli 1 :predicate? t)))
-                (insert! ((format "%%-%ds%%s%%s"
-                                  (+ (- minwidth doom-print-indent)
-                                     doom-print-indent-increment
-                                     (if subcommands? ellipsislen 0)))
-                          (concat (doom-cli-command-string (seq-drop command drop))
-                                  (if subcommands? ellipsis))
-                          (if inline? " " "\n")
-                          (indent (if (and (doom-cli-alias cli)
-                                           (not (doom-cli-type rcli)))
-                                      (dark "-> %s" (doom-cli-command-string cli))
-                                    (when docs?
-                                      (if summary (markup summary) (dark "TODO"))))))
-                         "\n")))
+                (unless (and (doom-cli-alias cli)
+                             (not (doom-cli-type rcli)))
+                  (insert! ((format "%%-%ds%%s%%s"
+                                    (+ (- minwidth doom-print-indent)
+                                       doom-print-indent-increment
+                                       (if subcommands? ellipsislen 0)))
+                            (concat (doom-cli-command-string (seq-drop command drop))
+                                    (if subcommands? ellipsis))
+                            (if inline? " " "\n")
+                            (indent (when docs?
+                                      (if summary (markup summary) (dark "TODO")))))
+                           "\n"))))
             (when (cdr rest)
               (insert "\n")))))
       (string-trim-right (buffer-string)))))
