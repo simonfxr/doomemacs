@@ -13,8 +13,6 @@
 (eval-and-compile
   (doom-require 'doom-lib 'process)
   (doom-require 'doom-lib 'system)
-  (doom-require 'doom-lib 'git)
-  (doom-require 'doom-lib 'plist)
   (doom-require 'doom-lib 'files)
   (doom-require 'doom-lib 'print)
   (doom-require 'doom-lib 'autoloads))
