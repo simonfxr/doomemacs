@@ -98,7 +98,7 @@ OPTIONS:
 
     (unless reload?
       (run-hooks 'doom-before-sync-hook))
-    (print! (start "Synchronizing %S profile..." ) (car doom-profile))
+    (print! (start "Synchronizing %S profile..." ) (doom-profile-name doom-profile))
     (unwind-protect
         (print-group!
           (unless reload?

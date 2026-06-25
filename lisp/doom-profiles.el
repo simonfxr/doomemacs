@@ -45,8 +45,7 @@ list of paths or profile config files (semi-colon delimited on Windows).")
 
 Can be changed externally by setting $DOOMPROFILELOADFILE.")
 
-(defvar doom-profile-cache-file
-  (doom-cache-dir (format "profiles.%s.el" (car doom-profile)))
+(defvar doom-profile-cache-file (doom-cache-dir "profiles.%s.el")
   "Where Doom writes its interactive profile loader script.
 
 Can be changed externally by setting $DOOMPROFILELOADFILE.")
@@ -93,55 +92,102 @@ These functions are executed in the context of the
 ;;; * Library
 
 ;;;###autoload
-(progn
+(eval-and-compile
+  (cl-defstruct (doom-profile (:copier nil))
+    "TODO"
+    name
+    ref
+    root
+    ;; hash       ; profile is initialized & synced
+    active-p
+    ;; recipe-overrides
+    ;; source-overrides
+    ;; module-overrides
+    ;; package-overrides
+    ;; (sources (make-hash-table :test 'eq) :read-only t)
+    ;; (modules (make-hash-table :test 'equal) :read-only t)
+    ;; (packages (make-hash-table :test 'eq) :read-only t)
+    ;; (-module-paths (make-hash-table :test 'equal) :read-only t)
+    ;; (-source-paths (make-hash-table :test 'equal) :read-only t)
+    ;; (metadata '((t)))
+    ;; bindings
+    ;; (build-system system-configuration)
+    ;; (build-version emacs-version)
+    ;; build-time
+    )
+
+  (pcase-defmacro doom-profile (&rest fields)
+    `(doom-struct doom-profile ,@fields))
+
   (defun doom-profile-key (profile &optional default?)
     "Normalize PROFILE into a (NAME . REF) doom-profile key.
 
 PROFILE can be a `doom-profile', a profile id (i.e. a string in the NAME@REF
-format), or a (NAME . REF) cons cell.
+format), or a (NAME . REF) cons cell. NAME is the string name of the profile and
+REF can either be a string (arbitrary label) or an integer (generation number).
+Will throw `wrong-type-argument' if PROFILE is nil and DEFAULT? is omitted.
 
-If DEFAULT? is non-nil, an unspecified CAR/CDR will fall bakc to (_default .
-0)."
+If DEFAULT? is non-nil, an unspecified NAME/REF will fall back to (\"_default\"
+.  0), the default profile key."
     (declare (pure t) (side-effect-free t))
-    (let ((default-name (if default? "_default"))
-          (default-ref  (if default? "0")))
-      (cond ((eq profile t) (cons default-name default-ref))
-            ;; ((doom-profile-p profile)
-            ;;  (cons (or (doom-profile-name profile) default-name)
-            ;;        (or (doom-profile-ref profile)  default-ref)))
+    (let ((default-name (if default? (car doom--profile-default)))
+          (default-ref  (if default? (cdr doom--profile-default))))
+      (cond ((or (eq profile t)
+                 (and (null profile) default?))
+             (cons default-name default-ref))
             ((stringp profile)
              (save-match-data
                (let (case-fold-search)
-                 (if (string-match "^\\([^@]+\\)@\\(.+\\)$" profile)
+                 (if (string-match "^\\([^@]+\\)?\\(?:@\\(.+\\)\\)?$" profile)
                      (cons (match-string 1 profile)
-                           (match-string 2 profile))
-                   (cons profile default-ref)))))
+                           (or (match-string 2 profile) default-ref))
+                   (cons profile default-name)))))
+            ((doom-profile-p profile)
+             (cons (or (doom-profile-name profile) default-name)
+                   (or (doom-profile-ref profile)  default-ref)))
             ((and (consp profile) (nlistp (cdr profile)))
              (cons (or (car profile) default-name)
                    (or (cdr profile) default-ref)))
-            ((and (null profile) default?)
-             (cons default-name default-ref))
             ((signal 'wrong-type-argument
                      (list "Expected PROFILE to be a string, cons cell, or `doom-profile'"
-                           (type-of profile) profile))))))
+                           (type-of profile) profile)))))))
 
-  (defun doom-profile-get (profile-name &optional property null-value)
-    "Return PROFILE-NAME's PROFILE, otherwise its PROPERTY, otherwise NULL-VALUE."
-    (when (stringp profile-name)
-      (setq profile-name (intern profile-name)))
-    (if-let* ((profile (assq profile-name (doom-profiles))))
-        (if property
-            (if-let* ((propval (assq property (cdr profile))))
-                (cdr propval)
-              null-value)
-          profile)
-      null-value))
+;;;###autoload
+(defun copy-doom-profile (profile &optional ref deep?)
+  "Return a copy of PROFILE at REF.
 
-  (defun doom-profile->id (profile)
-    "Return a NAME@VERSION id string from profile cons cell (NAME . VERSION)."
-    (cl-check-type profile cons)
-    (cl-destructuring-bind (name . ref) (doom-profile-key profile)
-      (format "%s@%s" name ref))))
+If REF is t, use the next available REF for PROFILE.
+If REF is :last, use the last known, built ref of PROFILE.
+If REF is any other string, set PROFILE's REF to it.
+
+If DEEP is non-nil, produce a deep copy of PROFILE. Otherwise, a barebones,
+uninitialized copy of PROFILE is returned."
+  (let ((p (doom-copy profile deep?)))
+    (when ref
+      (setf (doom-profile-ref p)
+            (if (memq ref '(t :last))
+                (cdr (doom-profile-key nil t))  ; refs are ornamental until v3
+              ref)))
+    p))
+
+;; (defun doom-profile-get (profile-name &optional property null-value)
+;;   "Return PROFILE-NAME's PROFILE, otherwise its PROPERTY, otherwise NULL-VALUE."
+;;   (when (stringp profile-name)
+;;     (setq profile-name (intern profile-name)))
+;;   (if-let* ((profile (assq profile-name (doom-profiles))))
+;;       (if property
+;;           (if-let* ((propval (assq property (cdr profile))))
+;;               (cdr propval)
+;;             null-value)
+;;         profile)
+;;     null-value))
+
+;;;###autoload
+(defun doom-profile->id (profile)
+  "Return a NAME@VERSION id string from profile cons cell (NAME . VERSION)."
+  (cl-check-type profile cons)
+  (cl-destructuring-bind (name . ref) (doom-profile-key profile)
+    (format "%s@%s" name ref)))
 
 
 ;;; ** Profile load file
@@ -312,7 +358,7 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
          (init-dir  (doom-profile-init-dir p doom-profile-init-dir-name))
          (init-dir* (doom-profile-dir p doom-profile-init-dir-name))
          (init-file (doom-profile-init-file p)))
-    (print! (start "Generating profile: %s") (doom-profile->id p))
+    (print! (start "Generating profile init file"))
     (condition-case-unless-debug e
         (with-file-modes #o750
           (print-group!
@@ -359,10 +405,11 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
       (error (ignore-errors (delete-file init-file))
              (signal 'doom-autoload-error (list init-file e))))))
 
-(defun doom-profile--generate-init (_profile)
+(defun doom-profile--generate-init (profile)
   (doom-file-write
    "05-doom.init.el"
-   `((defun doom--startup-vars (_profile)
+   `((setq doom-profile ,profile)
+     (defun doom--startup-vars (_profile)
        (when (doom-context-p 'reload)
          (set-default-toplevel-value 'load-path (get 'load-path 'initial-value)))
        ,@(cl-loop for var in '(auto-mode-alist
@@ -409,8 +456,9 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
 (defun doom-profile--generate-user-init-loader (_profile)
   (doom-file-write
    "20-user.init.el"
-   `((with-doom-context '(module init)
-       (doom-load (doom-user-dir ,doom-module-init-file) t)))))
+   `((unless noninteractive
+       (with-doom-context '(module init)
+         (doom-load ,(doom-user-dir doom-module-init-file) t))))))
 
 (defun doom-profile--generate-package-envs (_profile)
   (doom-file-write

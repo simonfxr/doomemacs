@@ -272,6 +272,23 @@ list is returned as-is."
 
 
 ;;
+;;; * pcase extensions
+
+(pcase-defmacro doom-struct (type &rest fields)
+  `(and (pred (cl-struct-p))
+        ;; TODO: Support `&rest', `&key', and `&optional' in FIELDS
+        ,@(mapcar
+           (lambda (field)
+             (let ((offset (cl-struct-slot-offset type field)))
+               `(app (lambda (it)
+                       ,(if offset
+                            `(aref it ,offset)
+                          `(,(intern (format "%s-%s" ',type ',field)) it)))
+                     ,field)))
+           fields)))
+
+
+;;
 ;;; * Public library
 
 (defun doom-unquote (exp)
@@ -435,9 +452,14 @@ TRIGGER-HOOK is a list of quoted hooks and/or sharp-quoted functions."
 ;; for forward-compatibility with v3.
 
 (defsubst doom--profile (profile)
-  (let ((p (if (eq profile t) doom-profile profile)))
-    (unless (equal p doom--profile-default)
-      p)))
+  (if-let* ((p (if (eq profile t) doom-profile profile)))
+      ;; NOTE: Can't use `doom-profile-key' this early during startup. No
+      ;;   guarantee the `doom-profile' struct+API will be available yet in
+      ;;   interactive sessions.
+      (if (cl-struct-p p)
+          (cons (doom-profile-name p) (doom-profile-ref p))
+        p)
+    (signal 'doom-profile-error '(no-profile ,profile))))
 
 (defsubst doom--dir (dir segments)
   (let ((segments (delq nil segments))
@@ -466,9 +488,13 @@ TRIGGER-HOOK is a list of quoted hooks and/or sharp-quoted functions."
                (doom-profile-state-dir . doom-state-dir)))
   (defalias (car var)
     (lambda (profile &rest segments)
+      (setq profile (doom--profile profile))
       (doom--dir (file-name-concat
                   (symbol-value (cdr var))
-                  (car (doom--profile profile)))
+                  ;; DEPRECATED: Temporary backwards compatibility cludge.
+                  (unless (and doom--noprofile
+                               (equal profile doom--profile-default))
+                    (car profile)))
                  segments))
     (format "Return a local PROFILE path from SEGMENTS after `%s'.
 
@@ -477,12 +503,23 @@ If PROFILE is t, default to the active profile."
 
 (defun doom-profile-dir (profile &rest segments)
   "Return a path from SEGMENTS after a PROFILE's root data directory."
-  (doom--dir (file-name-concat doom-data-dir (car (doom--profile profile)))
+  (setq profile (doom--profile profile))
+  (doom--dir (file-name-concat
+              doom-data-dir
+              ;; DEPRECATED: Temporary backwards compatibility cludge.
+              (unless (and doom--noprofile
+                           (equal profile doom--profile-default))
+                (car profile)))
              segments))
 
 (defun doom-profile-init-dir (profile &rest segments)
   "Return a path from SEGMENTS after a PROFILE's init files directory."
-  (apply #'doom-profile-dir profile "@" (cdr (doom--profile profile))
+  (setq profile (doom--profile profile))
+  (apply #'doom-profile-dir profile "@"
+         ;; DEPRECATED: Temporary backwards compatibility cludge.
+         (unless (and doom--noprofile
+                      (equal profile doom--profile-default))
+           (cdr profile))
          segments))
 
 (defun doom-profile-init-file (profile &optional filename)
@@ -545,7 +582,9 @@ If PROFILE is t, default to the active profile."
       (error "file!: cannot deduce the current file path")))
 
 (defmacro dir! (&rest segments)
-  "Return the directory of the file in which this macro was called."
+  "Return the directory of the file in which this macro was called.
+
+Appends SEGMENTS to the path, relative to the call site."
   (let* ((file-name-handler-alist nil)
          (dir (file-name-directory (macroexpand '(file!)))))
     (if segments
@@ -835,19 +874,6 @@ See `general-key-dispatch' for what other arguments it accepts in BRANCHES."
 ;; For backwards compatibility
 (defalias 'λ!  #'cmd!)
 (defalias 'λ!! #'cmd!!)
-
-(pcase-defmacro doom-struct (type &rest fields)
-  `(and (pred (cl-struct-p))
-        ;; TODO: Support `&rest', `&key', and `&optional' in FIELDS
-        ,@(mapcar
-           (lambda (field)
-             (let ((offset (cl-struct-slot-offset type field)))
-               `(app (lambda (it)
-                       ,(if offset
-                            `(aref it ,offset)
-                          `(,(intern (format "%s-%s" ',type ',field)) it)))
-                     ,field)))
-           fields)))
 
 
 ;;; ** `doom-config'

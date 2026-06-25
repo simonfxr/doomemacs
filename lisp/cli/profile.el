@@ -19,7 +19,8 @@
   :benchmark t
   (if (not all?)
       (user-error "Individual profile syncing isn't implemented yet")
-    (let* ((old-profiles (doom-profiles-read doom-profile-cache-file))
+    (let* ((cache-file (format doom-profile-cache-file (doom-profile-name doom-profile)))
+           (old-profiles (doom-profiles-read cache-file))
            (new-profiles (doom-profiles-autodetect))
            (load-file doom-profile-load-file)
            (version (doom-file-read load-file :by 'read :noerror t))
@@ -50,7 +51,7 @@
               (dolist (p added)   (print! (item "Added %S") (car p)))
               (dolist (p removed) (print! (item "Removed %S") (car p)))
               (dolist (p changed) (print! (item "Changed %S") (car p)))
-              (doom-file-write doom-profile-cache-file (list new-profiles) :mode #o600)
+              (doom-file-write cache-file (list new-profiles) :mode #o600)
               (doom-profiles-write-load-file new-profiles load-file)
               (print! (success "Regenerated profile loader: %s")
                       (path load-file)))))))))

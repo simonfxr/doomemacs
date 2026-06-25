@@ -374,7 +374,7 @@
       ;; loads the profile's init file, if it's available. In interactive
       ;; session, a missing profile is an error state, in a non-interactive one,
       ;; it's not (and left to the consumer to deal with).
-      (doom-initialize (not noninteractive))
+      (doom-initialize (getenv "DOOMPROFILE") (not noninteractive))
     ;; If we're here, the user wants to load another config/profile (that may or
     ;; may not be a Doom config).
     (load user-init-file 'noerror (not init-file-debug) nil 'must-suffix)))
