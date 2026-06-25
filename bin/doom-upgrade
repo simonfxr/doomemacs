@@ -1,4 +1,5 @@
-;;; lisp/cli/upgrade.el -*- lexical-binding: t; -*-
+#!/usr/bin/env doomscript
+;;; bin/doom-upgrade -*- lexical-binding: t; mode: emacs-lisp -*-
 ;;; Commentary:
 ;;; Code:
 
@@ -21,7 +22,7 @@
 ;;
 ;;; * Commands
 
-(defcli! ((upgrade up))
+(defcli! upgrade
     ((aot?       ("--aot") "Natively compile packages ahead-of-time (if available)")
      (packages?  ("-p" "--packages") "Only upgrade packages, not Doom")
      (jobs       ("-j" "--jobs" num) "How many CPUs to use for native compilation")
@@ -187,4 +188,10 @@ libraries. It is the equivalent of the following shell commands:
                    (eval (plist-get sexp :recipe)
                          t))))))
 
-;;; upgrade.el ends here
+
+;;
+;;; * Execute
+
+(run! "upgrade" (cdr (member "--" argv)))
+
+;;; doom-upgrade ends here

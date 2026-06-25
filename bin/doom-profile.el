@@ -1,4 +1,5 @@
-;;; lisp/cli/profile.el -*- lexical-binding: t; -*-
+#!/usr/bin/env doomscript
+;;; bin/doom-profile -*- lexical-binding: t; mode: emacs-lisp -*-
 ;;; Commentary:
 ;;; Code:
 
@@ -8,7 +9,7 @@
 ;;
 ;;; * doom profile ...
 
-(defcli! ((profile pf)) ()
+(defcli! profile ()
   "Emacs profile management commands."
   :partial t)
 
@@ -68,5 +69,10 @@
 
 (defcli-stub! (profile nuke) ())
 
-(provide 'doom-cli-profile)
-;;; profile.el ends here
+
+;;
+;;; * Execute
+
+(run! "profile" (cdr (member "--" argv)))
+
+;;; doom-profile ends here

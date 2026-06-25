@@ -1,4 +1,5 @@
-;;; lisp/cli/env.el --- envvar file generator -*- lexical-binding: t; -*-
+#!/usr/bin/env doomscript
+;;; bin/doom-env --- envvar file generator -*- lexical-binding: t; mode: emacs-lisp -*-
 ;;; Commentary:
 ;;; Code:
 
@@ -144,5 +145,10 @@ Why this over exec-path-from-shell?
 
 (defcli-obsolete! (env (clear c)) (sync --no-env --reload) "2.3.0")
 
-(provide 'doom-cli-env)
-;;; env.el ends here
+
+;;
+;;; * Execute
+
+(run! "env" (cdr (member "--" argv)))
+
+;;; doom-env ends here

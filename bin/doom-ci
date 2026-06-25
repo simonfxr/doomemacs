@@ -1,4 +1,5 @@
-;;; lisp/cli/ci.el -*- lexical-binding: t; -*-
+#!/usr/bin/env doomscript
+;;; bin/doom-ci -*- lexical-binding: t; mode: emacs-lisp -*-
 ;;; Commentary:
 ;;; Code:
 
@@ -483,5 +484,10 @@ print the original message again when ECHO-MSG is non-nil."
           (exit! 1)))
       t)))
 
-(provide 'doom-cli-ci)
-;;; ci.el ends here
+
+;;
+;;; * Execute
+
+(run! "ci" (cdr (member "--" argv)))
+
+;;; doom-ci ends here

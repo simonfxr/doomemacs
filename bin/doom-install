@@ -1,4 +1,5 @@
-;;; lisp/cli/install.el --- Doom Emacs install wizard -*- lexical-binding: t; -*-
+#!/usr/bin/env doomscript
+;;; bin/doom-install --- Doom Emacs install wizard -*- lexical-binding: t; mode: emacs-lisp -*-
 ;;; Commentary:
 ;;; Code:
 
@@ -117,5 +118,10 @@ Change `$DOOMDIR' with the `--doomdir' option, e.g.
       (doom-cli-context-put context 'installing t)
       (exit! "doom" "sync" (if aot? "--aot") (if (eq envfile? :yes) "--env")))))
 
-(provide 'doom-cli-install)
-;;; install.el ends here
+
+;;
+;;; * Execute
+
+(run! "install" (cdr (member "--" argv)))
+
+;;; doom-install ends here

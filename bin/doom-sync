@@ -1,4 +1,5 @@
-;;; lisp/cli/sync.el --- synchronize config command -*- lexical-binding: t; -*-
+#!/usr/bin/env doomscript
+;;; bin/doom-sync --- synchronize config command -*- lexical-binding: t; mode: emacs-lisp -*-
 ;;; Commentary:
 ;;; Code:
 
@@ -20,14 +21,11 @@
   :type 'hook
   :group 'doom-cli)
 
-;; DEPRECATED: Will be removed once `doom-profile' is a struct
-(defvar doom-sync-info-file (doom-profile-data-dir t "sync"))
-
 
 ;;
 ;;; * Commands
 
-(defcli! ((sync s))
+(defcli! sync
     ((update?   ("-u") "Update all installed packages after syncing")
      (noupdate? ("-U") "Don't update any packages")
      (purge?    ("--gc") "Purge orphaned package repos & regraft them")
@@ -76,7 +74,9 @@ OPTIONS:
                   if (string-match-p "^\\([^ ]+/\\)?[eE]macs" args)
                   if (not (string-match-p " --batch" args))
                   if (not (string-match-p " --script" args))
-                  collect pid)))
+                  collect pid))
+        ;; DEPRECATED: Will be removed once `doom-profile' is a struct
+        (sync-file (doom-profile-data-dir t "sync")))
     (add-hook 'kill-emacs-hook #'doom-sync--abort-warning-h)
     (unless (> (doom-cli-context-step context) 0)
       (print! (item "Using Emacs %s @ %s") emacs-version (path invocation-directory invocation-name)))
@@ -108,7 +108,7 @@ OPTIONS:
             ;; necessarily back/forward compatible across major versions, and
             ;; many packages bake in hardcoded data at compile-time.
             (pcase-let ((`(,old-version . ,hash)
-                         (doom-file-read doom-sync-info-file :by 'read :noerror t))
+                         (doom-file-read sync-file :by 'read :noerror t))
                         (to-rebuild nil))
               (when (and old-version (not (equal old-version emacs-version)))
                 (print! (warn "Emacs version has changed since last sync (from %s to %s)") old-version emacs-version)
@@ -136,8 +136,8 @@ OPTIONS:
               (run-hooks 'doom-after-sync-hook)))
           (if reload?
               (print! (success "Reloaded profile!"))
-            (when (or rebuild? (not (file-exists-p doom-sync-info-file)))
-              (with-temp-file doom-sync-info-file
+            (when (or rebuild? (not (file-exists-p sync-file)))
+              (with-temp-file sync-file
                 (prin1 (cons emacs-version (doom-sync--system-hash))
                        (current-buffer))))
             (cond ((doom-cli-context-get context 'installing)
@@ -174,5 +174,10 @@ OPTIONS:
     (print! (warn "Script was abruptly aborted, leaving Doom in an incomplete state!"))
     (print! (item "Run 'doom sync' to repair it."))))
 
-(provide 'doom-cli-sync)
-;;; sync.el ends here
+
+;;
+;;; * Execute
+
+(run! "sync" (cdr (member "--" argv)))
+
+;;; doom-sync ends here

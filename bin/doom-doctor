@@ -1,4 +1,5 @@
-;;; lisp/cli/doctor.el --- userland heuristics and Emacs diagnostics -*- lexical-binding: t; -*-
+#!/usr/bin/env doomscript
+;;; bin/doom-doctor --- userland heuristics and Emacs diagnostics -*- lexical-binding: t; mode: emacs-lisp -*-
 ;;; Commentary:
 ;;; Code:
 
@@ -388,5 +389,10 @@ in."
     (success! "Everything seems fine, happy Emacs'ing!"))
   (exit! :pager? "+G"))
 
-(provide 'doom-cli-doctor)
-;;; doctor.el ends here
+
+;;
+;;; * Execute
+
+(run! "doctor" (cdr (member "--" argv)))
+
+;;; doom-doctor ends here

@@ -1,4 +1,5 @@
-;;; lisp/cli/emacs.el --- launching Emacs and sandboxes -*- lexical-binding: t; -*-
+#!/usr/bin/env doomscript
+;;; bin/doom-emacs --- launching Emacs and sandboxes -*- lexical-binding: t; mode: emacs-lisp -*-
 ;;; Commentary:
 ;;; Code:
 
@@ -118,5 +119,10 @@ performance, it is best to run Doom out of ~/.config/emacs or ~/.emacs.d."
                  (print! "%s %S" (bold "Details:") (cdr e))))))))
       (terpri))))
 
-(provide 'doom-cli '(emacs))
-;;; emacs.el ends here
+
+;;
+;;; * Execute
+
+(run! "emacs" (cdr (member "--" argv)))
+
+;;; doom-emacs ends here

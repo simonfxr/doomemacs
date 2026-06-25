@@ -1,4 +1,5 @@
-;;; lisp/cli/info.el --- information about your Doom install -*- lexical-binding: t; -*-
+#!/usr/bin/env doomscript
+;;; bin/doom-info --- information about your Doom install -*- lexical-binding: t; mode: emacs-lisp -*-
 ;;; Commentary:
 ;;; Code:
 
@@ -30,5 +31,10 @@
                   (doom-cli-context-width context))))))
     (print! "%s" (string-trim-right (buffer-string)))))
 
-(provide 'doom-cli-info)
-;;; info.el ends here
+
+;;
+;;; * Execute
+
+(run! "info" (cdr (member "--" argv)))
+
+;;; doom-info ends here
