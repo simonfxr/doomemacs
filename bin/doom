@@ -254,6 +254,9 @@ SEE ALSO:
 ;;
 ;;; * Load user config + commands
 
+;; Look for doom-* commands in these places. Like $PATH, but for Doom CLIs.
+(add-to-list 'doom-cli-load-path (doom-core-dir "cli/"))
+
 ;; Load $DOOMDIR/init.el, to read the user's `doom!' block and give users an
 ;; opportunity to customize the CLI environment, if they like. Otherwise, they
 ;; can do so in .doomrc or .doomproject.

@@ -32,20 +32,12 @@
   :link '(url-link "https://doomemacs.org/cli")
   :group 'doom)
 
-(defcustom doom-cli-load-path
-  (append (when-let* ((doompath (getenv "DOOMPATH")))
-            (cl-loop for dir in (split-string doompath path-separator)
-                     collect (expand-file-name dir)))
-          (list (file-name-concat (dir!) "cli")))
-  "A list of paths to search for autoloaded Doom CLIs.
-
-It is prefilled by the DOOMPATH envvar (a colon-separated list on Linux/macOS,
-semicolon otherwise)."
+(defcustom doom-cli-load-path ()
+  "A list of paths to search for autoloaded Doom CLIs."
   :type '(repeat directory))
 
 
-;;
-;;; * CLI definition variables
+;;; ** CLI definitions
 
 (defvar doom-cli-argument-types
   '(&args
