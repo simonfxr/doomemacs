@@ -33,7 +33,12 @@
   :group 'doom)
 
 (defcustom doom-cli-load-path ()
-  "A list of paths to search for autoloaded Doom CLIs."
+  "A list of paths to search for Doom executables or autoloaded CLIs.
+
+For example, if running the unrecognized command \\='doom foo', Doom will search
+for an executable named doom-foo or doom-foo.el in this list of paths. If one is
+found, is executable, and uses doomscript in its shebang line, it will be loaded
+(ignoring any `run!' calls)."
   :type '(repeat directory))
 
 
@@ -321,15 +326,44 @@ COMMAND should either be a command list (e.g. \\='(doom foo bar)) or a
              (doom-cli--command command)
              " "))
 
+(defun doom-cli-executable-p (file)
+  "Return non-nil if FILE is an executable doomscript.
+
+Besides being executable, it must also have a doomscript shebang line, and if it
+has any ;;;###if cookie, its condition must pass."
+  ;; TODO: Integrate `trusted-content' checks
+  (and (file-executable-p file)
+       (with-temp-buffer
+         (insert-file-contents file nil 0 128)
+         (looking-at-p "^#!\\(.+[/ ]\\)?doomscript\n"))
+       (doom-file-cookie-p file "if" t)))
+
+(defun doom-cli-locate-executable (command)
+  (locate-file-internal
+   (format "%s-%s" (car command) (cadr command))
+   doom-cli-load-path '("" ".el") #'doom-cli-executable-p))
+
+(defun doom-cli--load-executable (file prefix)
+  (let ((doom-cli--loading t))
+    (defcli-group! :prefix prefix
+      (doom-load file))))
+
+(defun doom-cli--get (command &optional noload?)
+  (when-let* ((command (doom-cli--command command))
+              (cli (or (gethash command doom-cli--table)
+                       (and (not noload?)
+                            (when-let* ((file (doom-cli-locate-executable command)))
+                              (doom-cli--load-executable file (car command)))
+                            (gethash command doom-cli--table)))))
+    (if noload? cli (doom-cli-load cli))))
+
 (defun doom-cli-get (command &optional noresolve? noload?)
   "Return CLI at COMMAND.
 
 Will autoload COMMAND if it was deferred with `defcli-autoload!'.
 
 If NORESOLVE?, don't follow aliases."
-  (when-let* ((command (doom-cli--command command))
-              (cli (gethash command doom-cli--table))
-              (cli (if noload? cli (doom-cli-load cli))))
+  (when-let* ((cli (doom-cli--get command noload?)))
     (if noresolve?
         cli
       (let (path)
@@ -1417,8 +1451,15 @@ ARGS are options passed to less. If DOOMPAGER is set, ARGS are ignored."
           cli))
       cli))
 
-(defun doom-cli-load-all ()
+(defun doom-cli-load-all (context)
   "Immediately load all autoloaded CLIs."
+  (let ((doom-cli--loading t)
+        (prefix (doom-cli-context-prefix context)))
+    (dolist (file (cl-loop for dir in doom-cli-load-path
+                           append (doom-glob dir (format "%s-*" prefix))
+                           append (doom-glob dir (format "%s-*.el" prefix))))
+      (when (doom-cli-executable-p file)
+        (doom-cli--load-executable file prefix))))
   (dolist (key (hash-table-keys doom-cli--table))
     (doom-cli-load (gethash key doom-cli--table))))
 
@@ -1905,6 +1946,7 @@ context (so you don't have to pass a context)."
                     ,@(doom-cli-context-command doom-cli--context)))
                  doom-cli--context))
 
+(defvar doom-cli--loading nil)
 (defun run! (prefix &rest args)
   "Parse and execute ARGS.
 
@@ -1935,32 +1977,33 @@ syscalls. See `doom-cli--restart' for technical details.
 Once done, this function kills Emacs gracefully and writes output to log files
 (stdout to `doom-cli--output-file', stderr to `doom-cli-debug-file', and any
 errors to `doom-cli-error-file')."
-  (unless (equal (doom-cli-context-prefix doom-cli--context) "@")
-    (error "Cannot nest `run!' calls"))
-  (run-hooks 'doom-cli-initialize-hook)
-  (with-doom-context 'run
-    (let* ((args (flatten-list args))
-           (context doom-cli--context))
-      (setf (doom-cli-context-prefix context) prefix
-            (doom-cli-context-whole context) args)
-      ;; Clone output to stdout/stderr buffers for logging.
-      (doom-log "run!: %s %s" prefix (combine-and-quote-strings args))
-      (doom-cli--exit
-       (catch 'exit
-         (condition-case e
-             (let* ((args (cons (if (getenv "__DOOMDUMP") :dump prefix) args))
-                    (context (doom-cli-context-restore (getenv "__DOOMCONTEXT") context))
-                    (context (doom-cli-context-parse args context)))
-               (run-hook-with-args 'doom-cli-before-run-functions context)
-               (let ((result (doom-cli-context-execute context)))
-                 (run-hook-with-args 'doom-cli-after-run-functions context result))
-               0)
-           ((doom-cli-error user-error)
-            (doom-cli-handle-error context (car e) (cdr e))
-            2)
-           ((debug error)
-            (signal (car e) (cdr e)))))
-       context))))
+  (unless doom-cli--loading
+    (if (not (equal (doom-cli-context-prefix doom-cli--context) "@"))
+        (error "Cannot nest `run!' calls")
+      (run-hooks 'doom-cli-initialize-hook)
+      (with-doom-context 'run
+        (let* ((args (flatten-list args))
+               (context doom-cli--context))
+          (setf (doom-cli-context-prefix context) prefix
+                (doom-cli-context-whole context) args)
+          ;; Clone output to stdout/stderr buffers for logging.
+          (doom-log "run!: %s %s" prefix (combine-and-quote-strings args))
+          (doom-cli--exit
+           (catch 'exit
+             (condition-case e
+                 (let* ((args (cons (if (getenv "__DOOMDUMP") :dump prefix) args))
+                        (context (doom-cli-context-restore (getenv "__DOOMCONTEXT") context))
+                        (context (doom-cli-context-parse args context)))
+                   (run-hook-with-args 'doom-cli-before-run-functions context)
+                   (let ((result (doom-cli-context-execute context)))
+                     (run-hook-with-args 'doom-cli-after-run-functions context result))
+                   0)
+               ((doom-cli-error user-error)
+                (doom-cli-handle-error context (car e) (cdr e))
+                2)
+               ((debug error)
+                (signal (car e) (cdr e)))))
+           context))))))
 
 (defalias 'sh! #'doom-call-process)
 
@@ -2402,7 +2445,7 @@ Recognizes %p (for the prefix) and %c (for the active command).")
 OPTIONS:
   --synopsis, --subcommands, --similar, --envvars, --postamble
     TODO"
-  (doom-cli-load-all)
+  (doom-cli-load-all context)
   (when (doom-cli-context-error context)
     (terpri))
   (let* ((command (cons (doom-cli-context-prefix context) command))

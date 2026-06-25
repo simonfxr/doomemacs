@@ -141,6 +141,10 @@ ENVIRONMENT VARIABLES:
     The pager to invoke for large output (default: \"less +g\"). The `--pager'
     option also sets this variable.
 
+  `$DOOMPATH'
+    A colon-delimited list of directories where Doom's CLI searches for doom-*
+    executables when invoking an unrecognized command.
+
   `$DOOMPROFILE'
     Which Doom profile to activate (default: \"_@0\"). The `--profile' option
     also sets this variable.
@@ -254,13 +258,19 @@ SEE ALSO:
 ;;
 ;;; * Load user config + commands
 
-;; Look for doom-* commands in these places. Like $PATH, but for Doom CLIs.
-(add-to-list 'doom-cli-load-path (doom-core-dir "cli/"))
-
 ;; Load $DOOMDIR/init.el, to read the user's `doom!' block and give users an
 ;; opportunity to customize the CLI environment, if they like. Otherwise, they
 ;; can do so in .doomrc or .doomproject.
 (doom-modules-initialize)
+
+;; Look for doom-* executables and autoloaded CLIs in these places. Like $PATH,
+;; but for Doom CLIs.
+(add-to-list 'doom-cli-load-path (doom-core-dir "cli/")) ; DEPRECATED
+(add-to-list 'doom-cli-load-path (doom-emacs-dir "bin/"))
+(add-to-list 'doom-cli-load-path (doom-user-dir "bin/"))
+(when-let* ((doompath (getenv "DOOMPATH")))
+  (dolist (dir (nreverse (split-string doompath path-separator)))
+    (add-to-list 'doom-cli-load-path dir)))
 
 ;; There are a lot of CLIs, and some have expensive initialization, so best we
 ;; load them lazily.
