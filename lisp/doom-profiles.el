@@ -451,7 +451,20 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
   (doom-file-write
    "10-doom-loaddefs.init.el"
    (doom-autoloads--scan (doom-glob doom-core-dir "doom-*.el")
-                         nil)))
+                         nil))
+  (doom-file-write
+   "10-doom-cli-loaddefs.load.el"
+   `(";; -*- lexical-binding: t; no-byte-compile t; -*-"
+     ";;;###if noninteractive"
+     ,@(doom-autoloads--scan
+        (append (cl-loop for dir in (doom-module-load-path nil t)
+                         append (doom-glob dir doom-module-cli-file))
+                (seq-filter
+                 #'doom-cli-executable-p
+                 (cl-loop for dir in doom-cli-load-path
+                          append (doom-glob dir "doom-*")
+                          append (doom-glob dir "doom-*.el"))))
+        nil))))
 
 (defun doom-profile--generate-user-init-loader (_profile)
   (doom-file-write
