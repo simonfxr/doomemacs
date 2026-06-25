@@ -450,22 +450,20 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
 (defun doom-profile--generate-loaddefs-doom (_profile)
   (doom-file-write
    "10-doom-loaddefs.init.el"
-   (doom-autoloads--scan (doom-glob doom-core-dir "doom-*.el")
-                         nil))
+   (doom-loaddefs-scan (doom-glob doom-core-dir "doom-*.el")))
   (doom-file-write
    "10-doom-cli-loaddefs.load.el"
    `(";; -*- lexical-binding: t; no-byte-compile t; -*-"
      ";;;###if noninteractive"
-     ,@(doom-autoloads--scan
-        (append (cl-loop for dir in (doom-module-load-path nil t)
-                         append (doom-glob dir doom-module-cli-file))
-                (doom-glob doom-core-dir "cli/*.el")
-                (seq-filter
-                 #'doom-cli-executable-p
-                 (cl-loop for dir in doom-cli-load-path
-                          append (doom-glob dir "doom-*")
-                          append (doom-glob dir "doom-*.el"))))
-        nil))))
+     ,@(doom-loaddefs-scan
+        (cl-loop for dir in (doom-module-load-path nil t)
+                 append (doom-glob dir doom-module-cli-file))
+        (doom-glob doom-core-dir "cli/*.el")
+        (seq-filter
+         #'doom-cli-executable-p
+         (cl-loop for dir in doom-cli-load-path
+                  append (doom-glob dir "doom-*")
+                  append (doom-glob dir "doom-*.el")))))))
 
 (defun doom-profile--generate-user-init-loader (_profile)
   (doom-file-write
@@ -491,21 +489,20 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
   (doom-file-write
    "60-doom-module-loaddefs.init.el"
    `((defun doom--startup-loaddefs-modules (_profile)
-       ,@(doom-autoloads--scan
-          (append (doom-glob doom-core-dir "lib/*.el")
-                  (cl-loop for dir
-                           in (append (doom-module-load-path :all t)
-                                      (list doom-user-dir))
-                           if (doom-glob dir "autoload.el") collect (car it)
-                           if (doom-glob dir "autoload/*.el") append it))
-          nil))
+       ,@(doom-loaddefs-scan
+          (doom-glob doom-core-dir "lib/*.el")
+          (cl-loop for dir
+                   in (append (doom-module-load-path :all t)
+                              (list doom-user-dir))
+                   if (doom-glob dir "autoload.el") collect (car it)
+                   if (doom-glob dir "autoload/*.el") append it)))
      (add-hook 'doom-startup-functions #'doom--startup-loaddefs-modules 60))))
 
 (defun doom-profile--generate-loaddefs-packages (_profile)
   (doom-file-write
    "70-doom-package-loaddefs.init.el"
    `((defun doom--startup-loaddefs-packages (_profile)
-       ,@(doom-autoloads--scan
+       ,@(doom-loaddefs-scan-literal
           ;; Create a list of packages starting with the Nth-most dependencies
           ;; by walking the package dependency tree depth-first. This ensures
           ;; any load-order constraints in package autoloads are always met.
@@ -518,9 +515,7 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
                            ((listp pkglist)
                             (mapc #'walk-packages (reverse pkglist)))))
               (walk-packages (mapcar #'symbol-name (mapcar #'car doom-packages))))
-            (mapcar #'straight--autoloads-file (nreverse packages)))
-          doom-autoloads-excluded-files
-          'literal)
+            (mapcar #'straight--autoloads-file (nreverse packages))))
        ,@(when-let* ((info-dirs
                       (cl-loop for dir in load-path
                                if (file-exists-p (doom-path dir "dir"))

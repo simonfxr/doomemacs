@@ -15,6 +15,7 @@
   (doom-require 'doom-lib 'system)
   (doom-require 'doom-lib 'files)
   (doom-require 'doom-lib 'print)
+  ;; TODO: (doom-require 'doom-lib 'loaddefs)
   (doom-require 'doom-lib 'autoloads))
 
 (require 'doom-profiles)
