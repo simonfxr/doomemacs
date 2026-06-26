@@ -428,21 +428,24 @@ Each function is passed one argument: the doom-profile being started up."
                         (cons (match-string 1 profile-id)
                               (or (match-string 2 profile-id) (cdr doom--profile-default)))
                       (cons profile-id (cdr doom--profile-default)))))
-              doom--profile-default)))
-      (or (condition-case e
-              (load (doom-profile-init-file key) t (not init-file-debug))
-            ((debug error)
+              doom--profile-default))
+           (init-file (doom-profile-init-file key)))
+      (if (file-exists-p init-file)
+          (condition-case-unless-debug e
+              (load init-file nil (not init-file-debug))
+            (error
              (if interactive?
                  (signal 'doom-profile-error (cons 'doom-initialize e))
                (message "Error loading profile: %s" (error-message-string e))
                (message "Run 'doom sync' to regenerate it!"))))
-          (if interactive?
-              (signal 'doom-nosync-error '(doom-initialize))
-            (setq doom-profile (make-doom-profile :name (car key)
-                                                  :ref "0" ; (cdr key)
-                                                  :root doom-emacs-dir))))
-      ;; DEPRECATED: Remove in v3
-      (setq doom-profile-cache-dir (doom-cache-dir (unless doom--noprofile (doom-profile-name doom-profile)))
+        (if interactive?
+            (signal 'doom-nosync-error '(doom-initialize ,profile-id))))
+      (setq doom-profile (or doom-profile
+                             (make-doom-profile :name (car key)
+                                                :ref "0" ; (cdr key)
+                                                :root doom-emacs-dir))
+            ;; DEPRECATED: Remove in v3
+            doom-profile-cache-dir (doom-cache-dir (unless doom--noprofile (doom-profile-name doom-profile)))
             doom-profile-data-dir  (doom-data-dir (unless doom--noprofile (doom-profile-name doom-profile)))
             doom-profile-state-dir (doom-state-dir (unless doom--noprofile (doom-profile-name doom-profile)))
             doom-profile-dir       (doom-profile-data-dir t "@" (unless doom--noprofile (doom-profile-ref doom-profile)))))
