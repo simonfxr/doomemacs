@@ -11,17 +11,17 @@
 
 (defun doom--package-merge-recipes (package plist)
   (require 'straight)
-  (doom-plist-merge
-   (plist-get plist :recipe)
-   (if-let* ((recipe (straight-recipes-retrieve package)))
-       (cdr (if (memq (car recipe) '(quote \`))
-                (eval recipe t)
-              recipe))
-     (let ((recipe (plist-get (cdr (assq package doom-packages))
-                              :recipe)))
-       (if (keywordp (car recipe))
-           recipe
-         (cdr recipe))))))
+  (map-merge 'plist
+             (if-let* ((recipe (straight-recipes-retrieve package)))
+                 (cdr (if (memq (car recipe) '(quote \`))
+                          (eval recipe t)
+                        recipe))
+               (let ((recipe (plist-get (cdr (assq package doom-packages))
+                                        :recipe)))
+                 (if (keywordp (car recipe))
+                     recipe
+                   (cdr recipe))))
+             (plist-get plist :recipe)))
 
 (defun doom--package-to-bump-string (package plist)
   "Return a PACKAGE and its PLIST in \\='username/repo@commit' format."

@@ -1,4 +1,9 @@
 ;;; lisp/lib/plist.el -*- lexical-binding: t; -*-
+;;; Commentary:
+;;
+;; This library is deprecated and will be removed in v3.
+;;
+;;; Code:
 
 ;;
 ;;; * Macros
@@ -17,6 +22,7 @@
 ;;
 ;;; * Library
 
+;; DEPRECATED: In favor of `map-apply'
 ;;;###autoload
 (defun doom-plist-map (fn plist)
   "Map FN on each keyword/value pair in PLIST.
@@ -27,6 +33,7 @@ values are accumulated ala `mapcar'."
            while (keywordp key)
            do (plist-put plist key (funcall fn key val))))
 
+;; DEPRECATED: Never used. Use a while loop instead
 ;;;###autoload
 (defun doom-plist-map* (fn vplist)
   "Apply FN to each variadic property in VPLIST.
@@ -47,6 +54,7 @@ more values)."
         (push (funcall fn prop (nreverse vals)) results)))
     (nreverse results)))
 
+;; DEPRECATED: In favor of `map-merge'
 ;;;###autoload
 (defun doom-plist-merge (from-plist to-plist)
   "Non-destructively merge FROM-PLIST onto TO-PLIST"
@@ -56,6 +64,7 @@ more values)."
       (cl-callf plist-put to-plist (pop from-plist) (pop from-plist)))
     to-plist))
 
+;; DEPRECATED: In favor of map-remove + map-into
 ;;;###autoload
 (defun doom-plist-delete-nil (plist)
   "Delete `nil' properties from a copy of PLIST."
@@ -66,6 +75,7 @@ more values)."
       (setq plist (cddr plist)))
     p))
 
+;; DEPRECATED: In favor of `map-keys'
 ;;;###autoload
 (defun doom-plist-keys (plist)
   "Return the keys in PLIST."
@@ -75,6 +85,7 @@ more values)."
       (setq plist (cddr plist)))
     keys))
 
+;; DEPRECATED: In favor of `map-values'
 ;;;###autoload
 (defun doom-plist-values (plist)
   "Return the values in PLIST."

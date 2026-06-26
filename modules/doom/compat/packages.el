@@ -1,5 +1,4 @@
-;; -*- no-byte-compile: t; -*-
-;;; modules/doom/compat/packages.el
+;;; modules/doom/compat/packages.el -*- lexical-binding: t; no-byte-compile: t; -*-
 
 ;; TODO: Mirror these packages on doomelpa, to "immortalize" this module and
 ;;   make Doom core resistant to upstream breakage.

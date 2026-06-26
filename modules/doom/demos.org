@@ -517,19 +517,6 @@ These are side-by-side comparisons, showing how to bind keys with and without
 (package! evil :ignore (not (equal system-name "my-desktop")))
 #+end_src
 
-* pushnew!
-:PROPERTIES:
-:added: 2.1.0
-:END:
-#+begin_src emacs-lisp
-(let ((list '(a b c)))
-  (pushnew! list 'c 'd 'e)
-  list)
-#+end_src
-
-#+RESULTS:
-: (e d a b c)
-
 * quiet!
 :PROPERTIES:
 :added: 2.1.0

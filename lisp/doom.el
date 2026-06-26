@@ -115,7 +115,10 @@
         ((memq system-type '(gnu gnu/linux))              '(linux))
         ((memq system-type '(gnu/kfreebsd berkeley-unix)) '(linux bsd))
         ((eq system-type 'android)                        '(android)))
-  "A list of symbols denoting available features in the active Doom profile.")
+  "A list of symbols indicating the features in the active Doom profile.
+
+The first element should always be one of `macos', `windows', `linux', or
+`android'.")
 
 ;; Convenience aliases for internal use only (may be removed later).
 (defconst doom--system-windows-p (eq 'windows (car doom-system)))
@@ -168,19 +171,11 @@
   "The time it took, in seconds (as a float), for Doom Emacs to start up.")
 
 ;; DEPRECATED: Will be removed in v3
-(defconst doom--noprofile nil)
+(defconst doom--noprofile (not (getenv-internal "DOOMPROFILE")))
 (defconst doom--profile-default (cons "_default" "0"))
 
-(defconst doom-profile
-  (if-let* ((profile (getenv-internal "DOOMPROFILE")))
-      (save-match-data
-        (if (string-match "^\\([^@]+\\)@\\(.+\\)$" profile)
-            (cons (match-string 1 profile)
-                  (match-string 2 profile))
-          (cons profile "0")))
-    (setq doom--noprofile t)
-    doom--profile-default)
-  "The active profile as a cons cell (NAME . VERSION).")
+(defvar doom-profile nil
+  "The active profile as a `doom-profile' struct.")
 
 
 ;;; ** Data directory variables
@@ -296,50 +291,20 @@ For profile-local state files, use `doom-profile-state-dir' instead.")
 ;;; ** Profile file/directory variables
 
 ;; DEPRECATED: To be replaced with `doom-profile-cache-dir' function in v3
-(defvar doom-profile-cache-dir
-  (file-name-concat
-   doom-cache-dir (unless doom--noprofile (car doom-profile)))
+(defvar doom-profile-cache-dir nil
   "For profile-local cache files under `doom-cache-dir'.")
 
 ;; DEPRECATED: To be replaced with `doom-profile-data-dir' function in v3
-(defvar doom-profile-data-dir
-  (file-name-concat
-   doom-data-dir (unless doom--noprofile (car doom-profile)))
+(defvar doom-profile-data-dir nil
   "For profile-local data files under `doom-data-dir'.")
 
 ;; DEPRECATED: To be replaced with `doom-profile-state-dir' function in v3
-(defvar doom-profile-state-dir
-  (file-name-concat
-   doom-state-dir (unless doom--noprofile (car doom-profile)))
+(defvar doom-profile-state-dir nil
   "For profile-local state files under `doom-state-dir'.")
 
 ;; DEPRECATED: To be replaced with `doom-profile-dir' function in v3
-(defconst doom-profile-dir
-  (file-name-concat doom-profile-data-dir "@" (unless doom--noprofile (cdr doom-profile)))
+(defconst doom-profile-dir nil
   "Where generated files for the active profile (for Doom's core) are kept.")
-
-
-;;; ** Module file variables
-
-(defvar doom-module-init-file "init.el"
-  "The filename for module early initialization config files.
-
-Init files are loaded early, just after Doom core, and before modules' config
-files. They are always loaded, even in non-interactive sessions, and before
-`doom-before-modules-init-hook'. Related to `doom-module-config-file'.")
-
-(defvar doom-module-config-file "config.el"
-  "The filename for module configuration files.
-
-Config files are loaded later, and almost always in interactive sessions. These
-run before `doom-after-modules-config-hook' and after `doom-module-init-file'.")
-
-(defvar doom-module-packages-file "packages.el"
-  "The filename for the package configuration file.
-
-Package files are read whenever Doom's package manager wants a manifest of all
-desired packages. They are rarely read in interactive sessions (unless the user
-uses a straight or package.el command directly).")
 
 
 ;;
@@ -393,13 +358,97 @@ Each function is passed one argument: the doom-profile being started up."
 ;;
 ;;; * Initializers
 
-(defun doom-initialize (&optional interactive?)
+(defun doom-initialize (profile-id &optional interactive?)
   "Bootstrap the Doom session ahead."
-  (when (doom-context-push 'startup)
+  (when (and (not doom-profile)
+             (doom-context-push 'startup))
     ;; Since Emacs 27, package initialization occurs before `user-init-file' is
     ;; loaded, but after `early-init-file'. Doom handles package initialization,
     ;; so we must prevent Emacs from doing it again.
     (setq package-enable-at-startup nil)
+
+    (if interactive?
+        (when (doom-context-push 'emacs)
+          (add-hook 'doom-after-init-hook #'doom-display-benchmark-h 110)
+          (doom-run-hook-on 'doom-first-file-hook   '(find-file-hook dired-initial-position-hook))
+          (doom-run-hook-on 'doom-first-input-hook  '(pre-command-hook))
+          (doom-run-hook-on 'doom-first-buffer-hook '(find-file-hook doom-switch-buffer-hook)
+                            (lambda ()
+                              (not (member (buffer-name)
+                                           `("*scratch*" ,doom-fallback-buffer-name)))))
+          ;; As late in the Emacs' startup process as possible.
+          (advice-add #'command-line-1 :after #'doom-finalize '((depth . 100))))
+
+      (when (doom-context-push 'cli)
+        ;; Don't generate superfluous files when writing temp buffers.
+        (setq make-backup-files nil)
+        ;; Stop user config from interfering with elisp shell scripts.
+        (setq enable-dir-local-variables nil)
+        ;; Reduce ambiguity, embrace specificity, enjoy predictability.
+        (setq case-fold-search nil)
+        ;; Don't clog the user's trash with our CLI refuse.
+        (setq delete-by-moving-to-trash nil)
+
+        ;; REVIEW: Remove later. The endpoints should be responsibile for
+        ;;   ensuring they exist. For now, they exist to quell file errors.
+        (with-file-modes #o700
+          (mapc (doom-rpartial #'make-directory 'parents)
+                (list doom-local-dir
+                      doom-data-dir
+                      doom-cache-dir
+                      doom-state-dir)))
+
+        (doom-require 'doom-lib 'debug)
+        (if init-file-debug (doom-debug-mode +1))
+
+        ;; Ensure the CLI framework is ready.
+        (require 'doom-cli)
+        (add-hook 'doom-before-init-hook #'doom-cli-initialize -90)
+        (add-hook 'doom-cli-initialize-hook #'doom-finalize 100)
+
+        ;; HACK: site-lisp files can be obnoxiously noisy (emitting output that
+        ;;   can pollute logs and isn't useful to (and may even alarm)
+        ;;   end-users, like file load messages, deprecation notices, and linter
+        ;;   warnings). bin/doom suppresses site-lisp in its shebang line so we
+        ;;   can load it here with output suppressed (unless debug mode is on).
+        (quiet!!
+          (require 'cl nil t)   ; "Package cl is deprecated"
+          (unless site-run-file
+            (let ((inhibit-startup-screen inhibit-startup-screen))
+              (load "site-start" t))))))
+
+    ;; Set and load `doom-profile'.
+    (let* ((key
+            ;; Can't use `doom-profile-key' this early. Interactive sessions
+            ;; won't have the profiles API available yet.
+            (if profile-id
+                (save-match-data
+                  (let (case-fold-search)
+                    (if (string-match "^\\([^@]+\\)?\\(?:@\\(.+\\)\\)?$" profile-id)
+                        (cons (match-string 1 profile-id)
+                              (or (match-string 2 profile-id) (cdr doom--profile-default)))
+                      (cons profile-id (cdr doom--profile-default)))))
+              doom--profile-default))
+           (init-file (doom-profile-init-file key)))
+      (if (file-exists-p init-file)
+          (condition-case-unless-debug e
+              (load init-file nil (not init-file-debug))
+            (error
+             (if interactive?
+                 (signal 'doom-profile-error (cons 'doom-initialize e))
+               (message "Error loading profile: %s" (error-message-string e))
+               (message "Run 'doom sync' to regenerate it!"))))
+        (if interactive?
+            (signal 'doom-nosync-error '(doom-initialize ,profile-id))))
+      (setq doom-profile (or doom-profile
+                             (make-doom-profile :name (car key)
+                                                :ref "0" ; (cdr key)
+                                                :root doom-emacs-dir))
+            ;; DEPRECATED: Remove in v3
+            doom-profile-cache-dir (doom-cache-dir (unless doom--noprofile (doom-profile-name doom-profile)))
+            doom-profile-data-dir  (doom-data-dir (unless doom--noprofile (doom-profile-name doom-profile)))
+            doom-profile-state-dir (doom-state-dir (unless doom--noprofile (doom-profile-name doom-profile)))
+            doom-profile-dir       (doom-profile-data-dir t "@" (unless doom--noprofile (doom-profile-ref doom-profile)))))
 
     ;; HACK: Many packages (even built-in ones) abuse `user-emacs-directory' to
     ;;   build paths for storage/cache files instead of correctly using
@@ -445,68 +494,8 @@ safely cleaned up with \\='doom sync' or \\='doom gc'."
                     "/vterm\\.el\\'"
                     "/with-editor\\.el\\'"))))
 
-    (if interactive?
-        (when (doom-context-push 'emacs)
-          (add-hook 'doom-after-init-hook #'doom-load-packages-incrementally-h 100)
-          (add-hook 'doom-after-init-hook #'doom-display-benchmark-h 110)
-          (doom-run-hook-on 'doom-first-file-hook   '(find-file-hook dired-initial-position-hook))
-          (doom-run-hook-on 'doom-first-input-hook  '(pre-command-hook))
-          (doom-run-hook-on 'doom-first-buffer-hook '(find-file-hook doom-switch-buffer-hook)
-                            (lambda ()
-                              (not (member (buffer-name)
-                                           `("*scratch*" ,doom-fallback-buffer-name)))))
-
-          ;; These fire `MAJOR-MODE-local-vars-hook' hooks, which is a Doomism.
-          ;; See the `MODE-local-vars-hook' section above.
-          (add-hook 'after-change-major-mode-hook #'doom-run-local-var-hooks-maybe-h 100)
-          (add-hook 'hack-local-variables-hook #'doom-run-local-var-hooks-h)
-
-          ;; This is the absolute latest a hook can run in Emacs' startup
-          ;; process.
-          (advice-add #'command-line-1 :after #'doom-finalize '((depth . 100)))
-
-          (require 'doom-emacs)
-          (let ((init-file (doom-profile-init-file doom-profile)))
-            (or (doom-load init-file t)
-                (signal 'doom-nosync-error (list init-file)))))
-
-      (when (doom-context-push 'cli)
-        ;; Don't generate superfluous files when writing temp buffers.
-        (setq make-backup-files nil)
-        ;; Stop user config from interfering with elisp shell scripts.
-        (setq enable-dir-local-variables nil)
-        ;; Reduce ambiguity, embrace specificity, enjoy predictability.
-        (setq case-fold-search nil)
-        ;; Don't clog the user's trash with our CLI refuse.
-        (setq delete-by-moving-to-trash nil)
-
-        ;; REVIEW: Remove later. The endpoints should be responsibile for
-        ;;   ensuring they exist. For now, they exist to quell file errors.
-        (with-file-modes #o700
-          (mapc (doom-rpartial #'make-directory 'parents)
-                (list doom-local-dir
-                      doom-data-dir
-                      doom-cache-dir
-                      doom-state-dir)))
-
-        (doom-require 'doom-lib 'debug)
-        (if init-file-debug (doom-debug-mode +1))
-
-        ;; Ensure the CLI framework is ready.
-        (require 'doom-cli)
-        (doom-cli-initialize)
-        (add-hook 'doom-cli-initialize-hook #'doom-finalize 100)
-
-        ;; HACK: site-lisp files can be obnoxiously noisy (emitting output that
-        ;;   can pollute logs and isn't useful to (and may even alarm)
-        ;;   end-users, like file load messages, deprecation notices, and linter
-        ;;   warnings). bin/doom suppresses site-lisp in its shebang line so we
-        ;;   can load it here with output suppressed (unless debug mode is on).
-        (quiet!!
-          (require 'cl nil t)   ; "Package cl is deprecated"
-          (unless site-run-file
-            (let ((inhibit-startup-screen inhibit-startup-screen))
-              (load "site-start" t))))))
+    (when interactive?
+      (require 'doom-emacs))  ; Doom's reasonable defaults
 
     ;; A last ditch opportunity to undo hacks or do extra configuration before
     ;; the session is complicated by user config and packages.
@@ -520,7 +509,7 @@ safely cleaned up with \\='doom sync' or \\='doom gc'."
     (dolist (var '(exec-path load-path process-environment))
       (put var 'initial-value (copy-sequence (default-toplevel-value var))))
 
-    t))
+    doom-profile))
 
 (defun doom-finalize (&rest _)
   "Finalize the current Doom session, marking the end of its startup process.
@@ -556,13 +545,8 @@ Triggers `doom-after-init-hook' and sets `doom-init-time.'"
 
 (defun doom-startup ()
   "Fully load enabled modules and $DOOMDIR/config.el."
-  ;; Make sure this only runs at startup to protect us Emacs' interpreter
-  ;; re-evaluating `doom-startup-functions' when lazy-loading dynamic docstrings
-  ;; from the byte-compiled init file.
-  (when (or (doom-context-p 'startup)
-            (doom-context-p 'reload))
-    (require 'doom-emacs)  ; if called from CLI
-    (run-hook-with-args 'doom-startup-functions doom-profile)))
+  (require 'doom-emacs)  ; if called from CLI
+  (run-hook-with-args 'doom-startup-functions doom-profile))
 
 (defun doom-display-benchmark-h (&optional return-p)
   "Display a benchmark including number of packages and modules loaded.

@@ -1,4 +1,7 @@
-;;; lisp/cli/ci.el -*- lexical-binding: t; -*-
+#!/usr/bin/env doomscript
+;;; bin/doom-ci -*- lexical-binding: t; mode: emacs-lisp -*-
+;;; Commentary:
+;;; Code:
 
 ;;
 ;;; * Variables
@@ -46,7 +49,7 @@ Accapted value types can be one or more of ref, hash, url, username, or name.")
   "A list of valid commit scopes as strings, predicate functions, or lists.
 
 These are checked against each item in the comma-delimited scope field of the
-current commit's message. E.g. 'fix(foo,bar,baz): ...' => foo, bar and baz
+current commit's message. E.g. \\='fix(foo,bar,baz): ...' => foo, bar and baz
 
 Each element of this list can be one of:
 
@@ -60,7 +63,7 @@ Each element of this list can be one of:
 - A list, denoting type-specific scopes. Its CAR is the type as a symbol, and
   its CDR is a nested list of scopes as strings/predicates. E.g.
 
-    '(docs \"faq\" \"install\" check-docs)")
+    \\='(docs \"faq\" \"install\" check-docs)")
 
 (defvar doom-ci-commit-rules
   ;; TODO: Extract into named functions
@@ -97,7 +100,7 @@ Each element of this list can be one of:
                     (string-blank-p summary))
             (fail! "Commit has no summary")))
 
-        (lambda! (&key type summary subject)
+        (lambda! (&key _type summary _subject)
           "Ensure summary isn't needlessly capitalized"
           (and (stringp summary)
                (string-match-p "^[A-Z][^-A-Z.]" summary)
@@ -225,20 +228,20 @@ Each function is N-arity and is passed a plist with the following keys:
 
   :bang
     (Boolean) If `t', the commit is declared to contain a breaking change.
-    e.g. 'refactor!: this commit breaks everything'
+    e.g. \\='refactor!: this commit breaks everything'
   :body
     (String) Contains the whole BODY of a commit message, excluding the
     TRAILERS.
   :scopes
     (List<Symbol>) Contains a list of scopes, as symbols. e.g. with
-    'feat(org,lsp): so on and so forth', this contains '(org lsp).
+    \\='feat(org,lsp): so on and so forth', this contains \\='(org lsp).
   :subject
     (String) Contains the whole first line of a commit message.
   :summary
     (String) Contains the summary following the type and scopes. e.g. In
-    'feat(org): fix X, Y, and Z' the summary is 'fix X, Y, and Z.
+    \\='feat(org): fix X, Y, and Z' the summary is \\='fix X, Y, and Z'.
   :trailers
-    (Map<String, String>) Contains an alist of 'KEY: VALUE' trailers, i.e. All
+    (Map<String, String>) Contains an alist of KEY: VALUE trailers, i.e. All
     Fix, Ref, Close, Revert, etc lines with a valid value. This will be empty if
     the formatting of a commit's trailers is invalid.
   :type
@@ -481,5 +484,10 @@ print the original message again when ECHO-MSG is non-nil."
           (exit! 1)))
       t)))
 
-(provide 'doom-cli-ci)
-;;; ci.el ends here
+
+;;
+;;; * Execute
+
+(run! "ci" (cdr (member "--" argv)))
+
+;;; doom-ci ends here

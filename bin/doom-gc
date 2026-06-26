@@ -1,4 +1,5 @@
-;;; lisp/cli/gc.el --- clean up after profiles, packages, and logs -*- lexical-binding: t; -*-
+#!/usr/bin/env doomscript
+;;; bin/doom-gc --- clean up after profiles, packages, and logs -*- lexical-binding: t; mode: emacs-lisp -*-
 ;;; Commentary:
 ;;; Code:
 
@@ -128,7 +129,7 @@
 ;;
 ;;; * Commands
 
-(defcli! (gc)
+(defcli! gc
     ((nobuilds-p  ("-b" "--no-builds")  "Don't purge unneeded (built) packages")
      (noelpa-p    ("-p" "--no-elpa")    "Don't purge ELPA packages")
      (norepos-p   ("-r" "--no-repos")   "Don't purge unused straight repos")
@@ -143,7 +144,6 @@ to ensure they are as small as possible.
 It is a good idea to occasionally run this command to ensure your package list
 remains lean."
   :benchmark t
-  :group 'emacs
   (require 'comp nil t)
   (doom-initialize-packages)
   (doom-packages--barf-if-incomplete)
@@ -193,5 +193,10 @@ remains lean."
 ;;      (keep-history-p (     "--keep-history")  "Don't regraft repos"))
 ;;   "Purge unused profile data, generations, and packages.")
 
-(provide 'doom-cli-gc)
-;;; gc.el ends here
+
+;;
+;;; * Execute
+
+(run! "gc" (cdr (member "--" argv)))
+
+;;; doom-gc ends here

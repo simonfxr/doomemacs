@@ -1,4 +1,9 @@
 ;;; lisp/lib/cache.el -*- lexical-binding: t; -*-
+;;; Commentary:
+;;
+;; This library is deprecated and will be removed in v3.
+;;
+;;; Code:
 
 ;; This little library abstracts the process of writing arbitrary elisp values
 ;; to a 2-tiered file store (in `doom-store-dir'/`doom-store-location').

@@ -1,5 +1,4 @@
-;; -*- no-byte-compile: t; -*-
-;;; modules/doom/packages.el
+;;; modules/doom/packages.el -*- lexical-binding: t; no-byte-compile: t; -*-
 
 ;; doom.el
 (package! compat

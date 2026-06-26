@@ -282,7 +282,7 @@ ready to be pasted in a bug report on github."
                             'server-running)
                         (if (boundp 'chemacs-version)
                             (intern (format "chemacs-%s" chemacs-version)))
-                        (if (file-exists-p doom-env-file)
+                        (if (get 'process-environment 'doom)
                             'envvar-file)
                         (if (featurep 'exec-path-from-shell)
                             'exec-path-from-shell)

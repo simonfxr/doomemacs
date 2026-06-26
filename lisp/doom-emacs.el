@@ -932,6 +932,12 @@ all hooks after it are ignored."
   (unless enable-local-variables
     (doom-run-local-var-hooks-h)))
 
+(unless noninteractive
+  ;; These fire `MAJOR-MODE-local-vars-hook' hooks, which is a Doomism. See the
+  ;; `MODE-local-vars-hook' section above.
+  (add-hook 'after-change-major-mode-hook #'doom-run-local-var-hooks-maybe-h 100)
+  (add-hook 'hack-local-variables-hook #'doom-run-local-var-hooks-h))
+
 
 ;;; ** Incremental lazy-loading
 
@@ -1019,6 +1025,8 @@ If this is a daemon session, load them all immediately instead."
       (run-with-idle-timer doom-incremental-first-idle-timer
                            nil #'doom-load-packages-incrementally
                            (cdr doom-incremental-packages) t))))
+
+(add-hook 'doom-after-init-hook #'doom-load-packages-incrementally-h 100)
 
 
 ;;; ** Switch {buffer,frame,window} hooks
@@ -1781,7 +1789,12 @@ and whether the line count of the buffer exceeds that matching entry in
               (setq load-history
                     (delete (assoc init-file-name load-history)
                             load-history))
-              (doom-startup)))
+              ;; Make sure this only runs at startup to protect from Emacs'
+              ;; interpreter re-evaluating `doom-startup-functions' when
+              ;; lazy-loading dynamic docstrings from a byte-compiled init file.
+              (when (or (doom-context-p 'startup)
+                        (doom-context-p 'reload))
+                (doom-startup))))
         ;; TODO: Add safe-mode profile.
         ;; (error
         ;;  ;; HACK: This is not really this variable's intended purpose, but it

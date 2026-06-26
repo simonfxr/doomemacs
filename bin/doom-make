@@ -1,8 +1,9 @@
-;;; lisp/cli/make.el --- file generation commands -*- lexical-binding: t; -*-
+#!/usr/bin/env doomscript
+;;; bin/doom-make --- file generation commands -*- lexical-binding: t; mode: emacs-lisp -*-
 ;;; Commentary:
 ;;; Code:
 
-(load! "make/completions")
+;; (load! "make/completions")
 ;; (load! "make/docs")
 ;; (load! "make/manpage")
 
@@ -64,5 +65,10 @@
          (when (buffer-modified-p)
            (save-buffer))))))
 
-(provide 'doom-cli-make)
-;;; make.el ends here
+
+;;
+;;; * Execute
+
+(run! "make" (cdr (member "--" argv)))
+
+;;; doom-make ends here
