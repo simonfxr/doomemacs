@@ -459,7 +459,7 @@ TRIGGER-HOOK is a list of quoted hooks and/or sharp-quoted functions."
       (if (cl-struct-p p)
           (cons (doom-profile-name p) (doom-profile-ref p))
         p)
-    (signal 'doom-profile-error '(no-profile ,profile))))
+    (signal 'doom-profile-error '(no-profile))))
 
 (defsubst doom--dir (dir segments)
   (let ((segments (delq nil segments))
