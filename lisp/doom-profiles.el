@@ -450,7 +450,8 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
 (defun doom-profile--generate-loaddefs-doom (_profile)
   (doom-file-write
    "10-doom-loaddefs.init.el"
-   (doom-loaddefs-scan (doom-glob doom-core-dir "doom-*.el")))
+   `((static-unless noninteractive
+       ,@(doom-loaddefs-scan (doom-glob doom-core-dir "doom-*.el")))))
   (doom-file-write
    "10-doom-cli-loaddefs.load.el"
    `(";; -*- lexical-binding: t; no-byte-compile t; -*-"
@@ -468,14 +469,14 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
 (defun doom-profile--generate-user-init-loader (_profile)
   (doom-file-write
    "20-user.init.el"
-   `((unless noninteractive
+   `((static-unless noninteractive
        (with-doom-context '(module init)
          (doom-load ,(doom-user-dir doom-module-init-file) t))))))
 
 (defun doom-profile--generate-package-envs (_profile)
   (doom-file-write
    "30-doom-package-envs.init.el"
-   `((unless noninteractive
+   `((static-unless noninteractive
        ,@(cl-loop for (_ . plist) in doom-packages
                   if (plist-get plist :env)
                   append (cl-loop for (var . val) in it
