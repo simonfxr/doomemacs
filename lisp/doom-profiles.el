@@ -438,6 +438,8 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
                   unless (file-in-directory-p path data-directory)
                   unless (and site-run-dir (file-in-directory-p path site-run-dir))
                   collect `(add-to-list 'load-path ,path))
+       ,@(cl-loop for dir in doom-module-load-path
+                  collect `(add-to-list 'load-path ,dir))
        ,@(cl-loop with v = (version-to-list doom-version)
                   with emacs-dir = (doom-emacs-dir)
                   with ref = (doom-call-process "git" "-C" emacs-dir "rev-parse" "HEAD")
