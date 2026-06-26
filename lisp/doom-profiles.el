@@ -459,6 +459,7 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
      ,@(doom-autoloads--scan
         (append (cl-loop for dir in (doom-module-load-path nil t)
                          append (doom-glob dir doom-module-cli-file))
+                (doom-glob doom-core-dir "cli/*.el")
                 (seq-filter
                  #'doom-cli-executable-p
                  (cl-loop for dir in doom-cli-load-path
