@@ -58,7 +58,7 @@ file.")
 
           ((and (eq f 'autoload)
                 expand-autoloads?
-                (not (file-name-absolute-p file)))
+                (not (file-name-absolute-p (nth 2 form))))
            (setf (nth 2 form) (doom-loaddefs--locate-file (nth 2 form)))
            form)
 
