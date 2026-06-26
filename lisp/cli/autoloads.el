@@ -1,7 +1,7 @@
-;;; lisp/lib/autoloads.el -*- lexical-binding: t; -*-
+;;; lisp/cli/autoloads.el -*- lexical-binding: t; -*-
 ;;; Commentary:
 ;;
-;; DEPRECATED: Old autoload processing library, replaced by lib/loaddefs.el.
+;; DEPRECATED: Old autoload processing library, replaced by cli/loaddefs.el.
 ;; Will be removed in v3.
 ;;
 ;;; Code:
@@ -18,7 +18,7 @@
 ;;
 ;;; * Library
 
-(doom-require 'doom-lib 'loaddefs)
+(doom-require 'doom-cli 'loaddefs)
 
 ;; DEPRECATED: Remove in v3
 (define-obsolete-function-alias 'doom-autoloads--cleanup-form #'doom-loaddefs--clean "2.3.0")
@@ -76,5 +76,5 @@ non-nil, treat FILES as pre-generated autoload files instead."
                        ,@(nreverse subautoloads))
                     autoloads))))))))
 
-(provide 'doom-lib '(autoloads))
+(provide 'doom-cli '(autoloads))
 ;;; autoloads.el end here
