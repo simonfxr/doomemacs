@@ -498,11 +498,14 @@ TRIGGER-HOOK is a list of quoted hooks and/or sharp-quoted functions."
                  segments))
     (format "Return a local PROFILE path from SEGMENTS after `%s'.
 
-If PROFILE is t, default to the active profile."
+See `doom-profile-dir' for possible values of PROFILE."
             (cdr var))))
 
 (defun doom-profile-dir (profile &rest segments)
-  "Return a path from SEGMENTS after a PROFILE's root data directory."
+  "Return a path from SEGMENTS after a PROFILE's root data directory.
+
+PROFILE can either be a profile key (cons cell), a `doom-profile' struct, or `t'
+(meaning the active profile). A `nil' profile will throw `doom-profile-error'."
   (setq profile (doom--profile profile))
   (doom--dir (file-name-concat
               doom-data-dir
@@ -513,7 +516,9 @@ If PROFILE is t, default to the active profile."
              segments))
 
 (defun doom-profile-init-dir (profile &rest segments)
-  "Return a path from SEGMENTS after a PROFILE's init files directory."
+  "Return a path from SEGMENTS after a PROFILE's init files directory.
+
+See `doom-profile-dir' for possible values for PROFILE."
   (setq profile (doom--profile profile))
   (apply #'doom-profile-dir profile "@"
          ;; DEPRECATED: Temporary backwards compatibility cludge.
@@ -523,7 +528,9 @@ If PROFILE is t, default to the active profile."
          segments))
 
 (defun doom-profile-init-file (profile &optional filename)
-  "Return a path to a PROFILE's FILENAME (or its init.%d.%d.el file)."
+  "Return a path to a PROFILE's FILENAME (or its init.%d.%d.el file).
+
+See `doom-profile-dir' for possible values for PROFILE."
   (doom-profile-init-dir
    profile (or filename (format "init.%d.%d.el"
                                 emacs-major-version
