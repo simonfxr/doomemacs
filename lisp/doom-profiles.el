@@ -122,13 +122,17 @@ These functions are executed in the context of the
   (defun doom-profile-key (profile &optional default?)
     "Normalize PROFILE into a (NAME . REF) doom-profile key.
 
-PROFILE can be a `doom-profile', a profile id (i.e. a string in the NAME@REF
-format), or a (NAME . REF) cons cell. NAME is the string name of the profile and
-REF can either be a string (arbitrary label) or an integer (generation number).
-Will throw `wrong-type-argument' if PROFILE is nil and DEFAULT? is omitted.
+PROFILE can be a `doom-profile' struct, a profile id string (in the NAME@REF
+format), a (NAME . REF) cons cell, or `t' to return the fallback key:
+(\"_default\" .  0).
 
-If DEFAULT? is non-nil, an unspecified NAME/REF will fall back to (\"_default\"
-.  0), the default profile key."
+NAME is the string name of the profile and REF can either be a string (arbitrary
+label) or an integer (generation number).
+
+Throws `wrong-type-argument' if PROFILE is nil and DEFAULT? is omitted.
+
+If DEFAULT? is non-nil, an unspecified NAME and/or REF field will be filled in
+with the corresponding one from the fallback key."
     (declare (pure t) (side-effect-free t))
     (let ((default-name (if default? (car doom--profile-default)))
           (default-ref  (if default? (cdr doom--profile-default))))
