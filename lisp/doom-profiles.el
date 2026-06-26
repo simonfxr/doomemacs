@@ -184,8 +184,9 @@ uninitialized copy of PROFILE is returned."
 
 ;;;###autoload
 (defun doom-profile->id (profile)
-  "Return a NAME@VERSION id string from profile cons cell (NAME . VERSION)."
-  (cl-check-type profile cons)
+  "Return a NAME@VERSION id string from PROFILE.
+
+See `doom-profile-key' for possible values of PROFILE."
   (cl-destructuring-bind (name . ref) (doom-profile-key profile)
     (format "%s@%s" name ref)))
 
