@@ -403,7 +403,7 @@ Each function is passed one argument: the doom-profile being started up."
 
         ;; Ensure the CLI framework is ready.
         (require 'doom-cli)
-        (doom-cli-initialize)
+        (add-hook 'doom-before-init-hook #'doom-cli-initialize -90)
         (add-hook 'doom-cli-initialize-hook #'doom-finalize 100)
 
         ;; HACK: site-lisp files can be obnoxiously noisy (emitting output that
