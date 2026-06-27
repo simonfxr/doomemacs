@@ -11,16 +11,15 @@
 (require 'map)
 
 (eval-and-compile
+  (doom-require 'doom-cli 'print)
+  ;; TODO: (doom-require 'doom-cli 'loaddefs)
+  (doom-require 'doom-cli 'autoloads)
   (doom-require 'doom-lib 'process)
   (doom-require 'doom-lib 'system)
   (doom-require 'doom-lib 'files)
-  (doom-require 'doom-lib 'print)
-  ;; TODO: (doom-require 'doom-lib 'loaddefs)
-  (doom-require 'doom-lib 'autoloads))
-
-(require 'doom-profiles)
-(require 'doom-modules)
-(require 'doom-packages)
+  (require 'doom-profiles)
+  (require 'doom-modules)
+  (require 'doom-packages))
 
 
 ;;

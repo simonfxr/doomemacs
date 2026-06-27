@@ -1,4 +1,4 @@
-;;; lisp/lib/print.el -*- lexical-binding: t; -*-
+;;; lisp/cli/print.el -*- lexical-binding: t; -*-
 ;;; Commentary
 ;;
 ;; This is Doom's output library, for controlling what does and doesn't get
@@ -516,5 +516,5 @@ transformative logic."
                  nil))
         (forms)))
 
-(provide 'doom-lib '(print))
+(provide 'doom-cli '(print))
 ;;; print.el ends here

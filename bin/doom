@@ -213,7 +213,8 @@ SEE ALSO:
 
     Warning: files loaded this way load too late to define new commands. To
     define commands, do so from `$DOOMDIR'/cli.el, `$DOOMDIR'/init.el, or a
-    .doomrc file in the current project tree."
+    doom-* executable with a doomscript shebang line in `$DOOMDIR'/bin/ or
+    `$DOOMPATH' (which you can set)."
   (when bench?
     (setq doom-cli-benchmark-threshold 'always))
   (unless init-file-debug ; debug-mode implies verbose
@@ -261,7 +262,7 @@ SEE ALSO:
 ;; Load $DOOMDIR/init.el, to read the user's `doom!' block and give users an
 ;; opportunity to customize the CLI environment, if they like. Otherwise, they
 ;; can do so in .doomrc or .doomproject.
-(doom-modules-initialize)
+(doom-modules-initialize t)
 
 ;; Look for doom-* executables and autoloaded CLIs in these places. Like $PATH,
 ;; but for Doom CLIs.

@@ -1,4 +1,4 @@
-;;; lisp/lib/loaddefs.el -*- lexical-binding: t; -*-
+;;; lisp/cli/loaddefs.el -*- lexical-binding: t; -*-
 ;;; Commentary:
 ;;
 ;; Doom's spin on loaddefs.el, which isn't extensible enough for us to build on
@@ -58,7 +58,7 @@ file.")
 
           ((and (eq f 'autoload)
                 expand-autoloads?
-                (not (file-name-absolute-p file)))
+                (not (file-name-absolute-p (nth 2 form))))
            (setf (nth 2 form) (doom-loaddefs--locate-file (nth 2 form)))
            form)
 
@@ -200,5 +200,5 @@ file.")
   (doom-loaddefs--read
    files #'insert-file-contents t))
 
-(provide 'doom-lib '(loaddefs))
+(provide 'doom-cli '(loaddefs))
 ;;; loaddefs.el end here
