@@ -363,6 +363,7 @@ ready to be pasted in a bug report on github."
 
 FILL-COLUMN determines the column at which lines will be broken."
   (with-temp-buffer
+    (doom-require 'doom-cli 'print)
     (let ((doom-print-backend (unless nocolor doom-print-backend))
           (doom-print-indent 0))
       (dolist (spec (cl-remove-if-not #'cdr (doom-info)) (buffer-string))
@@ -397,20 +398,22 @@ FILL-COLUMN determines the column at which lines will be broken."
                           (or (cdr (doom-call-process "git" "branch" "--show-current"))
                               "-"))
                 "[not a git repo]")))
-          (fmt "%-10s v%-10s %s"))
-    (print! fmt "emacs" emacs-version
-            (and (stringp emacs-repository-version)
-                 (substring emacs-repository-version 0 9)))
-    (print! fmt "doom" doom-version (gitinfo doom-emacs-dir))
+          (fmt "%-10s v%-10s %s\n"))
+    ;; Using `princ' instead of `message' because the latter writes to stderr in
+    ;; noninteractive sessions, while the latter writes to stdout.
+    (princ (format fmt "emacs" emacs-version
+                   (and (stringp emacs-repository-version)
+                        (substring emacs-repository-version 0 9))))
+    (princ (format fmt "doom" doom-version (gitinfo doom-emacs-dir)))
     (dolist (dir (cddr doom-module-load-path))
-      (print! fmt
-              (or (doom-config `(,dir modules name))
-                  (doom-config `(,dir project name))
-                  (file-name-nondirectory (expand-file-name ".." dir)))
-              (or (doom-config `(,dir modules version))
-                  (doom-config `(,dir project version))
-                  "n/a")
-              (gitinfo dir)))))
+      (princ (format fmt
+                     (or (doom-config `(,dir modules name))
+                         (doom-config `(,dir project name))
+                         (file-name-nondirectory (expand-file-name ".." dir)))
+                     (or (doom-config `(,dir modules version))
+                         (doom-config `(,dir project version))
+                         "n/a")
+                     (gitinfo dir))))))
 
 ;;;###autoload
 (defun doom/info ()
