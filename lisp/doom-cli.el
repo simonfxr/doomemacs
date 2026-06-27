@@ -2465,7 +2465,7 @@ OPTIONS:
           ((null sections)
            (if (null cli)
                (signal 'doom-cli-command-not-found-error command)
-             (doom-cli-help--print cli context manpage? localonly?)
+             (doom-cli-help--print rcli context manpage? localonly?)
              (exit! :pager?)))
           ((dolist (section sections)
              (unless (equal section (car sections)) (terpri))
