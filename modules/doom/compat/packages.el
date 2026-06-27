@@ -21,7 +21,7 @@
   (package! which-key :pin "38d4308d1143b61e4004b6e7a940686784e51500"))
 
 (when (modulep! +projectile)
-  (package! projectile :pin "6449fb0465587c757c1fbf1a64bb4ba420a78bfa"))
+  (package! projectile :pin "39dc2a69a2424f9999dabe3b6fb9dfafd1304916"))
 
 (when (modulep! +smartparens)
   (package! smartparens :pin "82d2cf084a19b0c2c3812e0550721f8a61996056"))
