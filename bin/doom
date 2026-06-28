@@ -292,6 +292,7 @@ SEE ALSO:
   (defcli-alias! s sync)
   (defcli-alias! pf profile)
   (defcli-alias! up upgrade)
+  (defcli-alias! doc doctor)
 
   (defcli-obsolete! (profiles sync) (profile sync "--all") "2.1.0")
   (defcli-obsolete! ((build b)) (sync "--rebuild") "2.1.0")

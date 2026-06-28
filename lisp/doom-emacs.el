@@ -1733,6 +1733,24 @@ and whether the line count of the buffer exceeds that matching entry in
         smartparens-strict-mode))))
 
 
+;;;###package transient
+;; Must be set early to prevent ~/.config/emacs/transient from being created
+(setq transient-levels-file  (doom-profile-data-dir t "transient" "levels")
+      transient-values-file  (doom-profile-data-dir t "transient" "values")
+      transient-history-file (doom-profile-data-dir t "transient" "history"))
+(with-eval-after-load 'transient
+  (setq transient-default-level 5)
+  ;; Pop up transient windows at the bottom of the window where it was invoked.
+  ;; This is more ergonomic for users with large displays or many splits.
+  (setq transient-display-buffer-action
+        '(display-buffer-below-selected
+          (dedicated . t)
+          (inhibit-same-window . t))
+        transient-show-during-minibuffer-read t)
+  ;; Universal ESC behavior for popups.
+  (define-key transient-map [escape] #'transient-quit-one))
+
+
 ;;;###package winner
 ;; undo/redo changes to Emacs' window layout
 (defvar winner-dont-bind-my-keys t) ; I'll bind keys myself

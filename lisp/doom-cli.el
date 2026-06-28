@@ -330,7 +330,9 @@ COMMAND should either be a command list (e.g. \\='(doom foo bar)) or a
 Besides being executable, it must also have a doomscript shebang line, and if it
 has any ;;;###if cookie, its condition must pass."
   ;; TODO: Integrate `trusted-content' checks
-  (and (file-executable-p file)
+  (and (if (featurep :system 'windows)
+           (file-readable-p file)
+         (file-executable-p file))
        (with-temp-buffer
          (insert-file-contents file nil 0 128)
          (looking-at-p "^#!\\(.+[/ ]\\)?doomscript\n"))
@@ -2465,7 +2467,7 @@ OPTIONS:
           ((null sections)
            (if (null cli)
                (signal 'doom-cli-command-not-found-error command)
-             (doom-cli-help--print cli context manpage? localonly?)
+             (doom-cli-help--print rcli context manpage? localonly?)
              (exit! :pager?)))
           ((dolist (section sections)
              (unless (equal section (car sections)) (terpri))

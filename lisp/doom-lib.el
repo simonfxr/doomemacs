@@ -5,6 +5,12 @@
 ;;
 ;;; * Autoload the unautoloaded
 
+;; DEPRECATED: For backwards compatibility
+(autoload 'print! "cli/print")
+(autoload 'print-group! "cli/print")
+(autoload 'insert! "cli/print")
+(autoload 'doom-print "cli/print")
+
 ;; Is never autoloaded
 (autoload 'map-nested-elt "map")
 

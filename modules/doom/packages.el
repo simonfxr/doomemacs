@@ -19,7 +19,7 @@
   :pin "e40a5b7f8b0c1bb2cde0e7e477b5f81303e34b95")
 
 ;; doom-ui.el
-(package! nerd-icons :pin "d33d12f5dcb6bf2fb23c3f75df5de85beb4afd95")
+(package! nerd-icons :pin "2247dfb513a80aa5b1047f04fd9f2e9b41f336fd")
 
 ;; doom-projects.el
-(package! project :pin "f4ec26c30a08663e93449317a5f765032ab84f28")
+(package! project :pin "6be4c7c464110d26094c452aab5069094b8d5009")
