@@ -29,7 +29,7 @@ try {
     # $env:__DOOMGPIPE = if (-not $env:__DOOMGPIPE) { $env:__DOOMPIPE } else { $env:__DOOMGPIPE }
     # $env:__DOOMPIPE = ""
 
-    & $emacs -q --no-site-file --batch --eval \"(setq warning-inhibit-types '((files missing-lexbind-cookie)))\" --load "$doom" -- --no-color $args
+    & $emacs -q --no-site-file --batch --eval "(setq warning-inhibit-types '((files missing-lexbind-cookie)))" --load "$doom" -- --no-color $args
     if ($LASTEXITCODE -eq 254) {
         # TODO: Use Invoke-Command instead?
         & $pwsh "$($env:temp)\doom.$($env:__DOOMPID).$($env:__DOOMSTEP).ps1" $PSCommandPath $args
