@@ -925,17 +925,18 @@ The primary purpose of functions in this list is to resolve inter-version
 incompatibilities introduced in future versions of Doom.")
 
 (defconst doom-config--alist
-  `((".doom" . project)
-    (".doommodule" . module)
-    (".doommodules" . modules)
-    (".doomprofile" . profile)
-    (".doomprofiles" . profiles)))
+  `((project . ".doom")
+    (module . ".doommodule")
+    (modules . ".doommodules")
+    (profile . ".doomprofile")
+    (profiles . ".doomprofiles")))
 
 (defun doom-config--normalize (type compat alist)
-  "Ensure ALIST is processed through `doom-config-read-functions'.
+  "Process ALIST through `doom-config-read-functions'.
 
-This ensures any changes to ALIST's spec (according to TYPE) is resolved for the
-current version of Doom."
+This ensures any changes to ALIST's spec (according to TYPE) between different
+versions of Doom are resolved before it is used. COMPAT is the `doom-version'
+that the current ALIST was formatted for."
   (cl-loop for fn in doom-config-read-functions
            if (funcall fn type compat (doom-copy alist t))
            do (if (consp it)
@@ -943,36 +944,61 @@ current version of Doom."
                         alist  (cadr it)))
            finally return alist))
 
+(defun doom-config-file (type)
+  "Return the filename of the Doom dotfile of TYPE.
+
+TYPE is a symbol representing one of Doom's dotfiles. It must be one of:
+
+%s
+Throws `doom-core-error' if TYPE is not a valid type. See `doom-config--alist'
+for possible values of TYPE."
+  (or (alist-get type doom-config--alist)
+      (signal 'doom-core-error `(invalid-config-type ,type))))
+(function-put 'doom-config-file 'function-documentation
+              (format (function-documentation 'doom-config-file)
+                      (cl-loop for (key . file) in doom-config--alist
+                               concat (format "  \\='%s = %s\n" key file))))
+
+(defun doom-config-locate (type path &optional dir?)
+  "Search for and return the path to a Doom dotfile of TYPE, starting from PATH.
+
+Like `locate-dominating-file', but returns the full path including the filename.
+If DIR? is non-nil, only return its parent directory. Returns nil if not found."
+  (when-let*
+      ((file (doom-config-file type))
+       (dir  (locate-dominating-file path file)))
+    (if dir? dir
+      (file-name-concat dir file))))
+
 (defun doom-config (keys &optional nocache?)
   "Return the alist contained in a Doom dotfile.
 
-KEYS can be a symbol or list thereof, the first symbol of which should be one of
-`project', `module', `modules', `profile', or `profiles' (see
-`doom-config--alist' for what files each correspond to). The rest of the symbols
-represent the nested keys to fetch from that config file.
+TYPE is a symbol representing the type of Doom dotfile to look for; see
+`doom-config-file' for valid values for TYPE. If KEYS are omitted, the entire
+file's alist is returned, otherwise KEYS is a list of symbols representing the
+path to the nested field to fetch from that config file. INIT-DIR is the path (a
+string) to a directory from which the search for the dotfile will begin;
+defaulting to `default-directory'.
 
-Doom's dotfiles are expected to be in the same format: a version string
-\\=(signifying what version of Doom it was generated from) followed by an
+All of Doom's dotfiles must be in the same format: a version string
+\\=(signifying the version of Doom it was generated from) followed by an
 unquoted alist which may contain comma-interpolated elisp forms which this
 function will evaluate (and cache) before returning it. The first element of
 KEYS can be a string path to a directory, which will set the `default-directory'
-for the rest of the function.
+for the rest of the function. If NOCACHE? is non-nil, the cached alist will be
+ignored and the target FILE will be reread (and re-cached).
 
-If NONCACHE? is non-nil, the cached alist will be ignored and the target FILE
-will be reread (and re-cached).
+Consults `doom-config-read-functions' to resolve any inter-version
+incompatibilities in the alist format.
 
-Consults `doom-config-read-functions' to resolve any inter-version compatibility
-issues."
+\(fn \\='([INIT-DIR] TYPE [KEYS...]) &optional NOCACHE?)"
   (declare (side-effect-free t))
   (cl-check-type keys (or list symbol))
   (when-let*
       ((keys (if (symbolp keys) (list keys) (copy-sequence keys)))
        (dir  (if (stringp (car keys)) (pop keys) default-directory))
        (type (pop keys))
-       (file (or (car (rassq type doom-config--alist))
-                 (signal 'doom-core-error `(invalid-config-type ,type))))
-       (dir  (locate-dominating-file dir file))
-       (path (file-name-concat dir file))
+       (path (doom-config-locate type dir))
        (cache (get 'doom-config 'cache))
        (rc (or (if (not nocache?) (gethash path cache))
                (when-let*
