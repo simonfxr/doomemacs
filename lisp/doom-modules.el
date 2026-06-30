@@ -53,7 +53,6 @@ uses a straight or package.el command directly).")
     ;; Register Doom's two virtual module categories, representing Doom's core
     ;; and the user's config; which are always enabled.
     (doom-module--put '(:doom . nil)
-                      :path (doom-module-locate-path '(:doom))
                       :depth -110)
     (doom-module--put '(:user . nil)
                       :path doom-user-dir
@@ -62,7 +61,6 @@ uses a straight or package.el command directly).")
     ;;   projectile -- everything that makes v2 distinct from v3. The module is
     ;;   here to stay, but it won't be hardcoded after v3.
     (doom-module--put '(:doom . compat)
-                      :path (doom-module-locate-path '(:doom . compat))
                       :flags '(+use-package +keybinds +better-jumper +projectile +smartparens)
                       :depth -115)
     ;; Load $DOOMDIR/init.el, where the user's `doom!' lives, which will inform
@@ -103,7 +101,8 @@ properties:
           :index (hash-table-count doom-modules)
           :group (or (plist-get plist :group) group)
           :name  (or (plist-get plist :name) name)
-          :path  (plist-get plist :path)
+          :path  (or (plist-get plist :path)
+                     (doom-module-locate-path (cons group name)))
           :flags (plist-get plist :flags)
           :features ()  ; TODO
           :depth
@@ -175,9 +174,7 @@ properties:
                        (throw 'doom-modules t))))
                  (doom-log "module: %s %s %s -> %s" group module (or flags "")
                            (doom-module-locate-path (cons group module)))
-                 (push (funcall fn (cons group module)
-                                :flags (if (listp m) (cdr m))
-                                :path (doom-module-locate-path (cons group module)))
+                 (push (funcall fn (cons group module) :flags (if (listp m) (cdr m)))
                        results))))))
     (when noninteractive
       (setq doom-inhibit-module-warnings t))
