@@ -172,8 +172,6 @@ properties:
                          (push (if (keywordp f) f (cons f flags))
                                mplist))
                        (throw 'doom-modules t))))
-                 (doom-log "module: %s %s %s -> %s" group module (or flags "")
-                           (doom-module-locate-path (cons group module)))
                  (push (funcall fn (cons group module) :flags (if (listp m) (cdr m)))
                        results))))))
     (when noninteractive
