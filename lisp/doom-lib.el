@@ -848,7 +848,10 @@ COMMAND. This macro is meant to be used as a target for keybinds (e.g. with
        (,(if args
              #'funcall-interactively
            #'call-interactively)
-        ,command ,@args))))
+        (let ((command ,command))
+          (or (command-remapping command)
+              command))
+        ,@args))))
 
 (defmacro cmds! (&rest branches)
   "Returns a dispatcher that runs the a command in BRANCHES.
