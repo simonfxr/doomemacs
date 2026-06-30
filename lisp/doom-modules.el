@@ -378,22 +378,66 @@ an example."
              if (doom-module-locate-path key file)
              collect it))
 
-  (defun doom-module-from-path (path &optional enabled-only?)
+  (defvar doom-module--path-cache (make-hash-table :test 'equal))
+  (defun doom-module-from-path (path &optional nocache?)
     "Returns a cons cell (GROUP . NAME) derived from PATH (a file path).
 If ENABLED-ONLY?, return nil if the containing module isn't enabled."
     (let* ((file-name-handler-alist nil)
-           (path (expand-file-name path)))
+           (dir (or (doom-config-locate 'module path t) ; look for .doommodule
+                    ;; PERF: Module autoload files (using `modulep!') are this
+                    ;;   function's primary consumer, because I can't
+                    ;;   non-trivially inject `doom-module-context' into Emacs'
+                    ;;   autoloader. For performance's sake, I'll take some
+                    ;;   shortcuts for them. Plus, 'doom sync' will seed the
+                    ;;   module path cache.
+                    (save-match-data
+                      (if (or (string-match "^\\(.+/\\)autoload\\.el$" path)
+                              (string-match "^\\(.+/\\)autoload/[^/]+\\.el$" path))
+                          (expand-file-name (match-string 1 path))))
+                    ;; FIXME: Ew. Necessary, in case of strange symlinking.
+                    ;;   This will be cleaned up in v3.
+                    (catch 'found
+                      (dolist (dir (remq
+                                    nil (cons (doom-config-locate 'modules path t)
+                                              doom-module-load-path)))
+                        (when (file-in-directory-p path dir)
+                          (let ((relpath (file-relative-name (file-truename path)
+                                                             (file-truename dir))))
+                            (unless (string-match-p "\\.\\." relpath)
+                              (throw 'found
+                                     (apply #'file-name-concat dir
+                                            (seq-take (split-string relpath "/" t) 2))))))))))
+           (module? (and dir t)))
+      (unless dir
+        (setq dir (file-name-as-directory
+                   (directory-file-name (file-name-directory path)))))
       (save-match-data
-        (cond ((string-match "/\\(?:modules/\\)+\\([^/]+\\)/\\([^/]+\\)\\(?:/.*\\)?$" path)
-               (when-let* ((group (doom-keyword-intern (match-string 1 path)))
-                           (name  (intern (match-string 2 path))))
-                 (and (or (null enabled-only?)
-                          (doom-module-active-p group name))
-                      (cons group name))))
-              ((file-in-directory-p path doom-core-dir)
-               (cons :doom nil))
-              ((file-in-directory-p path doom-user-dir)
-               (cons :user nil))))))
+        (cond
+         ;; For v3+ modules
+         ((if (not nocache?) (gethash (abbreviate-file-name dir) doom-module--path-cache)))
+
+         ;; For legacy or $DOOMDIR modules
+         ((string-match "/\\(?:modules/\\)+\\([^/]+\\)/\\([^/]+\\)?" dir)
+          (puthash (abbreviate-file-name dir)
+                   (cons (doom-keyword-intern (match-string 1 dir))
+                         (ignore-errors (intern (match-string 2 dir))))
+                   doom-module--path-cache))
+
+         ;; These are last ditch hail mary's. `file-in-directory-p' can be slow,
+         ;; but is the most reliable, especially in cases where the user has
+         ;; weird symlink setups.
+         ((if (hash-table-p doom-modules)
+              (cl-loop for m being the hash-values of doom-modules
+                       for mkey = (doom-module-key m)
+                       if (cdr mkey)
+                       if (file-in-directory-p dir (doom-module-path m))
+                       return (puthash (abbreviate-file-name dir)
+                                       mkey
+                                       doom-module--path-cache))))
+         ((file-in-directory-p path doom-core-dir)
+          (cons :doom nil))
+         ((file-in-directory-p path doom-user-dir)
+          (cons :user nil))))))
 
   ;; DEPRECATED: Remove in v3
   (defun doom-module-load-path (&optional module-load-path initorder?)
