@@ -499,6 +499,10 @@ cell."
   (defun doom-module (group name &optional property)
     "Return the `doom-module-context' for any active module by GROUP NAME.
 
+This function accesses the hot cache for modules and should be used where
+performance is important (e.g. in interactive sessions). Use `doom-module-get'
+if correctness is more important (e.g. in non-interactive sessions).
+
 Return its PROPERTY, if specified."
     (declare (side-effect-free t))
     (when-let* ((context (get group name)))
