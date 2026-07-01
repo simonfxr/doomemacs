@@ -463,9 +463,6 @@ all modules in all known sources, collapsed by precedence)."
 
 Never set this variable directly, use `with-doom-module'.")
 
-  (pcase-defmacro doom-module-context (&rest fields)
-    `(doom-struct doom-module-context ,@fields))
-
   (defmacro with-doom-module (key &rest body)
     "Evaluate BODY with `doom-module-context' informed by KEY."
     (declare (indent 1))
@@ -483,36 +480,21 @@ Never set this variable directly, use `with-doom-module'.")
 KEY can be a `doom-module-context', `doom-module', or a `doom-module-key' cons
 cell."
     (declare (side-effect-free t))
-    (or (pcase (type-of key)
-          (`doom-module-context key)
-          (`doom-module (ignore-errors (doom-module->context key)))
-          (`cons (doom-module (car key) (cdr key))))
-        (make-doom-module-context :key (doom-module-key key))))
-
-  (defun doom-module<-context (context)
-    "Return a `doom-module' plist from CONTEXT."
-    (declare (side-effect-free t))
-    (doom-module-get (doom-module-context-key context)))
+    (cond ((doom-module-context-p key) key)
+          ((doom-module-p key) (doom-module->context key))
+          ((consp key) (doom-module (car key) (cdr key)))
+          ((make-doom-module-context :key (doom-module-key key)))))
 
   (defun doom-module->context (key)
     "Change a `doom-module' into a `doom-module-context'."
     (declare (side-effect-free t))
-    ;; (let ((module (if (doom-module-p key)
-    ;;                   key (doom-module-get (doom-module-key key)))))
-    ;;   (make-doom-module-context
-    ;;    :index (doom-module-index module)
-    ;;    :key (cons (doom-module-group module) (doom-module-name module))
-    ;;    :path (doom-module-path module)
-    ;;    :flags (doom-module-flags module)))
-    (pcase-let
-        (((doom-module index path flags group name)
-          (if (doom-module-p key)
-              key (doom-module-get (doom-module-key key)))))
+    (let ((module (if (doom-module-p key)
+                      key (doom-module-get (doom-module-key key)))))
       (make-doom-module-context
-       :index index
-       :key (cons group name)
-       :path path
-       :flags flags)))
+       :index (doom-module-index module)
+       :key (cons (doom-module-group module) (doom-module-name module))
+       :path (doom-module-path module)
+       :flags (doom-module-flags module))))
 
   (defun doom-module (group name &optional property)
     "Return the `doom-module-context' for any active module by GROUP NAME.
@@ -532,6 +514,16 @@ Return its PROPERTY, if specified."
                 property)
                (error "Unknown doom-module-context property: %s" property)))
         context))))
+
+;;;###autoload
+(pcase-defmacro doom-module-context (&rest fields)
+  `(doom-struct doom-module-context ,@fields))
+
+;;;###autoload
+(defun doom-module<-context (context)
+  "Return a `doom-module' plist from CONTEXT."
+  (declare (side-effect-free t))
+  (doom-module-get (doom-module-context-key context)))
 
 
 ;;
