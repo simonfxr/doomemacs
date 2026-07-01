@@ -430,7 +430,8 @@ If ENABLED-ONLY?, return nil if the containing module isn't enabled."
               (cl-loop for m being the hash-values of doom-modules
                        for mkey = (doom-module-key m)
                        if (cdr mkey)
-                       if (file-in-directory-p dir (doom-module-path m))
+                       if (doom-module-path m)
+                       if (file-in-directory-p dir it)
                        return (puthash (abbreviate-file-name dir)
                                        mkey
                                        doom-module--path-cache))))
