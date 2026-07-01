@@ -565,14 +565,15 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
        ;; FIX: Same as above (see `doom-profile--generate-init-vars').
        `((set 'doom-modules ',doom-modules)
          (set 'doom-disabled-packages ',doom-disabled-packages)
-         ;; Cache module state and flags in symbol plists for quick lookup by
-         ;; `modulep!' later.
-         ,@(cl-loop
-            for (category . modules) in (seq-group-by #'car config-modules-list)
-            collect
-            `(setplist ',category
-              (quote ,(cl-loop for (_ . module) in modules
-                               nconc `(,module ,(doom-module->context (cons category module)))))))
+         (static-unless noninteractive
+           ;; Cache module state and flags in symbol plists for quick lookup by
+           ;; `modulep!' later.
+           ,@(cl-loop
+              for (category . modules) in (seq-group-by #'car config-modules-list)
+              collect
+              `(setplist ',category
+                (quote ,(cl-loop for (_ . module) in modules
+                                 nconc `(,module ,(doom-module->context (cons category module))))))))
          (defun doom--startup-modules (_profile)
            (with-doom-context 'module
              (let ((old-custom-file custom-file))
