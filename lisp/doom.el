@@ -440,15 +440,18 @@ Each function is passed one argument: the doom-profile being started up."
                (message "Run 'doom sync' to regenerate it!"))))
         (if interactive?
             (signal 'doom-nosync-error '(doom-initialize ,profile-id))))
-      (setq doom-profile (or doom-profile
-                             (make-doom-profile :name (car key)
-                                                :ref "0" ; (cdr key)
-                                                :root doom-emacs-dir))
-            ;; DEPRECATED: Remove in v3
-            doom-profile-cache-dir (doom-cache-dir (unless doom--noprofile (doom-profile-name doom-profile)))
-            doom-profile-data-dir  (doom-data-dir (unless doom--noprofile (doom-profile-name doom-profile)))
-            doom-profile-state-dir (doom-state-dir (unless doom--noprofile (doom-profile-name doom-profile)))
-            doom-profile-dir       (doom-profile-data-dir t "@" (unless doom--noprofile (doom-profile-ref doom-profile)))))
+      (unless doom-profile
+        (setq doom-profile
+              (make-doom-profile :name (car key)
+                                 :ref "0" ; refs are ornamental until v3
+                                 :root doom-emacs-dir)))
+      ;; DEPRECATED: For backwards compatibility. Remove in v3
+      (let ((name (unless doom--noprofile (doom-profile-name doom-profile)))
+            (ref  (unless doom--noprofile (doom-profile-ref doom-profile))))
+        (setq doom-profile-cache-dir (doom-cache-dir name)
+              doom-profile-data-dir  (doom-data-dir name)
+              doom-profile-state-dir (doom-state-dir name)
+              doom-profile-dir       (doom-profile-data-dir t "@" ref))))
 
     ;; HACK: Many packages (even built-in ones) abuse `user-emacs-directory' to
     ;;   build paths for storage/cache files instead of correctly using

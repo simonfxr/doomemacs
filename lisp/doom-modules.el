@@ -53,7 +53,6 @@ uses a straight or package.el command directly).")
     ;; Register Doom's two virtual module categories, representing Doom's core
     ;; and the user's config; which are always enabled.
     (doom-module--put '(:doom . nil)
-                      :path (doom-module-locate-path '(:doom))
                       :depth -110)
     (doom-module--put '(:user . nil)
                       :path doom-user-dir
@@ -62,7 +61,6 @@ uses a straight or package.el command directly).")
     ;;   projectile -- everything that makes v2 distinct from v3. The module is
     ;;   here to stay, but it won't be hardcoded after v3.
     (doom-module--put '(:doom . compat)
-                      :path (doom-module-locate-path '(:doom . compat))
                       :flags '(+use-package +keybinds +better-jumper +projectile +smartparens)
                       :depth -115)
     ;; Load $DOOMDIR/init.el, where the user's `doom!' lives, which will inform
@@ -103,7 +101,8 @@ properties:
           :index (hash-table-count doom-modules)
           :group (or (plist-get plist :group) group)
           :name  (or (plist-get plist :name) name)
-          :path  (plist-get plist :path)
+          :path  (or (plist-get plist :path)
+                     (doom-module-locate-path (cons group name)))
           :flags (plist-get plist :flags)
           :features ()  ; TODO
           :depth
@@ -173,11 +172,7 @@ properties:
                          (push (if (keywordp f) f (cons f flags))
                                mplist))
                        (throw 'doom-modules t))))
-                 (doom-log "module: %s %s %s -> %s" group module (or flags "")
-                           (doom-module-locate-path (cons group module)))
-                 (push (funcall fn (cons group module)
-                                :flags (if (listp m) (cdr m))
-                                :path (doom-module-locate-path (cons group module)))
+                 (push (funcall fn (cons group module) :flags (if (listp m) (cdr m)))
                        results))))))
     (when noninteractive
       (setq doom-inhibit-module-warnings t))
@@ -383,22 +378,66 @@ an example."
              if (doom-module-locate-path key file)
              collect it))
 
-  (defun doom-module-from-path (path &optional enabled-only?)
+  (defvar doom-module--path-cache (make-hash-table :test 'equal))
+  (defun doom-module-from-path (path &optional nocache?)
     "Returns a cons cell (GROUP . NAME) derived from PATH (a file path).
 If ENABLED-ONLY?, return nil if the containing module isn't enabled."
     (let* ((file-name-handler-alist nil)
-           (path (expand-file-name path)))
+           (dir (or (doom-config-locate 'module path t) ; look for .doommodule
+                    ;; PERF: Module autoload files (using `modulep!') are this
+                    ;;   function's primary consumer, because I can't
+                    ;;   non-trivially inject `doom-module-context' into Emacs'
+                    ;;   autoloader. For performance's sake, I'll take some
+                    ;;   shortcuts for them. Plus, 'doom sync' will seed the
+                    ;;   module path cache.
+                    (save-match-data
+                      (if (or (string-match "^\\(.+/\\)autoload\\.el$" path)
+                              (string-match "^\\(.+/\\)autoload/[^/]+\\.el$" path))
+                          (expand-file-name (match-string 1 path))))
+                    ;; FIXME: Ew. Necessary, in case of strange symlinking.
+                    ;;   This will be cleaned up in v3.
+                    (catch 'found
+                      (dolist (dir (remq
+                                    nil (cons (doom-config-locate 'modules path t)
+                                              doom-module-load-path)))
+                        (when (file-in-directory-p path dir)
+                          (let ((relpath (file-relative-name (file-truename path)
+                                                             (file-truename dir))))
+                            (unless (string-match-p "\\.\\." relpath)
+                              (throw 'found
+                                     (apply #'file-name-concat dir
+                                            (seq-take (split-string relpath "/" t) 2))))))))))
+           (module? (and dir t)))
+      (unless dir
+        (setq dir (file-name-as-directory
+                   (directory-file-name (file-name-directory path)))))
       (save-match-data
-        (cond ((string-match "/\\(?:modules/\\)+\\([^/]+\\)/\\([^/]+\\)\\(?:/.*\\)?$" path)
-               (when-let* ((group (doom-keyword-intern (match-string 1 path)))
-                           (name  (intern (match-string 2 path))))
-                 (and (or (null enabled-only?)
-                          (doom-module-active-p group name))
-                      (cons group name))))
-              ((file-in-directory-p path doom-core-dir)
-               (cons :doom nil))
-              ((file-in-directory-p path doom-user-dir)
-               (cons :user nil))))))
+        (cond
+         ;; For v3+ modules
+         ((if (not nocache?) (gethash (abbreviate-file-name dir) doom-module--path-cache)))
+
+         ;; For legacy or $DOOMDIR modules
+         ((string-match "/\\(?:modules/\\)+\\([^/]+\\)/\\([^/]+\\)?" dir)
+          (puthash (abbreviate-file-name dir)
+                   (cons (doom-keyword-intern (match-string 1 dir))
+                         (ignore-errors (intern (match-string 2 dir))))
+                   doom-module--path-cache))
+
+         ;; These are last ditch hail mary's. `file-in-directory-p' can be slow,
+         ;; but is the most reliable, especially in cases where the user has
+         ;; weird symlink setups.
+         ((if (hash-table-p doom-modules)
+              (cl-loop for m being the hash-values of doom-modules
+                       for mkey = (doom-module-key m)
+                       if (cdr mkey)
+                       if (file-in-directory-p dir (doom-module-path m))
+                       return (puthash (abbreviate-file-name dir)
+                                       mkey
+                                       doom-module--path-cache))))
+         ((file-in-directory-p path doom-core-dir)
+          (cons :doom nil))
+         ((file-in-directory-p path doom-user-dir)
+          (cons :user nil))))))
 
   ;; DEPRECATED: Remove in v3
   (defun doom-module-load-path (&optional module-load-path initorder?)
@@ -424,9 +463,6 @@ all modules in all known sources, collapsed by precedence)."
 
 Never set this variable directly, use `with-doom-module'.")
 
-  (pcase-defmacro doom-module-context (&rest fields)
-    `(doom-struct doom-module-context ,@fields))
-
   (defmacro with-doom-module (key &rest body)
     "Evaluate BODY with `doom-module-context' informed by KEY."
     (declare (indent 1))
@@ -444,39 +480,28 @@ Never set this variable directly, use `with-doom-module'.")
 KEY can be a `doom-module-context', `doom-module', or a `doom-module-key' cons
 cell."
     (declare (side-effect-free t))
-    (or (pcase (type-of key)
-          (`doom-module-context key)
-          (`doom-module (ignore-errors (doom-module->context key)))
-          (`cons (doom-module (car key) (cdr key))))
-        (make-doom-module-context :key (doom-module-key key))))
-
-  (defun doom-module<-context (context)
-    "Return a `doom-module' plist from CONTEXT."
-    (declare (side-effect-free t))
-    (doom-module-get (doom-module-context-key context)))
+    (cond ((doom-module-context-p key) key)
+          ((doom-module-p key) (doom-module->context key))
+          ((consp key) (doom-module (car key) (cdr key)))
+          ((make-doom-module-context :key (doom-module-key key)))))
 
   (defun doom-module->context (key)
     "Change a `doom-module' into a `doom-module-context'."
     (declare (side-effect-free t))
-    ;; (let ((module (if (doom-module-p key)
-    ;;                   key (doom-module-get (doom-module-key key)))))
-    ;;   (make-doom-module-context
-    ;;    :index (doom-module-index module)
-    ;;    :key (cons (doom-module-group module) (doom-module-name module))
-    ;;    :path (doom-module-path module)
-    ;;    :flags (doom-module-flags module)))
-    (pcase-let
-        (((doom-module index path flags group name)
-          (if (doom-module-p key)
-              key (doom-module-get (doom-module-key key)))))
+    (let ((module (if (doom-module-p key)
+                      key (doom-module-get (doom-module-key key)))))
       (make-doom-module-context
-       :index index
-       :key (cons group name)
-       :path path
-       :flags flags)))
+       :index (doom-module-index module)
+       :key (cons (doom-module-group module) (doom-module-name module))
+       :path (doom-module-path module)
+       :flags (doom-module-flags module))))
 
   (defun doom-module (group name &optional property)
     "Return the `doom-module-context' for any active module by GROUP NAME.
+
+This function accesses the hot cache for modules and should be used where
+performance is important (e.g. in interactive sessions). Use `doom-module-get'
+if correctness is more important (e.g. in non-interactive sessions).
 
 Return its PROPERTY, if specified."
     (declare (side-effect-free t))
@@ -493,6 +518,16 @@ Return its PROPERTY, if specified."
                 property)
                (error "Unknown doom-module-context property: %s" property)))
         context))))
+
+;;;###autoload
+(pcase-defmacro doom-module-context (&rest fields)
+  `(doom-struct doom-module-context ,@fields))
+
+;;;###autoload
+(defun doom-module<-context (context)
+  "Return a `doom-module' plist from CONTEXT."
+  (declare (side-effect-free t))
+  (doom-module-get (doom-module-context-key context)))
 
 
 ;;
