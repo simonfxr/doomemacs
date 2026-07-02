@@ -958,7 +958,7 @@ for possible values of TYPE."
   (or (alist-get type doom-config--alist)
       (signal 'doom-core-error `(invalid-config-type ,type))))
 (function-put 'doom-config-file 'function-documentation
-              (format (function-documentation 'doom-config-file)
+              (format (documentation 'doom-config-file)
                       (cl-loop for (key . file) in doom-config--alist
                                concat (format "  \\='%s = %s\n" key file))))
 
