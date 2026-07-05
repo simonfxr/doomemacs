@@ -479,12 +479,12 @@ Never set this variable directly, use `with-doom-module'.")
     "Return a `doom-module-context' from KEY.
 
 KEY can be a `doom-module-context', `doom-module', or a `doom-module-key' cons
-cell."
+cell. Throws an error if nil."
     (declare (side-effect-free t))
-    (cond ((doom-module-context-p key) key)
-          ((doom-module-p key) (doom-module->context key))
-          ((consp key) (doom-module (car key) (cdr key)))
-          ((make-doom-module-context :key (doom-module-key key)))))
+    (or (cond ((doom-module-context-p key) key)
+              ((doom-module-p key) (doom-module->context key))
+              ((consp key) (doom-module (car key) (cdr key))))
+        (make-doom-module-context :key (doom-module-key key))))
 
   (defun doom-module->context (key)
     "Change a `doom-module' into a `doom-module-context'."
