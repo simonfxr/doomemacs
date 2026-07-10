@@ -25,7 +25,7 @@ See `doom-real-buffer-p' for more information.")
 
 ;;;###autoload
 (defvar doom-real-buffer-modes
-  '(dired-mode comint-mode term-mode shell-mode eshell-mode vterm-mode)
+  '(dired-mode comint-mode term-mode shell-mode eshell-mode)
   "A list of major modes whose buffers are considered real.")
 
 ;;;###autoload

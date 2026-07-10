@@ -190,7 +190,7 @@ processed."
     (require 'package)
     (package-initialize t)
     (unless package--initialized
-      (error "Failed to initialize package.el")))
+      (signal 'doom-package-error `(init "package.el"))))
   (when (or force-p (null doom-packages))
     (doom-log "Initializing straight.el")
     (setq doom-disabled-packages nil
@@ -293,7 +293,7 @@ non-nil."
   ;; can't get dependencies for built-in packages
   (unless (or (doom-package-build-recipe package)
               noerror)
-    (error "Couldn't find %s, is it installed?" package))
+    (signal 'doom-package-error `(package-missing ,package)))
   (straight-dependents (symbol-name package)))
 
 ;;; Predicate functions
@@ -823,7 +823,7 @@ keys."
          (when (eq type 'git)
            (unless (or (file-directory-p ".git")
                        (file-exists-p ".straight-commit"))
-             (error "%S is not a valid repository" package)))
+             (signal 'doom-package-error `(invalid-repository ,package))))
          (when (and pinned-only-p (not (assoc local-repo pinned)))
            (cl-return))
          (condition-case-unless-debug e

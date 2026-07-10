@@ -264,14 +264,14 @@ Note: warnings are not considered failures.")
 ;; TODO: Move to 'doom install --git-hooks'
 (defcli! (ci deploy-hooks) ((force ("--force")))
   "TODO"
-  (let* ((repo-path (sh! "git" "rev-parse" "--show-toplevel"))
+  (let* ((repo-path (sh< git rev-parse --show-toplevel))
          (repo-path (if (zerop (car repo-path))
                         (cdr repo-path)
                       (user-error "Cannot locate a git repo in %s"
                                   (file-relative-name default-directory))))
-         (submodule-p (string-empty-p (cdr (sh! "git" "rev-parse" "show-superproject-working-tree"))))
-         (config-hooks-path (cdr (sh! "git" "config" "core.hooksPath")))
-         (hooks-path (cdr (sh! "git" "rev-parse" "--git-path" "hooks"))))
+         (submodule-p (string-empty-p (sh< git rev-parse show-superproject-working-tree)))
+         (config-hooks-path (sh< git config core.hooksPath))
+         (hooks-path (sh< git rev-parse --git-path hooks)))
     (unless (string-empty-p config-hooks-path)
       (or force
           (y-or-n-p

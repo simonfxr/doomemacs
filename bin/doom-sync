@@ -117,10 +117,11 @@ OPTIONS:
                          (not (equal hash (doom-sync--system-hash))))
                 (print! (warn "Your system has changed since last sync"))
                 (setq to-rebuild t))
-              (when (and to-rebuild (not rebuild?) (not (doom-cli-context-suppress-prompts-p context)))
+              (when (and to-rebuild (not rebuild?) (not (get! :suppress-prompts?)))
                 (cond (nobuild?
                        (print! (warn "Packages must be rebuilt, but -B has prevented it. Skipping...")))
-                      ((doom-cli-context-get context 'upgrading)
+                      ((or (get! 'upgrading)  ; DEPRECATED: remove in v3
+                           (get! :upgrading?))
                        (print! (warn "Packages will be rebuilt"))
                        (setq rebuild? t))
                       ((y-or-n-p (format! "  %s" "Installed packages must be rebuilt. Do so now?"))
@@ -140,12 +141,13 @@ OPTIONS:
               (with-temp-file sync-file
                 (prin1 (cons emacs-version (doom-sync--system-hash))
                        (current-buffer))))
-            (cond ((doom-cli-context-get context 'installing)
+            (cond ((get! :installing?)
                    (print! (success "Doom successfully installed!"))
                    (with-temp-buffer
                      (insert-file-contents (doom-emacs-dir "static/QUICKSTART_INTRO"))
                      (print! "%s" (buffer-string))))
-                  ((doom-cli-context-get context 'upgrading)
+                  ((or (get! 'upgrading) ; DEPRECATED: remove in v3
+                       (get! :upgrading?))
                    (print! (success "Doom successfully upgraded!")))))
           t)
       (remove-hook 'kill-emacs-hook #'doom-sync--abort-warning-h))))

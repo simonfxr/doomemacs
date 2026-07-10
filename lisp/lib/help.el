@@ -100,10 +100,10 @@ selection of all minor-modes, active or not."
        (if (eq action 'metadata) ; for embark/marginalia
            `(metadata (category . minor-mode))
          (complete-with-action action (doom-active-minor-modes) str pred))))))
+  (cl-check-type mode (or string symbol))
   (let ((symbol
          (cond ((stringp mode) (intern mode))
-               ((symbolp mode) mode)
-               ((error "Expected a symbol/string, got a %s" (type-of mode)))))
+               ((symbolp mode) mode)))
         (fn (if (fboundp symbol) #'describe-function #'describe-variable)))
     (funcall (or (command-remapping fn) fn)
              symbol)))

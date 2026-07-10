@@ -43,7 +43,7 @@ Change `$DOOMDIR' with the `--doomdir' option, e.g.
   ```"
   (print! (green "Installing Doom Emacs!\n"))
   (let ((default-directory doom-emacs-dir)
-        (yes? (doom-cli-context-suppress-prompts-p context)))
+        (yes? (get! :suppress-prompts?)))
     ;; Create `doom-user-dir'
     (if (eq config? :no)
         (print! (warn "Not copying private config template, as requested"))
@@ -104,7 +104,7 @@ Change `$DOOMDIR' with the `--doomdir' option, e.g.
       (print-group!
         (condition-case e
             (call! `(ci deploy-hooks ,@(if yes? '("--force"))))
-          ('user-error
+          (user-error
            (print! (warn "%s") (error-message-string e))))))
 
     (if (eq install? :no)
@@ -113,9 +113,9 @@ Change `$DOOMDIR' with the `--doomdir' option, e.g.
         (print! (warn "~/.emacs file detected. Delete it or Emacs won't load Doom correctly!")))
 
       ;; Ensure module sources are initialized
-      (or (zerop (car (sh! "git" "submodule" "update" "-f" "--init" "--recursive")))
+      (or (sh? git submodule update -f --init --recursive)
           (error "Failed to update submodules"))
-      (doom-cli-context-put context 'installing t)
+      (put! :installing? t)
       (exit! "doom" "sync" (if aot? "--aot") (if (eq envfile? :yes) "--env")))))
 
 

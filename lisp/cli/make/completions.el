@@ -23,7 +23,7 @@
   (let ((shell (or shell (file-name-base (getenv "SHELL"))))
         ;; TODO: Allow this command to read other Doom binscripts, which will
         ;;   dump their `doom-cli--table' if __DOOMDUMP is set.
-        ;; (table (read (letenv! (("__DOOMDUMP" "1")) (apply #'sh! script-file args))))
+        ;; (table (read (letenv! (("__DOOMDUMP" "1")) (sh? ,script-file ,@args))))
         )
     (print!
      "%s" (pcase (string-remove-prefix "--" shell)

@@ -1,5 +1,12 @@
 ;;; lisp/lib/process.el -*- lexical-binding: t; -*-
 
+(defun doom--strip-final-newline ()
+  (unless (= (point-min) (point-max))
+    (save-excursion
+      (goto-char (point-max))
+      (when (looking-at-p "^$")
+        (delete-char -1)))))
+
 ;;;###autoload
 (defun doom-call-process (command &rest args)
   "Execute COMMAND with ARGS synchronously.
@@ -9,7 +16,9 @@ code of the process and OUTPUT is its stdout output."
   (with-temp-buffer
     (cons (or (apply #'call-process command nil t nil (remq nil args))
               -1)
-          (string-trim (buffer-string)))))
+          (progn
+            (doom--strip-final-newline)
+            (buffer-string)))))
 
 ;;;###autoload
 (defun doom-exec-process (command &rest args)
@@ -39,7 +48,9 @@ Warning: freezes indefinitely on any stdin prompt."
             (while (not done-p)
               (sit-for 0.1))
             (process-exit-status process))
-          (string-trim (buffer-string)))))
+          (progn
+            (doom--strip-final-newline)
+            (buffer-string)))))
 
 (provide 'doom-lib '(process))
 ;;; process.el ends here

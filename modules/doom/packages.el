@@ -19,7 +19,14 @@
   :pin "e40a5b7f8b0c1bb2cde0e7e477b5f81303e34b95")
 
 ;; doom-ui.el
-(package! nerd-icons :pin "2247dfb513a80aa5b1047f04fd9f2e9b41f336fd")
+(package! nerd-icons :pin "d7742c5e8fba5d601633dd46f4cd7b34928f1185")
 
 ;; doom-projects.el
-(package! project :pin "6be4c7c464110d26094c452aab5069094b8d5009")
+(package! project :pin "883c035af5b66550a1692b89bb11a9daead62d61")
+
+;; doom-keybinds.el
+(package! general :pin "a48768f85a655fe77b5f45c2880b420da1b1b9c3") ; DEPRECATED
+(package! which-key
+  :recipe (:host github :repo "emacs-straight/which-key")
+  :pin "78bf634e98ff989df3d86bceffe99b3278e32b12"
+  :built-in 'prefer)

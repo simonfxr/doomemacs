@@ -1,10 +1,10 @@
 ;;; modules/doom/compat/+keybinds.el -*- lexical-binding: t; -*-
 ;;; Commentary:
 ;;
-;; `general' and `which-key' are deprecated as core packages. Don't worry,
-;; `map!' and `define-key!' are not deprecated, but once I've refactored
-;; general/which-key out of `map!' and `define-key!', they will be very
-;; different creatures.
+;; `general' is deprecated as a core package. Don't worry, `map!' and
+;; `define-key!' are not deprecated, but once I've refactored general out of
+;; them, they will be very different creatures, that's why they're in this
+;; module.
 ;;
 ;;; Code:
 
@@ -55,7 +55,7 @@ and Emacs states, and for non-evil users."
 ;; HACK: `map!' uses this instead of `define-leader-key!' because it consumes
 ;;   20-30% more startup time, so we reimplement it ourselves.
 (defmacro doom--define-leader-key (&rest keys)
-  (let (prefix forms wkforms)
+  (let (prefix forms)
     (while keys
       (let ((key (pop keys))
             (def (pop keys)))
@@ -65,25 +65,15 @@ and Emacs states, and for non-evil users."
           (when prefix
             (setq key `(general--concat t ,prefix ,key)))
           (let* ((udef (cdr-safe (doom-unquote def)))
+                 ;; DEPRECATED: Remove when general is removed
                  (bdef (if (general--extended-def-p udef)
                            (general--extract-def (general--normalize-extended-def udef))
                          def)))
             (unless (eq bdef :ignore)
               (push `(define-key doom-leader-map (general--kbd ,key)
                        ,bdef)
-                    forms))
-            (when-let* ((desc (cadr (memq :which-key udef))))
-              (cl-callf2 append
-                  `((which-key-add-key-based-replacements
-                      (general--concat t doom-leader-alt-key ,key)
-                      ,desc)
-                    (which-key-add-key-based-replacements
-                      (general--concat t doom-leader-key ,key)
-                      ,desc))
-                  wkforms))))))
-    (macroexp-progn
-     (append (and wkforms `((after! which-key ,@(nreverse wkforms))))
-             (nreverse forms)))))
+                    forms))))))
+    (macroexp-progn (nreverse forms))))
 
 (defmacro define-leader-key! (&rest args)
   "Define <leader> keys.
@@ -112,12 +102,10 @@ localleader prefix."
       ;; emacs state)
       `(general-define-key
         :states '(normal visual motion emacs insert)
-        :major-modes t
         :prefix doom-localleader-key
         :non-normal-prefix doom-localleader-alt-key
         ,@args)
     `(general-define-key
-      :major-modes t
       :prefix doom-localleader-alt-key
       ,@args)))
 
@@ -126,46 +114,25 @@ localleader prefix."
   ;;   :prefix/:non-normal-prefix properties because general is incredibly slow
   ;;   binding keys en mass with them in conjunction with :states -- an effective
   ;;   doubling of Doom's startup time!
-  (define-prefix-command 'doom/leader 'doom-leader-map)
-  (define-key doom-leader-map [override-state] 'all))
+  (define-prefix-command 'doom/leader 'doom-leader-map))
 
 ;; Bind `doom-leader-key' and `doom-leader-alt-key' as late as possible to give
 ;; the user a chance to modify them.
 (add-hook! 'doom-after-init-hook
   (defun doom-init-leader-keys-h ()
     "Bind `doom-leader-key' and `doom-leader-alt-key'."
-    (let ((map general-override-mode-map))
-      (if (not (featurep 'evil))
+    (let ((map general-override-mode-map)
+          (label "<leader>"))
+      (if (featurep 'evil)
           (progn
-            (cond ((equal doom-leader-alt-key "C-c")
-                   (set-keymap-parent doom-leader-map mode-specific-map))
-                  ((equal doom-leader-alt-key "C-x")
-                   (set-keymap-parent doom-leader-map ctl-x-map)))
-            (define-key map (kbd doom-leader-alt-key) 'doom/leader))
-        (evil-define-key* doom-leader-key-states map (kbd doom-leader-key) 'doom/leader)
-        (evil-define-key* doom-leader-alt-key-states map (kbd doom-leader-alt-key) 'doom/leader))
-      (general-override-mode +1))))
-
-(use-package! which-key
-  :hook (doom-first-input . which-key-mode)
-  :init
-  (setq which-key-sort-order #'which-key-key-order-alpha
-        which-key-sort-uppercase-first nil
-        which-key-add-column-padding 1
-        which-key-max-display-columns nil
-        which-key-min-display-lines 6
-        which-key-side-window-slot -10)
-  :config
-  (put 'which-key-replacement-alist 'initial-value which-key-replacement-alist)
-  (add-hook! 'doom-before-reload-hook
-    (defun doom-reset-which-key-replacements-h ()
-      (setq which-key-replacement-alist (get 'which-key-replacement-alist 'initial-value))))
-  ;; general improvements to which-key readability
-  (which-key-setup-side-window-bottom)
-  (setq-hook! 'which-key-init-buffer-hook line-spacing 3)
-
-  (which-key-add-key-based-replacements doom-leader-key "<leader>")
-  (which-key-add-key-based-replacements doom-localleader-key "<localleader>"))
+            (evil-define-key* doom-leader-key-states map (kbd doom-leader-key) `(,label . doom/leader))
+            (evil-define-key* doom-leader-alt-key-states map (kbd doom-leader-alt-key) `(,label . doom/leader)))
+        (cond ((equal doom-leader-alt-key "C-c")
+               (set-keymap-parent doom-leader-map mode-specific-map))
+              ((equal doom-leader-alt-key "C-x")
+               (set-keymap-parent doom-leader-map ctl-x-map)))
+        (define-key map (kbd doom-leader-alt-key) `(,label . doom/leader))))
+    (general-override-mode +1)))
 
 
 ;;; ** `map!' macro
@@ -198,7 +165,7 @@ For example, :nvi will map to (list \\='normal \\='visual \\='insert). See
 (defvar doom--map-state '(:dummy t))
 (defvar doom--map-parent-state nil)
 (defvar doom--map-evil-p nil)
-(after! evil (setq doom--map-evil-p t))
+(with-eval-after-load 'evil (setq doom--map-evil-p t))
 
 (defun doom--map-process (rest)
   (let ((doom--map-fn doom--map-fn)
@@ -301,14 +268,13 @@ For example, :nvi will map to (list \\='normal \\='visual \\='insert). See
   (when desc
     (let (unquoted)
       (cond ((and (listp def)
+                  ;; DEPRECATED: Remove when general is removed
                   (keywordp (car-safe (setq unquoted (doom-unquote def)))))
-             (setq def (list 'quote (plist-put unquoted :which-key desc))))
-            ((setq def (cons 'list
-                             (if (and (equal key "")
-                                      (null def))
-                                 `(:ignore t :which-key ,desc)
-                               (plist-put (general--normalize-extended-def def)
-                                          :which-key desc))))))))
+             (setq def `(quote ,(plist-put unquoted :which-key desc))))
+            ((and (equal key "")
+                  (null def))
+             (setq def `(cons ,desc (make-sparse-keymap))))
+            ((setq def `(cons ,desc ,def))))))
   (dolist (state states)
     (push (list key def)
           (alist-get state doom--map-batch-forms)))

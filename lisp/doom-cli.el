@@ -12,6 +12,7 @@
 
 (eval-and-compile
   (doom-require 'doom-cli 'print)
+  (doom-require 'doom-cli 'sh)
   ;; TODO: (doom-require 'doom-cli 'loaddefs)
   (doom-require 'doom-cli 'autoloads)
   (doom-require 'doom-lib 'process)
@@ -717,7 +718,7 @@ Throws `doom-cli-invalid-option-error' for illegal values."
                           ,@(if (memq ?1 pipes) `((:out . ,scope)))))
          :skip t)
   ;; If non-nil, suppress prompts and auto-accept their consequences.
-  suppress-prompts-p
+  suppress-prompts-p   ; DEPRECATED: Remove in v3
   (prefix "@")  ; The basename of the script creating this context
   meta-p        ; Whether or not this is a help/meta request
   error         ;
@@ -755,7 +756,7 @@ executable context."
              ((or "-?" "--help")
               (doom-cli-call `(:help ,@(cdr command)) context)
               t)
-             (_ (error "In meta mode with no destination!"))))
+             (_ (signal 'doom-cli-error `(lost-in-meta-mode)))))
 
           ((not (and cli (doom-cli-fn (doom-cli-get cli))))
            (signal 'doom-cli-command-not-found-error
@@ -779,11 +780,10 @@ executable context."
                                (insert-file-contents file)
                                (read (current-buffer)))))
       (unless (doom-cli-context-p old-context)
-        (error "An invalid context was restored from file: %s" file))
+        (signal 'doom-cli-error `(invalid-context ,file)))
       (unless (equal (doom-cli-context-prefix context)
                      (doom-cli-context-prefix old-context))
-        (error "Restored context belongs to another script: %s"
-               (doom-cli-context-prefix old-context)))
+        (signal 'doom-cli-error `(wrong-context-prefix ,(doom-cli-context-prefix old-context))))
       (pcase-dolist (`(,slot ,_ . ,plist)
                      (cdr (cl-struct-slot-info 'doom-cli-context)))
         (unless (plist-get plist :skip)
@@ -918,11 +918,11 @@ executable context."
 (defun doom-cli-context-get (context key &optional null-value)
   "Fetch KEY from CONTEXT's options or state.
 
-Context objects are essentially persistent storage, and may contain arbitrary
+Context objects are essentially persistent storage and may contain arbitrary
 state tied to switches (\"--foo\" or \"-x\") or arbitrary symbols (state).
 
 If KEY is a string, fetch KEY from context's OPTIONS (by switch).
-If KEY is a symbol, fetch KEY from context's STATE.
+If KEY is a symbol or keyword, fetch KEY from context's STATE.
 Return NULL-VALUE if KEY does not exist."
   (if-let* ((value
              (if (stringp key)
@@ -940,7 +940,9 @@ state tied to switches (\"--foo\" or \"-x\") or arbitrary symbols (state). Use
 this to register data into CONTEXT.
 
 If KEY is a string, set the value of a switch named KEY to VAL.
-If KEY is a symbol, set the value of the context's STATE to VAL."
+If KEY is a symbol or keyword, set the value of the context's STATE to VAL.
+It is a convention that KEY be a keyword for internal state (for the parent
+script), freeing up plain symbols for user-space state."
   (setf (alist-get
          key (if (stringp key)
                  (doom-cli-context-options context)
@@ -1205,7 +1207,7 @@ session ends (see the shebang lines of this file). It's done this way because
 Emacs' batch library lacks an implementation of the exec system call."
   (cl-check-type context doom-cli-context)
   (when (= (doom-cli-context-step context) -1)
-    (error "__DOOMSTEP envvar missing; extended `exit!' functionality will not work"))
+    (signal 'doom-cli-error `(envvar-missing "__DOOMSTEP")))
   (let* ((pid  (doom-cli-context-pid context))
          (step (doom-cli-context-step context))
          (shext (if (eq doom-cli-shell 'pwsh) "ps1" "sh"))
@@ -1327,10 +1329,10 @@ Emacs' batch library lacks an implementation of the exec system call."
       ((pred (keywordp))
        (if-let* ((fn (alist-get command doom-cli-exit-commands)))
            (funcall fn args context)
-         (error "Invalid exit command: %s" command)))
+         (signal 'doom-cli-error `(invalid-exit-command ,command))))
 
       ;; Any other value is invalid.
-      (_ (error "Invalid exit code or command: %s" command)))))
+      (_ (signal 'doom-cli-error `(invalid-exit-command ,command))))))
 
 (defun doom-cli--exit-restart (args context)
   "Restart the session, verbatim (persisting CONTEXT).
@@ -1979,7 +1981,7 @@ Once done, this function kills Emacs gracefully and writes output to log files
 errors to `doom-cli-error-file')."
   (unless doom-cli--loading
     (if (not (equal (doom-cli-context-prefix doom-cli--context) "@"))
-        (error "Cannot nest `run!' calls")
+        (signal 'doom-cli-error `(nested-run-calls))
       (run-hooks 'doom-cli-initialize-hook)
       (with-doom-context 'run
         (let* ((args (flatten-list args))
@@ -2005,16 +2007,29 @@ errors to `doom-cli-error-file')."
                 (signal (car e) (cdr e)))))
            context))))))
 
-(defalias 'sh! #'doom-call-process)
-
+;;; DEPRECATED: Remove in v3
 (defalias 'sh!! #'doom-exec-process)
+(make-obsolete 'sh!! "Use `$' instead" "2.3.0")
 
-;; TODO: Make `git!' into a more sophisticated wrapper around git
-(defalias 'git! (apply-partially #'straight--process-run "git"))
+(defun get! (key &optional null-value)
+  "Return KEY's value from current CLI context, otherwise NULL-VALUE.
 
-(defun get! (key) (doom-cli-context-get doom-cli--context key))
+Same as `doom-cli-context-get' with the active CLI context as the first
+argument. Use `put!' or `doom-cli-context-put' to set these values."
+  (doom-cli-context-get doom-cli--context key null-value))
 
-(defun put! (key val) (doom-cli-context-put doom-cli--context key val))
+(defun put! (key val &rest pairs)
+  "Save each VAL under KEY in the current CLI context.
+
+Same as `doom-cli-context-put' with the active CLI context as the first
+argument. Use `get!' or `doom-cli-context-get' to retrieve these values.
+
+\(fn KEY VAL...)"
+  (cl-loop with last-val = nil
+           for (key val) on (cons key (cons val pairs)) by #'cddr
+           do (doom-cli-context-put doom-cli--context key val)
+           and do (setq last-val val)
+           finally return last-val))
 
 
 ;;; ** doom-cli-help

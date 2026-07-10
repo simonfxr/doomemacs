@@ -128,7 +128,7 @@ This is a variadic `cl-pushnew'."
 ;;
 ;;; * Deprecated sub-modules
 
-(if (modulep! +use-package) (load! "+use-package"))
+(load! "+use-package")
 (if (modulep! +keybinds)    (load! "+keybinds"))  ; `general' & `map!'
 (if (modulep! +projectile)  (load! "+projectile"))
 (if (modulep! +smartparens) (load! "+smartparens"))

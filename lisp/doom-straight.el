@@ -177,7 +177,7 @@ original state.")
 (defadvice! doom-straight--suppress-confirm-a (&rest _)
   :before-until #'straight-are-you-sure
   (and (bound-and-true-p doom-cli--context)
-       (doom-cli-context-suppress-prompts-p doom-cli--context)))
+       (get! :suppress-prompts?)))
 
 (defadvice! doom-straight--fallback-to-tty-prompt-a (prompt actions)
   "Modifies straight to prompt on the terminal when in noninteractive sessions."
@@ -194,7 +194,7 @@ original state.")
             (cl-remove-if (lambda (o)
                             (string-match-p "^\\(?:Magit\\|Dired\\)" (nth 1 o)))
                           actions))
-      (if (doom-cli-context-suppress-prompts-p doom-cli--context)
+      (if (get! :suppress-prompts?)
           (cl-loop for (_key desc func) in actions
                    when desc
                    when (doom-straight--recommended-option-p prompt desc)

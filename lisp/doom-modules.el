@@ -61,7 +61,7 @@ uses a straight or package.el command directly).")
     ;;   projectile -- everything that makes v2 distinct from v3. The module is
     ;;   here to stay, but it won't be hardcoded after v3.
     (doom-module--put '(:doom . compat)
-                      :flags '(+use-package +keybinds +better-jumper +projectile +smartparens)
+                      :flags '(+keybinds +better-jumper +projectile +smartparens)
                       :depth -115)
     ;; Load $DOOMDIR/init.el, where the user's `doom!' lives, which will inform
     ;; us of all desired modules.
@@ -113,7 +113,7 @@ properties:
               (cond ((integerp depth) (cons depth depth))
                     ((consp depth) (cons (or (car depth) 0)
                                          (or (cdr depth) 0)))
-                    ((error "Invalid DEPTH value: %S" depth))))))))
+                    ((signal 'wrong-type-argument `((or integer cons) ,depth)))))))))
     (doom-log 2 "module-put: %s" module)
     (prog1 (puthash (cons group name) module doom-modules)
       ;; PERF: Doom caches module index, flags, and features in symbol plists
@@ -142,7 +142,7 @@ properties:
       (cond ((keywordp m)
              (setq group m))
             ((null group)
-             (error "No module group specified for %s" m))
+             (signal 'doom-user-error `(no-module-group-for ,m)))
             ((and (listp m) (keywordp (car m)))
              (pcase (car m)
                (:cond
@@ -217,7 +217,8 @@ properties:
            (if (nlistp (cdr-safe key))
                key
              (cons (car key) (cadr key))))
-          ((error "Invalid key: %S" key))))
+          ((signal 'wrong-type-argument
+                   `((or doom-module doom-module-context cons) ,key)))))
 
   (defun doom-module--has-flag-p (flags wanted-flags)
     "Return t if the list of WANTED-FLAGS satisfies the list of FLAGS."
@@ -279,7 +280,7 @@ cdr. See `doom-module-put' for details about the :depth property."
                              nconc (list (doom-keyword-intern (symbol-name (car info)))
                                          (prog1 i (cl-incf i)))))
                   property)
-                 (error "Unknown doom-module property: %s" property)))
+                 (signal 'doom-core-error `(invalid-module-property ,property))))
         m)))
 
   (defun doom-module-active-p (group module &optional flags)
@@ -517,7 +518,7 @@ Return its PROPERTY, if specified."
                            nconc (list (doom-keyword-intern (symbol-name (car info)))
                                        (prog1 i (cl-incf i)))))
                 property)
-               (error "Unknown doom-module-context property: %s" property)))
+               (signal 'doom-core-error `(invalid-module-context-property ,property))))
         context))))
 
 ;;;###autoload
@@ -604,8 +605,10 @@ For more about modules and flags, see `doom!'."
                  (doom-module--has-flag-p
                   (doom-module (car module) (cdr module) :flags)
                   (backquote ,flags))
-               (error "(modulep! %s) couldn't resolve current module from %s"
-                      (backquote ,flags) (abbreviate-file-name file)))))))))
+               (signal 'doom-module-error
+                       (list "Can't resolve current module for flags"
+                             (backquote ,flags)
+                             (abbreviate-file-name file))))))))))
 
 (provide 'doom-modules)
 ;;; doom-modules.el ends here
