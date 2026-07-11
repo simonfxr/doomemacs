@@ -996,7 +996,7 @@ elsewhere."
     (when (and (not ignore)
                (equal built-in '(quote prefer)))
       (setq built-in `(locate-library ,(symbol-name name) nil (get 'load-path 'initial-value))))
-    (cl-callf map-delete plist :built-in)
+    (cl-remf plist :built-in)
     (cl-callf plist-put plist :ignore built-in))
   `(let* ((name ',name)
           (plist (cdr (assq name doom-packages)))

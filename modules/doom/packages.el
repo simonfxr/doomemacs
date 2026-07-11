@@ -25,7 +25,6 @@
 (package! project :pin "883c035af5b66550a1692b89bb11a9daead62d61")
 
 ;; doom-keybinds.el
-(package! general :pin "a48768f85a655fe77b5f45c2880b420da1b1b9c3") ; DEPRECATED
 (package! which-key
   :recipe (:host github :repo "emacs-straight/which-key")
   :pin "78bf634e98ff989df3d86bceffe99b3278e32b12"

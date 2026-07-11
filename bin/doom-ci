@@ -264,11 +264,9 @@ Note: warnings are not considered failures.")
 ;; TODO: Move to 'doom install --git-hooks'
 (defcli! (ci deploy-hooks) ((force ("--force")))
   "TODO"
-  (let* ((repo-path (sh< git rev-parse --show-toplevel))
-         (repo-path (if (zerop (car repo-path))
-                        (cdr repo-path)
-                      (user-error "Cannot locate a git repo in %s"
-                                  (file-relative-name default-directory))))
+  (let* ((repo-path (or (sh< git rev-parse --show-toplevel)
+                        (user-error "Cannot locate a git repo in %s"
+                                    (file-relative-name default-directory))))
          (submodule-p (string-empty-p (sh< git rev-parse show-superproject-working-tree)))
          (config-hooks-path (sh< git config core.hooksPath))
          (hooks-path (sh< git rev-parse --git-path hooks)))
@@ -356,13 +354,12 @@ Prevents pushing if there are unrebased or WIP commits."
                                       (car (split-string msg " "))
                                       (substring hash 0 12)))))
                     (split-string
-                     (cdr (doom-call-process
-                           "git" "rev-list"
-                           "--grep" (concat "^" (regexp-opt '("WIP" "squash!" "fixup!" "FIXUP") t) " ")
-                           "--format=%H\t%s"
-                           (if (equal remote-sha z40)
+                     (sh< git rev-list
+                          --grep ,(concat "^" (regexp-opt '("WIP" "squash!" "fixup!" "FIXUP") t) " ")
+                          "--format=%H\t%s"
+                          ,(if (equal remote-sha z40)
                                local-sha
-                             (format "%s..%s" remote-sha local-sha))))
+                             (format "%s..%s" remote-sha local-sha)))
                      "\n" t))
               (when error
                 (print! (error "Aborting push due to unrebased WIP, squash!, or fixup! commits"))

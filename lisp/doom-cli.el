@@ -1468,7 +1468,7 @@ ARGS are options passed to less. If DOOMPAGER is set, ARGS are ignored."
 (cl-defgeneric doom-cli-handle-error (_context type data))
 
 (cl-defmethod doom-cli-handle-error (_context (_type (eql 'user-error)) data)
-  (print! (red "Error: %s") data)
+  (print! (red "Error: %s") (car data))
   (print! "\nAborting...")
   3)
 
@@ -2009,7 +2009,7 @@ errors to `doom-cli-error-file')."
 
 ;;; DEPRECATED: Remove in v3
 (defalias 'sh!! #'doom-exec-process)
-(make-obsolete 'sh!! "Use `$' instead" "2.3.0")
+(make-obsolete 'sh!! "Use `sh!' instead" "2.3.0")
 
 (defun get! (key &optional null-value)
   "Return KEY's value from current CLI context, otherwise NULL-VALUE.

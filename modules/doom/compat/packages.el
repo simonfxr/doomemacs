@@ -19,8 +19,7 @@
   (package! better-jumper :pin "b1bf7a3c8cb820d942a0305e0e6412ef369f819c"))
 
 (when (modulep! +keybinds)
-  (package! general :pin "a48768f85a655fe77b5f45c2880b420da1b1b9c3")
-  (package! which-key :pin "38d4308d1143b61e4004b6e7a940686784e51500"))
+  (package! general :pin "a48768f85a655fe77b5f45c2880b420da1b1b9c3"))
 
 (when (modulep! +projectile)
   (package! projectile :pin "39dc2a69a2424f9999dabe3b6fb9dfafd1304916"))
