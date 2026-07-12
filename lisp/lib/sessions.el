@@ -1,11 +1,5 @@
 ;;; lisp/lib/sessions.el -*- lexical-binding: t; -*-
 
-(defvar desktop-base-file-name)
-(defvar desktop-dirname)
-(defvar desktop-restore-eager)
-(defvar desktop-file-modtime)
-
-
 ;;
 ;;; * Helpers
 
@@ -30,15 +24,15 @@
          (persp-save-state-to-file file))
         ((and (require 'frameset nil t)
               (require 'desktop nil t))
-         (let ((desktop-base-file-name (file-name-nondirectory file))
-               (desktop-dirname (file-name-directory file))
-               (desktop-restore-eager t)
-               desktop-file-modtime)
+         (dlet ((desktop-base-file-name (file-name-nondirectory file))
+                (desktop-dirname (file-name-directory file))
+                (desktop-restore-eager t)
+                (desktop-file-modtime nil))
            (make-directory desktop-dirname t)
            ;; Prevents confirmation prompts
-           (let ((desktop-file-modtime
-                  (file-attribute-modification-time
-                   (file-attributes (desktop-full-file-name)))))
+           (dlet ((desktop-file-modtime
+                   (file-attribute-modification-time
+                    (file-attributes (desktop-full-file-name)))))
              (desktop-save desktop-dirname))))
         ((error "No session backend to save session with"))))
 
@@ -52,31 +46,23 @@
         ((require 'persp-mode nil t)
          (unless persp-mode
            (persp-mode +1))
-         (let ((allowed (persp-list-persp-names-in-file file)))
-           (cl-loop for name being the hash-keys of *persp-hash*
-                    unless (member name allowed)
-                    do (persp-kill name))
-           (persp-load-state-from-file file)))
+         (cl-loop with allowed = (persp-list-persp-names-in-file file)
+                  for name being the hash-keys of *persp-hash*
+                  unless (member name allowed)
+                  do (persp-kill name))
+         (persp-load-state-from-file file))
         ((and (require 'frameset nil t)
               (require 'desktop nil t))
-         (let* ((file (expand-file-name (doom-session-file)))
-                desktop-file-modtime
+         (dlet ((desktop-file-modtime nil)
                 (desktop-dirname (file-name-directory file))
                 (desktop-base-file-name (file-name-nondirectory file))
-                (desktop-base-lock-name (concat desktop-base-file-name ".lock"))
+                (desktop-base-lock-name (concat (file-name-nondirectory file) ".lock"))
                 (desktop-restore-reuses-frames nil)
                 ;; Disable prompts for safe variables during restoration
-                (enable-local-variables :safe)
-                ;; We mock these two functions while restoring frames Calls to
-                ;; `display-color-p' blocks Emacs in daemon mode (possibly)
-                ;; because the call fails
-                (display-color-p (symbol-function 'display-color-p))
-                ;; We mock `display-graphic-p' since desktop mode has changed to
-                ;; not restore frames when we are not on graphic display
-                (display-graphic-p (symbol-function 'display-graphic-p)))
+                (enable-local-variables :safe))
            (if (daemonp)
-               (letf! ((#'display-color-p #'ignore)
-                       (#'display-graphic-p #'ignore))
+               (letf! ((#'display-color-p #'always)
+                       (#'display-graphic-p #'always))
                  (desktop-read desktop-dirname))
              (desktop-read desktop-dirname))))
         ((error "No session backend to load session with"))))

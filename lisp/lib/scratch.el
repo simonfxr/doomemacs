@@ -131,7 +131,6 @@ Respects `doom-scratch-initial-major-mode' configuration."
 ;;
 ;;; * Commands
 
-(defvar projectile-enable-caching)
 ;;;###autoload
 (defun doom/open-scratch-buffer (&optional arg project-p same-window-p)
   "Pop up a persistent scratch buffer.
@@ -140,7 +139,7 @@ If passed the prefix ARG, do not restore the last scratch buffer.
 If PROJECT-P is non-nil, open a persistent scratch buffer associated with the
   current project."
   (interactive "P")
-  (let (projectile-enable-caching)
+  (dlet (projectile-enable-caching)
     (funcall
      (if same-window-p
          #'switch-to-buffer

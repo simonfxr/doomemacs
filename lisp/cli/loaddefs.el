@@ -112,12 +112,10 @@ file.")
                  (print `(defalias ',symbol #',(doom-unquote target) ,docstring))))
               (module-enabled-p (print form)))))))
 
-(defvar autoload-timestamps)
-(defvar generated-autoload-load-name)
 (defun doom-loaddefs--scan-file (file)
   ;; FIXME: Conditionally use `loaddefs' in Emacs 30+
   (quiet! (require 'autoload))  ; silence deprecation notice
-  (let* (;; Prevent `autoload-find-file' from firing file hooks, e.g. adding
+  (dlet (;; Prevent `autoload-find-file' from firing file hooks, e.g. adding
          ;; to recentf.
          find-file-hook
          write-file-functions
@@ -134,19 +132,19 @@ file.")
          case-fold-search    ; reduce magic
          autoload-timestamps ; reduce noise in generated files
          autoload-compute-prefixes
-         ;; So `autoload-generate-file-autoloads' knows where to write it
-         (target-buffer (current-buffer))
          (generated-autoload-load-name
-          (abbreviate-file-name (file-name-sans-extension file)))
-         (module (doom-module-from-path file))
-         (module-enabled-p
-          (and (doom-module-active-p (car module) (cdr module))
-               (doom-file-cookie-p file "if" t))))
-    (save-excursion
-      (when module-enabled-p
-        (quiet! (autoload-generate-file-autoloads file target-buffer)))
-      (doom-loaddefs--scan-autodefs
-       file target-buffer module module-enabled-p))))
+          (abbreviate-file-name (file-name-sans-extension file))))
+    (let* ((module (doom-module-from-path file))
+           (module-enabled-p
+            (and (doom-module-active-p (car module) (cdr module))
+                 (doom-file-cookie-p file "if" t)))
+           ;; So `autoload-generate-file-autoloads' knows where to write it
+           (target-buffer (current-buffer)))
+      (save-excursion
+        (when module-enabled-p
+          (quiet! (autoload-generate-file-autoloads file target-buffer)))
+        (doom-loaddefs--scan-autodefs
+         file target-buffer module module-enabled-p)))))
 
 (defun doom-loaddefs--read (files thunk &optional literal?)
   (let (seen forms)

@@ -1342,7 +1342,6 @@ triggering hooks during startup."
       (funcall fn 'doom-switch-frame-hook #'doom-auto-revert-buffers-h)
       (funcall fn 'after-save-hook #'doom-auto-revert-buffers-h)))
 
-  (defvar auto-revert-mode)
   (defun doom-auto-revert-buffer-h ()
     "Auto revert current buffer, if necessary."
     (unless (or auto-revert-mode
@@ -1350,7 +1349,7 @@ triggering hooks during startup."
                 (and buffer-file-name
                      auto-revert-remote-files
                      (file-remote-p buffer-file-name nil t)))
-      (let ((auto-revert-mode t))
+      (dlet ((auto-revert-mode t))
         (auto-revert-handler))))
 
   (defun doom-auto-revert-buffers-h ()

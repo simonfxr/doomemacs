@@ -131,74 +131,72 @@ selection of all minor-modes, active or not."
 ;;
 ;;; * Documentation commands
 
-(defvar org-agenda-files)
 (cl-defun doom--org-headings (files &key depth mindepth include-files &allow-other-keys)
   "TODO"
-  (require 'org)
-  (let* ((default-directory doom-docs-dir)
-         (org-agenda-files (mapcar #'expand-file-name (ensure-list files)))
-         (depth (if (integerp depth) depth))
-         (mindepth (if (integerp mindepth) mindepth))
-         (org-inhibit-startup t))
-    (message "Loading search results...")
-    (unwind-protect
-        (delq
-         nil
-         (org-map-entries
-          (lambda ()
-            (cl-destructuring-bind (level _reduced-level _todo _priority text tags)
-                (org-heading-components)
-              (when (and (or (null depth)
-                             (<= level depth))
-                         (or (null mindepth)
-                             (>= level mindepth))
-                         (or (null tags)
-                             (not (string-match-p ":TOC" tags))))
-                (let ((path  (org-get-outline-path))
-                      (title (org-collect-keywords '("TITLE") '("TITLE"))))
-                  (list (string-join
-                         (list (string-join
-                                (append (when include-files
-                                          (list (or (cdr (assoc "TITLE" title))
-                                                    (file-relative-name (buffer-file-name)))))
-                                        path
-                                        (when text
-                                          (list (replace-regexp-in-string org-link-any-re "\\4" text))))
-                                " > ")
-                               tags)
-                         " ")
-                        (buffer-file-name)
-                        (point))))))
-          t 'agenda))
-      (mapc #'kill-buffer org-agenda-new-buffers)
-      (setq org-agenda-new-buffers nil))))
+  (let ((default-directory doom-docs-dir)
+        (depth (if (integerp depth) depth))
+        (mindepth (if (integerp mindepth) mindepth)))
+    (require 'org)
+    (dlet ((org-agenda-files (mapcar #'expand-file-name (ensure-list files)))
+           (org-inhibit-startup t))
+      (message "Loading search results...")
+      (unwind-protect
+          (delq
+           nil
+           (org-map-entries
+            (lambda ()
+              (cl-destructuring-bind (level _reduced-level _todo _priority text tags)
+                  (org-heading-components)
+                (when (and (or (null depth)
+                               (<= level depth))
+                           (or (null mindepth)
+                               (>= level mindepth))
+                           (or (null tags)
+                               (not (string-match-p ":TOC" tags))))
+                  (let ((path  (org-get-outline-path))
+                        (title (org-collect-keywords '("TITLE") '("TITLE"))))
+                    (list (string-join
+                           (list (string-join
+                                  (append (when include-files
+                                            (list (or (cdr (assoc "TITLE" title))
+                                                      (file-relative-name (buffer-file-name)))))
+                                          path
+                                          (when text
+                                            (list (replace-regexp-in-string org-link-any-re "\\4" text))))
+                                  " > ")
+                                 tags)
+                           " ")
+                          (buffer-file-name)
+                          (point))))))
+            t 'agenda))
+        (mapc #'kill-buffer org-agenda-new-buffers)
+        (setq org-agenda-new-buffers nil)))))
 
-(defvar ivy-sort-functions-alist)
 ;;;###autoload
 (cl-defun doom-completing-read-org-headings
     (prompt files &rest plist &key _depth _mindepth _include-files initial-input extra-candidates action)
   "TODO"
-  (let ((alist
-         (append (apply #'doom--org-headings files plist)
-                 extra-candidates))
-        ivy-sort-functions-alist)
-    (if-let* ((result (completing-read prompt alist nil nil initial-input)))
-        (cl-destructuring-bind (file &optional location)
-            (cdr (assoc result alist))
-          (if action
-              (funcall action file location)
-            (find-file file)
-            (cond ((functionp location)
-                   (funcall location))
-                  (location
-                   (goto-char location)))
-            (ignore-errors
-              (when (memq (get-char-property (point) 'invisible)
-                          '(outline org-fold-outline))
-                (save-excursion
-                  (outline-previous-visible-heading 1)
-                  (org-show-subtree))))))
-      (user-error "Aborted"))))
+  (dlet (ivy-sort-functions-alist)
+    (let ((alist
+           (append (apply #'doom--org-headings files plist)
+                   extra-candidates)))
+      (if-let* ((result (completing-read prompt alist nil nil initial-input)))
+          (cl-destructuring-bind (file &optional location)
+              (cdr (assoc result alist))
+            (if action
+                (funcall action file location)
+              (find-file file)
+              (cond ((functionp location)
+                     (funcall location))
+                    (location
+                     (goto-char location)))
+              (ignore-errors
+                (when (memq (get-char-property (point) 'invisible)
+                            '(outline org-fold-outline))
+                  (save-excursion
+                    (outline-previous-visible-heading 1)
+                    (org-show-subtree))))))
+        (user-error "Aborted")))))
 
 ;;;###autoload
 (defun doom/homepage ()
@@ -721,18 +719,17 @@ config blocks in your private config."
         query
       (read-string prompt query 'git-grep query))))
 
-(defvar counsel-rg-base-command)
 (defun doom--help-search (dirs query prompt)
   (unless doom-ripgrep-executable
     (user-error "Can't find ripgrep on your system"))
   (cond ((fboundp 'consult--grep)
          (consult--grep prompt #'consult--ripgrep-make-builder (cons data-directory dirs) query))
         ((fboundp 'counsel-rg)
-         (let ((counsel-rg-base-command
-                (if (stringp counsel-rg-base-command)
-                    (format counsel-rg-base-command
-                            (concat "%s " (mapconcat #'shell-quote-argument dirs " ")))
-                  (append counsel-rg-base-command dirs))))
+         (dlet ((counsel-rg-base-command
+                 (if (stringp counsel-rg-base-command)
+                     (format counsel-rg-base-command
+                             (concat "%s " (mapconcat #'shell-quote-argument dirs " ")))
+                   (append counsel-rg-base-command dirs))))
            (counsel-rg query nil "-Lz" (concat prompt ": "))))
         ;; TODO: Helm support?
         ((grep-find

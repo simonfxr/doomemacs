@@ -96,6 +96,16 @@ See also `file-name-sans-extension'."
              (error "Filename is a directory: %s" filename))
             ((concat (file-name-sans-extension filename) "." extn))))))
 
+;; Introduced in Emacs 28.1
+(unless (fboundp 'dlet)
+  (defmacro dlet (binders &rest body)
+    "Like `let' but using dynamic scoping."
+    (declare (indent 1) (debug let))
+    `(let (_)
+       ,@(cl-loop for binder in binders
+                  collect `(defvar ,(if (consp binder) (car binder) binder)))
+       (let ,binders ,@body))))
+
 
 ;;; ** From Emacs >= 29
 ;; Introduced in Emacs 29.1
