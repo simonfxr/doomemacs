@@ -165,6 +165,7 @@ For example, :nvi will map to (list \\='normal \\='visual \\='insert). See
 (defvar doom--map-state '(:dummy t))
 (defvar doom--map-parent-state nil)
 (defvar doom--map-evil-p nil)
+(defvar doom--map-last-prefix nil)
 (with-eval-after-load 'evil (setq doom--map-evil-p t))
 
 (defun doom--map-process (rest)
@@ -218,7 +219,7 @@ For example, :nvi will map to (list \\='normal \\='visual \\='insert). See
                     (doom--map-set (if doom--map-fn :infix :prefix)
                                    prefix)
                     (when (stringp desc)
-                      (setq rest (append (list :desc desc "" nil) rest)))))
+                      (setq doom--map-last-prefix (cons nil desc)))))
                  (:textobj
                   (let* ((key (pop rest))
                          (inner (pop rest))
@@ -273,9 +274,15 @@ For example, :nvi will map to (list \\='normal \\='visual \\='insert). See
              (setq def `(quote ,(plist-put unquoted :which-key desc))))
             ((and (equal key "")
                   (null def))
+             (setq doom--map-last-prefix nil)
              (setq def `(cons ,desc (make-sparse-keymap))))
             ((setq def `(cons ,desc ,def))))))
   (dolist (state states)
+    (when (and doom--map-last-prefix
+               (not (memq state (car doom--map-last-prefix))))
+      (push state (car doom--map-last-prefix))
+      (push (list "" `(cons ,(cdr doom--map-last-prefix) (make-sparse-keymap)))
+            (alist-get state doom--map-batch-forms)))
     (push (list key def)
           (alist-get state doom--map-batch-forms)))
   t)
@@ -290,6 +297,7 @@ For example, :nvi will map to (list \\='normal \\='visual \\='insert). See
                        ,@(mapcan #'identity (nreverse defs)))
              into forms
              finally do (push (macroexp-progn forms) doom--map-forms))
+    (setq doom--map-last-prefix nil)
     (setq doom--map-batch-forms nil)))
 
 (defun doom--map-state ()
@@ -321,7 +329,9 @@ Properties
   :mode [MODE(s)] [...]           inner keybinds are applied to major MODE(s)
   :map [KEYMAP(s)] [...]          inner keybinds are applied to KEYMAP(S)
   :prefix [PREFIX] [...]          set keybind prefix for following keys. PREFIX
-                                  can be a cons cell: (PREFIX . DESCRIPTION)
+                                  can be a cons cell: (PREFIX . DESCRIPTION).
+                                  WARNING: Providing a DESCRIPTION here will
+                                  unset any previous keys on PREFIX!
   :prefix-map [PREFIX] [...]      same as :prefix, but defines a prefix keymap
                                   where the following keys will be bound. DO NOT
                                   USE THIS IN YOUR PRIVATE CONFIG.
