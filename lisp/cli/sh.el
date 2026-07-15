@@ -267,7 +267,8 @@ it is the default behavior.
 Values can be spliced into commands using backquote and `,' / `,@' syntax:
 
   \\=(sh< ls ,@flags ,(expand-file-name dir))"
-  `(zerop (car (doom-sh--pipeline (doom-sh--parse (backquote ,args)) 'stream))))
+  `(let ((result (doom-sh--pipeline (doom-sh--parse (backquote ,args)) 'stream)))
+     (with-no-warnings (zerop (car result)))))
 
 ;;;###autoload
 (defmacro sh< (&rest args)
@@ -277,7 +278,7 @@ Returns nil if the command exits with a non-zero exit code. Supports pipes and
 redirects (see `sh!' for details)."
   `(let ((result (doom-sh--pipeline (doom-sh--parse (backquote ,args)))))
      (when (zerop (car result))
-       (cdr result))))
+       (with-no-warnings (cdr result)))))
 
 ;;;###autoload
 (defmacro sh? (&rest args)
@@ -285,7 +286,8 @@ redirects (see `sh!' for details)."
 
 Unlike `sh!', does not emit the output to `standard-output'. Supports pipes and
 redirects (see `sh!' for details)."
-  `(zerop (car (doom-sh--pipeline (doom-sh--parse (backquote ,args))))))
+  `(let ((result (doom-sh--pipeline (doom-sh--parse (backquote ,args)))))
+     (with-no-warnings (zerop (car result)))))
 
 ;;;###autoload
 (defmacro sh& (&rest args)

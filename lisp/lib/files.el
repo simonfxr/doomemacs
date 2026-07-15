@@ -169,7 +169,7 @@ return NULL-VALUE."
       (with-temp-buffer
         (with-doom-module (doom-module-from-path file)
           (let ((load-file-name file))
-            (eval (doom-file-cookie file cookie null-value) t)))))))
+            (eval sexp t)))))))
 
 ;;;###autoload
 (defmacro file-exists-p! (files &optional directory)

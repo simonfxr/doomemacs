@@ -103,9 +103,9 @@ Why this over exec-path-from-shell?
       (if allow-only (setq allow '(".")))
       (insert ";; -*- mode: emacs-lisp; lexical-binding: t; coding: utf-8-unix; -*-\n"
               ";;;###if (or initial-window-system (daemonp))\n"
-              ";;;###allow " (prin1-to-string allow) "\n"
-              ";;;###deny "  (prin1-to-string deny) "\n"
-              ";;;###date "  (format-time-string "%Y-%m-%d %H:%M:%S") "\n"
+              ";;;###allow " (prin1-to-string `(quote ,allow)) "\n"
+              ";;;###deny  " (prin1-to-string `(quote ,deny)) "\n"
+              ";;;###date  " (format "%S" (format-time-string "%Y-%m-%d %H:%M:%S")) "\n"
               "(put 'process-environment 'doom t)\n")
       (let ((deny  (append deny doom-env-deny))
             (allow (append allow doom-env-allow))
@@ -134,7 +134,7 @@ Why this over exec-path-from-shell?
             (current-buffer))
         (if (equal output-file "-")
             (print! "%s" (string-trim-right (buffer-string)))
-          (let ((dir (file-name-directory output-file)))
+          (let ((dir (file-name-directory (doom-path output-file))))
             (unless (file-directory-p dir)
               (print! (error "Containing directory does not exist: %s" dir))
               (exit! 1)))

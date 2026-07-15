@@ -90,7 +90,7 @@ libraries. It is the equivalent of the following shell commands:
 ;;
 ;;; * Helpers
 
-(defun doom-cli-upgrade (context &optional auto-accept-p force-p)
+(defun doom-cli-upgrade (_context &optional auto-accept-p force-p)
   "Upgrade Doom to the latest version non-destructively."
   (let ((default-directory doom-emacs-dir)
         process-file-side-effects)

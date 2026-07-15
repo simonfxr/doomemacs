@@ -268,7 +268,6 @@ SEE ALSO:
 
 ;; Look for doom-* executables and autoloaded CLIs in these places. Like $PATH,
 ;; but for Doom CLIs.
-(add-to-list 'doom-cli-load-path (doom-core-dir "cli/")) ; DEPRECATED
 (add-to-list 'doom-cli-load-path (doom-emacs-dir "bin/"))
 (add-to-list 'doom-cli-load-path (doom-user-dir "bin/"))
 (when-let* ((doompath (getenv "DOOMPATH")))

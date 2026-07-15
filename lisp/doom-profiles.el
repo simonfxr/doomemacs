@@ -514,16 +514,34 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
           ;; Create a list of packages starting with the Nth-most dependencies
           ;; by walking the package dependency tree depth-first. This ensures
           ;; any load-order constraints in package autoloads are always met.
-          (let (packages)
+          (let (autoloads)
             (letf! (defun* walk-packages (pkglist)
                      (cond ((null pkglist) nil)
                            ((stringp pkglist)
-                            (walk-packages (nth 1 (gethash pkglist straight--build-cache)))
-                            (cl-pushnew pkglist packages :test #'equal))
+                            (let ((sym (intern pkglist)))
+                              (if-let* ((deps (and
+                                               (not (eq (plist-get
+                                                         (alist-get sym doom-packages)
+                                                         :type)
+                                                        'built-in))
+                                               (gethash pkglist straight--build-cache))))
+                                  (progn
+                                    (walk-packages (nth 1 deps))
+                                    (cl-pushnew (straight--autoloads-file pkglist)
+                                                autoloads
+                                                :test #'equal))
+                                ;; Handle system-installed packages (e.g.
+                                ;; installed via OS package manager)
+                                (when-let* ((desc (car (alist-get sym package-alist))))
+                                  (walk-packages (cl-loop for req in (package-desc-reqs desc)
+                                                          collect (symbol-name (car req))))
+                                  (cl-pushnew (format
+                                               "%s.el" (package--autoloads-file-name desc))
+                                              autoloads :test #'equal)))))
                            ((listp pkglist)
                             (mapc #'walk-packages (reverse pkglist)))))
               (walk-packages (mapcar #'symbol-name (mapcar #'car doom-packages))))
-            (mapcar #'straight--autoloads-file (nreverse packages))))
+            (nreverse autoloads)))
        ,@(when-let* ((info-dirs
                       (cl-loop for dir in load-path
                                if (file-exists-p (doom-path dir "dir"))

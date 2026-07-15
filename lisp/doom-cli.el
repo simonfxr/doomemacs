@@ -1580,7 +1580,7 @@ use the comma operator:
     (defcli! (doom ,somevar) ...))
 
 DOCSTRING is a string description; its first line should be a short summary
-(under 60 characters) of what the command does. It will be used in the cramped
+\(under 60 characters) of what the command does. It will be used in the cramped
 command listings served by help commands. The rest of DOCSTRING lines should be
 no longer than 80 columns, and should go into greater detail. This documentation
 may use `quoting' to appropriately highlight ARGUMENTS, --options, or $ENVVARS.
@@ -1768,6 +1768,7 @@ ignored.
                      (let ,(cl-loop for arg in (nreverse bindings)
                                     unless (string-prefix-p "_" (symbol-name arg))
                                     collect `(,arg (cdr (assq ',arg ,alistsym))))
+                       nil ; suppress "empty let body" byte-compiler warnings
                        ,@body)))))
        ;; `cl-destructuring-bind's will validate keywords, so I don't have to
        (cl-destructuring-bind

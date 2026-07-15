@@ -384,6 +384,7 @@ an example."
     "Returns a cons cell (GROUP . NAME) derived from PATH (a file path).
 If ENABLED-ONLY?, return nil if the containing module isn't enabled."
     (let* ((file-name-handler-alist nil)
+           (path (if (file-name-absolute-p path) path (expand-file-name path)))
            (dir (or (doom-config-locate 'module path t) ; look for .doommodule
                     ;; PERF: Module autoload files (using `modulep!') are this
                     ;;   function's primary consumer, because I can't

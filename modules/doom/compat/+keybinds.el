@@ -324,7 +324,7 @@ For example, :nvi will map to (list \\='normal \\='visual \\='insert). See
 If evil isn't loaded, evil-specific bindings are ignored.
 
 Properties
-  :leader [...]                   an alias for (:prefix doom-leader-key ...)
+  :leader [...]                   an alias for (:map doom-leader-map ...)
   :localleader [...]              bind to localleader; requires a keymap
   :mode [MODE(s)] [...]           inner keybinds are applied to major MODE(s)
   :map [KEYMAP(s)] [...]          inner keybinds are applied to KEYMAP(S)
