@@ -6,9 +6,8 @@
 ;;;###autoload
 (defun doom--run-customize-theme-hook (fn)
   "Run FN, but suppress any writes to `custom-file'."
-  (letf! (defun put (symbol prop value)
-           (unless (string-prefix-p "saved-" (symbol-name prop))
-             (funcall put symbol prop value)))
+  (letf! (defadvice put (:before-while (symbol prop value))
+           (not (string-prefix-p "saved-" (symbol-name prop))))
     (let (custom--inhibit-theme-enable)
       (funcall fn))))
 
@@ -99,13 +98,13 @@ non-interactive or frame-less sessions."
                    if (and (eq type 'theme-face) (eq face f))
                    return spec))
          (spec
-          (letf! ((defun window-system (_frame) 'x)
-                  (defun display-color-cells (_frame) 257)
-                  (defun frame-parameter (frame parameter)
+          (letf! ((defun! window-system (_frame) 'x)
+                  (defun! display-color-cells (_frame) 257)
+                  (defadvice frame-parameter (:around (fn frame parameter))
                     (pcase parameter
                       (`display-type 'color)
                       (`background-mode 'dark)
-                      (_ (funcall frame-parameter frame parameter))))
+                      (_ (funcall fn frame parameter))))
                   (#'display-supports-face-attributes-p #'always))
             (face-spec-choose spec)))
          (inherit (if recursive (plist-get spec :inherit)))
@@ -113,7 +112,7 @@ non-interactive or frame-less sessions."
                     (plist-get spec attribute)
                   'unspecified)))
     (when (and inherit (not (eq inherit 'unspecified)))
-      (letf! (defun face-attribute (face attribute &optional _frame inherit)
+      (letf! (defun! face-attribute (face attribute &optional _frame inherit)
                (doom-theme-face-attribute theme face attribute inherit))
         (setq value (face-attribute-merged-with attribute value inherit))))
     value))

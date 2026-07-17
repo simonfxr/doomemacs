@@ -654,8 +654,8 @@ see), and if nil, defaults to `find-sibling-rules'."
                                ;; `file-expand-wildcards' has a new REGEXP
                                ;; argument in 29+ that is needed here. This swap
                                ;; makes it behave as if REGEXP == t.
-                               (letf! (defun wildcard-to-regexp (wildcard)
-                                        (concat "\\`" wildcard "\\'"))
+                               (letf! (defun! wildcard-to-regexp (wildcard)
+                                        (concat "\\`" wildcard% "\\'"))
                                  (file-expand-wildcards expansion nil))))))))))
       ;; Delete the file itself (in case it matched), and remove
       ;; duplicates, in case we have several expansions and some match

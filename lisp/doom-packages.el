@@ -992,20 +992,20 @@ elsewhere."
   (when (and recipe (keywordp (car-safe recipe)))
     (cl-callf plist-put plist :recipe `(quote ,recipe)))
   ;; :built-in t is basically an alias for :ignore (locate-library NAME)
-  (when built-in
-    (when (and (not ignore)
-               (equal built-in '(quote prefer)))
-      (setq built-in `(locate-library ,(symbol-name name) nil (get 'load-path 'initial-value))))
-    (cl-remf plist :built-in)
-    (cl-callf plist-put plist :type ''built-in)
-    (cl-callf plist-put plist :ignore built-in))
+  (cl-remf plist :built-in)
   `(let* ((name ',name)
           (plist (cdr (assq name doom-packages)))
           (dir (dir!))
-          (module (doom-module-from-path dir)))
+          (module (doom-module-from-path dir))
+          (built-in? ,built-in))
      (unless (doom-context-p 'package)
        (signal 'doom-module-error
                (list module "package! can only be used in packages.el files")))
+     (when (eq built-in? 'prefer)
+       (setq built-in? (locate-library (symbol-name name) nil (get 'load-path 'initial-value))))
+     (when built-in?
+       (cl-callf plist-put plist :ignore t)
+       (cl-callf plist-put plist :type 'built-in))
      ;; Record what module this declaration was found in
      (let ((module-list (plist-get plist :modules)))
        (unless (member module module-list)

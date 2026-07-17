@@ -464,14 +464,9 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
    `(";; -*- lexical-binding: t; no-byte-compile t; -*-"
      ";;;###if noninteractive"
      ,@(doom-loaddefs-scan
-        (cl-loop for dir in (doom-module-load-path nil t)
-                 append (doom-glob dir doom-module-cli-file))
         (doom-glob doom-core-dir "cli/*.el")
-        (seq-filter
-         #'doom-cli-executable-p
-         (cl-loop for dir in doom-cli-load-path
-                  append (doom-glob dir "doom-*")
-                  append (doom-glob dir "doom-*.el")))))))
+        (cl-loop for dir in (doom-module-load-path nil t)
+                 append (doom-glob dir doom-module-cli-file))))))
 
 (defun doom-profile--generate-user-init-loader (_profile)
   (doom-file-write
@@ -499,9 +494,7 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
    `((defun doom--startup-loaddefs-modules (_profile)
        ,@(doom-loaddefs-scan
           (doom-glob doom-core-dir "lib/*.el")
-          (cl-loop for dir
-                   in (append (doom-module-load-path :all t)
-                              (list doom-user-dir))
+          (cl-loop for dir in (doom-module-load-path :all t)
                    if (doom-glob dir "autoload.el") collect (car it)
                    if (doom-glob dir "autoload/*.el") append it)))
      (add-hook 'doom-startup-functions #'doom--startup-loaddefs-modules 60))))

@@ -1756,42 +1756,41 @@ and whether the line count of the buffer exceeds that matching entry in
   :type '(repeat regexp)
   :group 'doom)
 
-(static-when (fboundp 'which-key-mode)  ; built-in as of 30.1
-  (add-hook 'doom-first-input-hook #'which-key-mode)
-  (setq which-key-sort-order #'which-key-key-order-alpha
-        which-key-sort-uppercase-first nil
-        which-key-add-column-padding 1
-        which-key-max-display-columns nil
-        which-key-min-display-lines 7
-        which-key-side-window-slot -10
-        which-key-compute-remaps t
-        which-key-ellipsis "…"
-        which-key-allow-multiple-replacements t
-        which-key-idle-secondary-delay 0.1)
+(add-hook 'doom-first-input-hook #'which-key-mode)
+(setq which-key-sort-order #'which-key-key-order-alpha
+      which-key-sort-uppercase-first nil
+      which-key-add-column-padding 1
+      which-key-max-display-columns nil
+      which-key-min-display-lines 7
+      which-key-side-window-slot -10
+      which-key-compute-remaps t
+      which-key-ellipsis "…"
+      which-key-allow-multiple-replacements t
+      which-key-idle-secondary-delay 0.1)
 
-  (with-eval-after-load 'which-key
-    (put 'which-key-replacement-alist 'initial-value which-key-replacement-alist)
-    (add-hook! 'doom-before-reload-hook
-      (defun doom-reset-which-key-replacements-h ()
-        (setq which-key-replacement-alist (get 'which-key-replacement-alist 'initial-value))))
-    ;; general improvements to which-key readability
-    (which-key-setup-side-window-bottom)
-    (setq-hook! 'which-key-init-buffer-hook line-spacing 3)
+(with-eval-after-load 'which-key
+  (put 'which-key-replacement-alist 'initial-value which-key-replacement-alist)
+  (add-hook! 'doom-before-reload-hook
+    (defun doom-reset-which-key-replacements-h ()
+      (setq which-key-replacement-alist (get 'which-key-replacement-alist 'initial-value))))
+  ;; general improvements to which-key readability
+  (which-key-setup-side-window-bottom)
+  (setq-hook! 'which-key-init-buffer-hook line-spacing 3)
 
-    (which-key-add-key-based-replacements doom-localleader-key "<localleader>")
-    ;; Remove doom/ and +MODULE/ from commands. However, this requires upstream to
-    ;; define commands with descriptive names!
-    (defun doom-which-key-truncate-prefixes (spec)
-      (save-match-data
-        (if (string-match (string-join doom-which-key-trim-prefixes "\\|")
-                          (cdr spec))
-            (cons (car spec)
-                  (concat which-key-ellipsis
-                          (substring (cdr spec) (1- (match-end 0))
-                                     (length (cdr spec)))))
-          spec)))
-    (add-to-list 'which-key-replacement-alist
-                 '((nil) . doom-which-key-truncate-prefixes))))
+  (which-key-add-key-based-replacements doom-localleader-key "<localleader>")
+  ;; Remove doom/ and +MODULE/ from commands. However, this requires upstream to
+  ;; define commands with descriptive names!
+  (defun doom-which-key-truncate-prefixes (spec)
+    (save-match-data
+      (if (string-match (string-join doom-which-key-trim-prefixes "\\|")
+                        (cdr spec))
+          (cons (car spec)
+                (concat which-key-ellipsis
+                        (substring (cdr spec) (1- (match-end 0))
+                                   (length (cdr spec)))))
+        spec)))
+  (add-to-list 'which-key-replacement-alist
+               '((nil) . doom-which-key-truncate-prefixes)))
 
 
 ;;;###package winner

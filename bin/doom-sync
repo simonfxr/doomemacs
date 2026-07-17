@@ -62,6 +62,7 @@ OPTIONS:
     during the execution of this command. Use --rebuild as well to do so for all
     packages."
   :benchmark t
+  (delete-file doom-cli-loaddefs-file)
   (when aot?
     (after! straight
       (setq straight--native-comp-available t)))
@@ -127,6 +128,9 @@ OPTIONS:
                       ((y-or-n-p (format! "  %s" "Installed packages must be rebuilt. Do so now?"))
                        (setq rebuild? t))
                       ((exit! 0)))))
+            (when update?
+              (doom-initialize-packages)
+              (doom-packages--cli-recipes-update))
             (doom-packages-ensure rebuild?)
             (unless noupdate? (doom-packages-update (not update?)))
             (call! `(gc ,(unless purge? "-begpr"))))

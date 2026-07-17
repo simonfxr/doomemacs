@@ -2369,7 +2369,7 @@ The alist's CAR are lists of formatted switches plus their arguments, e.g.
                       ", ")
                      (if multiple? ", ..." "")
                      (indent (fill (markup docs)) doom-print-indent-increment))
-                            "\n\n"))))
+                    "\n\n"))))
         (with-temp-buffer
           (if (null (cdr local))
               (insert (if global "This command has no local options.\n" "") "\n")

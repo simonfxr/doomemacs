@@ -615,72 +615,74 @@ Appends SEGMENTS to the path, relative to the call site."
       dir)))
 
 (put 'defun* 'lisp-indent-function 'defun)
+(put 'defun! 'lisp-indent-function 'defun)
 (defmacro letf! (bindings &rest body)
-  "Temporarily rebind function, macros, and advice in BODY.
+  "Temporarily bind functions, macros, and advice in BODY.
 
-Intended as syntax sugar for `cl-letf', `cl-labels', `cl-macrolet', and
-temporary advice (`define-advice').
+Intended as syntax sugar for `cl-flet', `cl-letf', `cl-labels', `cl-macrolet',
+and (temporary) `define-advice'.
 
 BINDINGS is either:
 
-  A list of (PLACE VALUE) bindings as `cl-letf*' would accept.
-  A list of, or a single, `defun', `defun*', `defmacro', or `defadvice' forms.
+  A list of (PLACE VALUE) bindings as `cl-letf*' would accept. If PLACE is a
+    sharp-quoted symbol, it is implicitly wrapped in (symbol-function ...).
+  A list of, or a single, `defun', `defun*', `defun!', `defmacro', or
+    `defadvice' forms.
 
 The def* forms accepted are:
 
   (defun NAME (ARGS...) &rest BODY)
-    Defines a temporary function with `cl-letf'
+    Defines a temporary, lexical function with `cl-flet'.
   (defun* NAME (ARGS...) &rest BODY)
-    Defines a temporary function with `cl-labels' (allows recursive
+    Defines a temporary, lexical function with `cl-labels' (allows recursive
     definitions).
+  (defun! NAME (ARGS...) &rest BODY)
+    Defines a temporary, global function with `cl-letf*'. Will (temporarily)
+    override functions of the same name. Use `defadvice' instead if you want to
+    reference/call the original function.
   (defmacro NAME (ARGS...) &rest BODY)
-    Uses `cl-macrolet'.
+    Uses `cl-macrolet' to define lexical macros.
   (defadvice FUNCTION WHERE ADVICE)
-    Uses `advice-add' (then `advice-remove' afterwards).
+    Uses `advice-add' to advise FUNCTION over the duration of its execution,
+    then undoes the advice with `advice-remove' afterwards. No relation to the
+    `defadvice' macro.
   (defadvice FUNCTION (HOW LAMBDA-LIST &optional NAME DEPTH) &rest BODY)
-    Defines temporary advice with `define-advice'."
+    Defines temporary advice with `define-advice'. No relation to the
+    `defadvice' macro."
   (declare (indent defun))
   (setq body (macroexp-progn body))
-  (when (memq (car bindings) '(defun defun* defmacro defadvice))
+  (when (memq (car bindings) '(defun defun* defun! defmacro defadvice))
     (setq bindings (list bindings)))
-  (dolist (binding (reverse bindings) body)
-    (let ((type (car binding))
-          (rest (cdr binding)))
-      (setq
-       body (pcase type
-              (`defmacro `(cl-macrolet ((,@rest)) ,body))
-              (`defadvice
-               (if (keywordp (cadr rest))
-                   (cl-destructuring-bind (target where fn) rest
-                     `(when-let* ((fn ,fn))
-                        (advice-add ,target ,where fn)
-                        (unwind-protect ,body (advice-remove ,target fn))))
-                 (let* ((fn (pop rest))
-                        (argspec (pop rest)))
-                   (when (< (length argspec) 3)
-                     (setq argspec
-                           (list (nth 0 argspec)
-                                 (nth 1 argspec)
-                                 (or (nth 2 argspec) (gensym (format "%s-a" (symbol-name fn)))))))
-                   (let ((name (nth 2 argspec)))
-                     `(progn
-                        (define-advice ,fn ,argspec ,@rest)
-                        (unwind-protect ,body
-                          (advice-remove #',fn #',name)
-                          ,(if name `(fmakunbound ',name))))))))
-              (`defun
-               `(cl-letf ((,(car rest) (symbol-function #',(car rest))))
-                  (ignore ,(car rest))
-                  (cl-letf (((symbol-function #',(car rest))
-                             (lambda! ,(cadr rest) ,@(cddr rest))))
-                    ,body)))
-              (`defun*
-               `(cl-labels ((,@rest)) ,body))
-              (_
-               (when (eq (car-safe type) 'function)
-                 (setq type (list 'symbol-function type)))
-               (list 'cl-letf (list (cons type rest)) body)))))))
-
+  (dolist (binding (nreverse bindings) body)
+    (setq
+     body (pcase binding
+            (`(defmacro . ,rest) `(cl-macrolet (,rest) ,body))
+            (`(defun    . ,rest) `(cl-flet     (,rest) ,body))
+            (`(defun*   . ,rest) `(cl-labels   (,rest) ,body))
+            (`(defun! ,name . ,rest)
+             `(cl-letf (((symbol-function #',name)
+                         (cl-function (lambda ,@rest))))
+                ,body))
+            (`(defadvice ,target ,first . ,rest)
+             (if (keywordp first)
+                 (let ((sym (gensym "fn")))
+                   `(when-let* ((,sym ,target))
+                      (advice-add ,target ,first ,sym ,@rest)
+                      (unwind-protect ,body (advice-remove ,target ,sym))))
+               (when (< (length first) 3)
+                 (setq first
+                       (list (nth 0 first)
+                             (nth 1 first)
+                             (gensym (format "doom-letf-" target)))))
+               (let ((sym (intern (format "%s@%s" target (nth 2 first)))))
+                 `(progn
+                    (define-advice ,target ,first ,@rest)
+                    (unwind-protect ,body
+                      (advice-remove #',target #',sym)
+                      (fmakunbound ',sym))))))
+            (`((function ,fn) ,value)
+             `(cl-letf (((symbol-function #',fn) ,value)) ,body))
+            (_ `(let (,binding) ,body))))))
 
 (defmacro quiet!! (&rest forms)
   "Run FORMS without generating any output (for real).
@@ -691,12 +693,12 @@ sessions, this truly suppress all output from FORMS."
   `(if init-file-debug
        (progn ,@forms)
      (letf! ((standard-output (lambda (&rest _)))
-             (defun message (&rest _))
-             (defun load (file &optional noerror _nomessage nosuffix must-suffix)
-               (funcall load file noerror t nosuffix must-suffix))
-             (defun write-region (start end filename &optional append visit lockname mustbenew)
+             (defadvice message (:override (msg &rest _)) msg)
+             (defadvice load (:around (fn file &optional noerror _nomessage nosuffix must-suffix))
+               (funcall fn file noerror t nosuffix must-suffix))
+             (defadvice write-region (:around (fn start end filename &optional append visit lockname mustbenew))
                (unless visit (setq visit 'no-message))
-               (funcall write-region start end filename append visit lockname mustbenew)))
+               (funcall fn start end filename append visit lockname mustbenew)))
        ,@forms)))
 
 (defmacro quiet! (&rest forms)
@@ -746,98 +748,71 @@ Can chain these comparisons by adding more (COMPn Vn) pairs afterwards.
                        =  version-list-=
                        /= version-list-=))
 
+
 ;;; ** Closure factories
+
+(defun doom--lambda-allow-other-keys (args)
+  (let ((add (and (memq '&key args)
+                  (not (memq '&allow-other-keys args))))
+        out)
+    (dolist (arg args)
+      (when (and add (eq arg '&aux))
+        (push '&allow-other-keys out))
+      (push (if (proper-list-p arg)
+                (doom--lambda-allow-other-keys arg)
+              arg)
+            out))
+    (setq out (nreverse out))
+    (if (and add (not (memq '&aux args)))
+        (nconc out (list '&allow-other-keys))
+      out)))
 
 (defmacro lambda! (arglist &rest body)
   "Returns (cl-function (lambda ARGLIST BODY...))
+
 The closure is wrapped in `cl-function', meaning ARGLIST will accept anything
 `cl-defun' will. Implicitly adds `&allow-other-keys' if `&key' is present in
 ARGLIST."
   (declare (indent defun) (doc-string 1) (pure t) (side-effect-free t))
-  `(cl-function
-    (lambda
-      ,(letf! (defun* allow-other-keys (args)
-                (mapcar
-                 (lambda (arg)
-                   (cond ((nlistp (cdr-safe arg)) arg)
-                         ((listp arg) (allow-other-keys arg))
-                         (arg)))
-                 (if (and (memq '&key args)
-                          (not (memq '&allow-other-keys args)))
-                     (if (memq '&aux args)
-                         (let (newargs arg)
-                           (while args
-                             (setq arg (pop args))
-                             (when (eq arg '&aux)
-                               (push '&allow-other-keys newargs))
-                             (push arg newargs))
-                           (nreverse newargs))
-                       (append args (list '&allow-other-keys)))
-                   args)))
-         (allow-other-keys arglist))
-      ,@body)))
+  `(cl-function (lambda ,(doom--lambda-allow-other-keys arglist) ,@body)))
 
-(setplist 'doom--fn-crawl '(%2 2 %3 3 %4 4 %5 5 %6 6 %7 7 %8 8 %9 9))
-(defun doom--fn-crawl (data args)
-  (cond ((symbolp data)
-         (when-let*
-             ((pos (cond ((eq data '%*) 0)
-                         ((memq data '(% %1)) 1)
-                         ((get 'doom--fn-crawl data)))))
-           (when (and (= pos 1)
-                      (aref args 1)
-                      (not (eq data (aref args 1))))
-             (error "%% and %%1 are mutually exclusive"))
-           (aset args pos data)))
-        ((and (not (eq (car-safe data) 'fn!))
-              (or (listp data)
-                  (vectorp data)))
-         (let ((len (length data))
-               (i 0))
-           (while (< i len)
-             (doom--fn-crawl (elt data i) args)
-             (cl-incf i))))))
+(defun doom--fn-arglist (args)
+  (let ((argv (make-vector 10 nil))
+        (stack (list args)))
+    (while stack
+      (let ((data (pop stack)))
+        (cond ((symbolp data)
+               (when-let*
+                   ((pos (cond ((eq data '%*) 0)
+                               ((eq data '%) 1)
+                               ((memq data '(%1 %2 %3 %4 %5 %6 %7 %8 %9))
+                                (- (aref (symbol-name data) 1) ?0)))))
+                 (when (and (= pos 1) (aref argv 1) (not (eq data (aref argv 1))))
+                   (error "%% and %%1 are mutually exclusive"))
+                 (aset argv pos data)))
+              ((and (not (eq (car-safe data) 'fn!))
+                    (or (consp data) (vectorp data)))
+               (setq stack (append data stack))))))
+    (nconc
+     (cl-loop with seen for i downfrom 9 to 1
+              for sym = (aref argv i)
+              if (or seen sym) do (setq seen t)
+              and collect (or sym (intern (format "_%%%d" i))) into arglist
+              finally return (nreverse arglist))
+     (and (aref argv 0) '(&rest %*)))))
 
 (defmacro fn! (&rest args)
-  "Return an lambda with implicit, positional arguments.
+  "Return a lambda with implicit, positional arguments.
 
-The function's arguments are determined recursively from ARGS.  Each symbol from
-`%1' through `%9' that appears in ARGS is treated as a positional argument.
-Missing arguments are named `_%N', which keeps the byte-compiler quiet.  `%' is
-a shorthand for `%1'; only one of these can appear in ARGS.  `%*' represents
-extra `&rest' arguments.
+Each symbol `%1' through `%9' appearing anywhere in ARGS becomes a positional
+argument. Missing intermediate arguments are named `_%N' to keep the
+byte-compiler quiet. `%' is shorthand for `%1' (only one of the two may appear).
+`%*' collects extra `&rest' arguments.
 
-Instead of:
-
-  (lambda (a _ c &rest d)
-    (if a c (cadr d)))
-
-you can use this macro and write:
-
-  (fn! (if %1 %3 (cadr %*)))
-
-which expands to:
-
-  (lambda (%1 _%2 %3 &rest %*)
-    (if %1 %3 (cadr %*)))
-
-This macro was adapted from llama.el (see https://git.sr.ht/~tarsius/llama),
-minus font-locking and the outer function call, plus some minor optimizations."
-  `(lambda ,(let ((argv (make-vector 10 nil)))
-              (doom--fn-crawl args argv)
-              `(,@(let ((i (1- (length argv)))
-                        (n -1)
-                        sym arglist)
-                    (while (> i 0)
-                      (setq sym (aref argv i))
-                      (unless (and (= n -1) (null sym))
-                        (cl-incf n)
-                        (push (or sym (intern (format "_%%%d" i)))
-                              arglist))
-                      (cl-decf i))
-                    arglist)
-                ,@(and (aref argv 0) '(&rest %*))))
-     ,@args))
+Loosely inspired from llama.el (https://git.sr.ht/~tarsius/llama), minus
+font-locking and the outer function call."
+  (declare (doc-string 1) (side-effect-free t))
+  `(lambda ,(doom--fn-arglist args) ,@args))
 
 (defmacro cmd! (&rest body)
   "Returns (lambda () (interactive) ,@body)
