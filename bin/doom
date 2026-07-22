@@ -274,12 +274,17 @@ SEE ALSO:
   (dolist (dir (nreverse (split-string doompath path-separator)))
     (add-to-list 'doom-cli-load-path dir)))
 
+(add-to-list 'load-path (doom-emacs-dir "bin/"))
+
 
 ;;
 ;;; * CLI Bootstrapper
 
 (defvar doom-cli-loaddefs-file
-  (doom-cache-dir (format "doom-cli-loaddefs.%s.el" doom-version))
+  (if-let* ((path (getenv "__DOOM_LOADDEFS_FILE")))
+      ;; DEPRECATED: will be removed in v3
+      (expand-file-name path)
+    (doom-cache-dir (format "doom-cli-loaddefs.%s.el" doom-version)))
   "Where to store Doom's CLI autoloads.")
 
 ;; There are a lot of CLIs, and some have expensive initialization, so best we
@@ -299,8 +304,7 @@ SEE ALSO:
                (doom-file-write
                 doom-cli-loaddefs-file
                 `(";; -*- lexical-binding: t; no-byte-compile t; -*-"
-                  ,@(doom-loaddefs-scan
-                     (doom-glob doom-core-dir "cli/*.el")
+                  ,@(doom-loaddefs--scan-for-cli
                      (seq-filter #'doom-cli-executable-p
                                  (doom-glob doom-emacs-dir "bin/doom-*")))
                   (provide 'doom-cli-loaddefs)))))

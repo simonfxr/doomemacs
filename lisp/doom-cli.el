@@ -345,7 +345,7 @@ has any ;;;###if cookie, its condition must pass."
    doom-cli-load-path '("" ".el") #'doom-cli-executable-p))
 
 (defun doom-cli--load-executable (file prefix)
-  (let ((doom-cli--loading t))
+  (dlet ((doom-cli--loading t))
     (defcli-group! :prefix prefix
       (doom-load file))))
 

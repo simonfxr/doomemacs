@@ -23,7 +23,7 @@
        (insert (json-encode (doom-info)))
        (json-pretty-print-buffer))
       ("--lisp"
-       (pp (doom-info)))
+       (pp (doom-info) (current-buffer)))
       (_
        (insert (doom-info-string
                 (if (doom-cli-context-pipe-p context :out t)

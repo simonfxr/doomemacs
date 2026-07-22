@@ -8,7 +8,7 @@
   "Run FN, but suppress any writes to `custom-file'."
   (letf! (defadvice put (:before-while (symbol prop value))
            (not (string-prefix-p "saved-" (symbol-name prop))))
-    (let (custom--inhibit-theme-enable)
+    (dlet (custom--inhibit-theme-enable)
       (funcall fn))))
 
 (add-hook! 'doom-load-theme-hook

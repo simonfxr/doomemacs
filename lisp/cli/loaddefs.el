@@ -134,19 +134,21 @@ file.")
          autoload-compute-prefixes
          (generated-autoload-load-name
           (abbreviate-file-name (file-name-sans-extension file))))
-    (let* ((module (doom-module-from-path file))
-           (module-enabled-p
-            (and (doom-module-active-p (car module) (cdr module))
-                 (doom-file-cookie-p file "if" t)))
+    (let* ((module? (and (doom-config-locate 'modules file) t))
+           (module (and module? (doom-module-from-path file)))
+           (enabled? (and module? (doom-module-active-p (car module) (cdr module))))
+           (skip? (or (and module?
+                           (not enabled?))
+                      (not (doom-file-cookie-p file "if" t))))
            ;; So `autoload-generate-file-autoloads' knows where to write it
            (target-buffer (current-buffer)))
       (save-excursion
-        (when module-enabled-p
+        (unless skip?
           (quiet! (autoload-generate-file-autoloads file target-buffer)))
-        (doom-loaddefs--scan-autodefs
-         file target-buffer module module-enabled-p)))))
+        (when module?
+          (doom-loaddefs--scan-autodefs file target-buffer module enabled?))))))
 
-(defun doom-loaddefs--read (files thunk &optional literal?)
+(defun doom-loaddefs--read (files thunk &optional literal? relative-to)
   (let (seen forms)
     (dolist (file (thread-last files
                                (flatten-list)
@@ -162,6 +164,18 @@ file.")
         (with-temp-buffer
           (let (subautoloads)
             (funcall thunk file)
+            ;; DEPRECATED: A temporary fix until v3 (which makes all autoloads
+            ;;   relative for portability's sake).
+            (when relative-to
+              (save-excursion
+                (while (re-search-forward "(autoload [^ ]+ \\\"\\([^\"]+\\)\\\"" nil 'move)
+                  (unless (ppss-string-terminator (save-match-data (syntax-ppss)))
+                    (let ((path (match-string 1)))
+                      (replace-match
+                       (save-match-data
+                         (file-relative-name (file-truename path)
+                                             (file-truename relative-to)))
+                       t t nil 1))))))
             (save-excursion
               ;; Fixup the special #$ reader form and throw away comments.
               (while (re-search-forward "#\\$\\|^;\\(.*\n\\)" nil 'move)
@@ -179,7 +193,8 @@ file.")
               (condition-case _
                   (while t
                     (push (doom-loaddefs--clean
-                           file (read (current-buffer)) (not literal?))
+                           file (read (current-buffer)) (and (not literal?)
+                                                             (not relative-to)))
                           subautoloads))
                 (end-of-file)))
             (when (delq nil subautoloads)
@@ -200,6 +215,10 @@ file.")
 (defun doom-loaddefs-scan-literal (&rest files)
   (doom-loaddefs--read
    files #'insert-file-contents t))
+
+(defun doom-loaddefs--scan-for-cli (&rest files)
+  (doom-loaddefs--read
+   files #'doom-loaddefs--scan-file nil (doom-emacs-dir "bin/")))
 
 (provide 'doom-cli '(loaddefs))
 ;;; loaddefs.el end here

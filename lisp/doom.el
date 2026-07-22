@@ -164,7 +164,7 @@ The first element should always be one of `macos', `windows', `linux', or
   :link '(url-link :tag "Website" "https://doomemacs.org")
   :group 'emacs)
 
-(defconst doom-version "2.2.0"
+(defconst doom-version "2.2.1"
   "Current version of Doom Emacs core.")
 
 (defvar doom-init-time nil

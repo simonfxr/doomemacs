@@ -23,8 +23,6 @@
     ;; ssh and gpg variables that could quickly become stale if persisted.
     "^SSH_\\(AUTH_SOCK\\|AGENT_PID\\)$" "^\\(SSH\\|GPG\\)_TTY$"
     "^GPG_AGENT_INFO$"
-    ;; $TMP, $TMPDIR, $TEMP, $TEMPDIR -- could be poisoned by nix/guix shell
-    "^TE?MP\\(DIR\\)?$"
     ;; Internal Doom envvars
     "^DEBUG$" "^INSECURE$" "^\\(EMACS\\|DOOM\\(LOCAL\\)?\\)DIR$"
     "^DOOM\\(PATH\\|PROFILE\\)$" "^__")

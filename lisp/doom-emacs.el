@@ -1758,39 +1758,55 @@ and whether the line count of the buffer exceeds that matching entry in
 
 (add-hook 'doom-first-input-hook #'which-key-mode)
 (setq which-key-sort-order #'which-key-key-order-alpha
-      which-key-sort-uppercase-first nil
-      which-key-add-column-padding 1
-      which-key-max-display-columns nil
-      which-key-min-display-lines 7
-      which-key-side-window-slot -10
-      which-key-compute-remaps t
+      which-key-sort-uppercase-first nil ; jarring to separate keys by case
+      which-key-add-column-padding 1 ; less packed UI
+      which-key-min-display-lines 7  ; prevent short+wide which-key pane
+      which-key-side-window-slot -10 ; don't replace popups
+      which-key-compute-remaps t     ; show remapped commands
       which-key-ellipsis "…"
       which-key-allow-multiple-replacements t
+      which-key-idle-delay 1.0
       which-key-idle-secondary-delay 0.1)
 
-(with-eval-after-load 'which-key
-  (put 'which-key-replacement-alist 'initial-value which-key-replacement-alist)
-  (add-hook! 'doom-before-reload-hook
-    (defun doom-reset-which-key-replacements-h ()
-      (setq which-key-replacement-alist (get 'which-key-replacement-alist 'initial-value))))
-  ;; general improvements to which-key readability
-  (which-key-setup-side-window-bottom)
-  (setq-hook! 'which-key-init-buffer-hook line-spacing 3)
+(letrec
+    ;; HACK: Which-key won't trigger on first invocation because it's
+    ;;   lazy-loaded until `doom-first-input-hook', at which point Emacs is
+    ;;   waiting for the next keypress and seems to delay any idle timers (like
+    ;;   which-key's) started during this time, so an idle timer must be started
+    ;;   beforehand. Care is taken to ensure it doesn't clobber `which-key-mode'
+    ;;   loading before/after it, or in the middle of a command.
+    ((timer
+      (run-with-idle-timer
+       which-key-idle-delay t
+       (lambda ()
+         (if (or (bound-and-true-p which-key-mode)
+                 (not (memq #'which-key-mode doom-first-input-hook)))
+             (cancel-timer timer)
+           (when (and (this-single-command-keys)
+                      (null this-command))
+             (cancel-timer timer)
+             (which-key-mode +1)
+             (which-key--update)))))))
+  (with-eval-after-load 'which-key
+    (put 'which-key-replacement-alist 'initial-value which-key-replacement-alist)
+    (add-hook! 'doom-before-reload-hook
+      (defun doom-reset-which-key-replacements-h ()
+        (setq which-key-replacement-alist (get 'which-key-replacement-alist 'initial-value))))
 
-  (which-key-add-key-based-replacements doom-localleader-key "<localleader>")
-  ;; Remove doom/ and +MODULE/ from commands. However, this requires upstream to
-  ;; define commands with descriptive names!
-  (defun doom-which-key-truncate-prefixes (spec)
-    (save-match-data
-      (if (string-match (string-join doom-which-key-trim-prefixes "\\|")
-                        (cdr spec))
-          (cons (car spec)
-                (concat which-key-ellipsis
-                        (substring (cdr spec) (1- (match-end 0))
-                                   (length (cdr spec)))))
-        spec)))
-  (add-to-list 'which-key-replacement-alist
-               '((nil) . doom-which-key-truncate-prefixes)))
+    (which-key-add-key-based-replacements doom-localleader-key "<localleader>")
+    ;; Remove doom/ and +MODULE/ from commands. However, this requires upstream to
+    ;; define commands with descriptive names!
+    (defun doom-which-key-truncate-prefixes (spec)
+      (save-match-data
+        (if (string-match (string-join doom-which-key-trim-prefixes "\\|")
+                          (cdr spec))
+            (cons (car spec)
+                  (concat which-key-ellipsis
+                          (substring (cdr spec) (1- (match-end 0))
+                                     (length (cdr spec)))))
+          spec)))
+    (add-to-list 'which-key-replacement-alist
+                 '((nil) . doom-which-key-truncate-prefixes))))
 
 
 ;;;###package winner
