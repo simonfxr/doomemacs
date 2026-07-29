@@ -12,16 +12,19 @@ Profile directories are in the format {data-profiles-dir}/$NAME/@/$VERSION, for
 example: '~/.local/share/doom/_/@/0/'")
 
 (defvar doom-profile-load-path
-  (append
-   (when-let* ((path (getenv-internal "DOOMPROFILELOADPATH")))
-     (mapcar #'doom-path (split-string-and-unquote path path-separator)))
-   (list (doom-user-dir "profiles.el")
-         (expand-file-name
-          "doom-profiles.el" (or (getenv "XDG_CONFIG_HOME") "~/.config"))
-         (expand-file-name "~/.doom-profiles.el")
-         (doom-emacs-dir "profiles.el")
-         (doom-user-dir "profiles")
-         (doom-emacs-dir "profiles")))
+  (if-let* ((path (getenv-internal "DOOMPROFILELOADPATH")))
+      (mapcar #'doom-path (split-string-and-unquote path path-separator))
+    (let ((config-dir (or (getenv "XDG_CONFIG_HOME") "~/.config")))
+      `(,(expand-file-name "doom-profiles.el" config-dir)
+        ,(expand-file-name "~/.doom-profiles.el")
+        ;; $DOOMSDIR
+        ,(expand-file-name "doom/profiles.el" config-dir)
+        ,(expand-file-name "~/.doom.d/profiles.el")
+        ,(expand-file-name "doom/profiles/" config-dir)
+        ;; $EMACSDIR
+        ,(expand-file-name "emacs/profiles.el" config-dir)
+        ,(expand-file-name "~/.emacs.d/profiles.el")
+        ,(expand-file-name "emacs/profiles/" config-dir))))
   "A list of profile config files or directories that house implicit profiles.
 
 `doom-profiles-initialize' loads and merges all profiles defined in the above
@@ -45,16 +48,8 @@ list of paths or profile config files (semi-colon delimited on Windows).")
 
 Can be changed externally by setting $DOOMPROFILELOADFILE.")
 
-(defvar doom-profile-cache-file (doom-cache-dir "profiles.%s.el")
-  "Where Doom writes its interactive profile loader script.
-
-Can be changed externally by setting $DOOMPROFILELOADFILE.")
-
 (defvar doom-profile-init-dir-name "init.d"
   "The subdirectory of `doom-profile-dir'")
-
-(defvar doom-profile-rcfile ".doomprofile"
-  "The filename for local user configuration of a Doom profile.")
 
 ;;; Profile storage variables
 (define-obsolete-variable-alias 'doom-profile-generators 'doom-profile-generate-functions "2.3.0")
@@ -78,8 +73,6 @@ following suffixes have special behaviors:
 
 These functions are executed in the context of the
 `doom-profile-dir'/`doom-profile-init-dir-name' directory.")
-
-(defvar doom--profiles ())
 
 
 ;;

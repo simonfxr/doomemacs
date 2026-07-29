@@ -7,6 +7,13 @@
 
 
 ;;
+;;; * Variables
+
+(defvar doom-profile-cache-file (doom-cache-dir "profiles.%s.el")
+  "Where Doom stores a cache of visible profiles")
+
+
+;;
 ;;; * doom profile ...
 
 (defcli! profile ()

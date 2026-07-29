@@ -216,9 +216,5 @@ file.")
   (doom-loaddefs--read
    files #'insert-file-contents t))
 
-(defun doom-loaddefs--scan-for-cli (&rest files)
-  (doom-loaddefs--read
-   files #'doom-loaddefs--scan-file nil (doom-emacs-dir "bin/")))
-
 (provide 'doom-cli '(loaddefs))
 ;;; loaddefs.el end here

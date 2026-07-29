@@ -68,21 +68,28 @@ OPTIONS:
       (setq straight--native-comp-available t)))
   (when jobs
     (setq native-comp-async-jobs-number (truncate jobs)))
-  (let ((emacs-running?
-         (cl-loop for pid in (remove (emacs-pid) (list-system-processes))
-                  for attrs = (process-attributes pid)
-                  for args = (alist-get 'args attrs "")
-                  if (string-match-p "^\\([^ ]+/\\)?[eE]macs" args)
-                  if (not (string-match-p " --batch" args))
-                  if (not (string-match-p " --script" args))
-                  collect pid))
-        ;; DEPRECATED: Will be removed once `doom-profile' is a struct
-        (sync-file (doom-profile-data-dir t "sync")))
+  (let* ((emacs-running?
+          (cl-loop for pid in (remove (emacs-pid) (list-system-processes))
+                   for attrs = (process-attributes pid)
+                   for args = (alist-get 'args attrs "")
+                   if (string-match-p "^\\([^ ]+/\\)?[eE]macs" args)
+                   if (not (string-match-p " --batch" args))
+                   if (not (string-match-p " --script" args))
+                   collect pid))
+         (daemon-running?
+          (cl-loop for pid in emacs-running?
+                   for attrs = (process-attributes pid)
+                   for args = (alist-get 'args attrs "")
+                   if (string-match-p " --\\([bf]g-\\)?daemon" args)
+                   return t))
+         ;; DEPRECATED: Will be removed once `doom-profile' is a struct
+         (sync-file (doom-profile-data-dir t "sync")))
     (add-hook 'kill-emacs-hook #'doom-sync--abort-warning-h)
     (unless (> (doom-cli-context-step context) 0)
       (print! (item "Using Emacs %s @ %s") emacs-version (path invocation-directory invocation-name)))
 
-    (when (doom-profiles-bootloadable-p)
+    (when (and (doom-profiles-bootloadable-p)
+               doom--noprofile)
       (call! '(profile sync "--all")))
 
     (let ((env-file
@@ -135,8 +142,10 @@ OPTIONS:
             (unless noupdate? (doom-packages-update (not update?)))
             (call! `(gc ,(unless purge? "-begpr"))))
           (when (doom-profile-generate nil reload?)
-            (when emacs-running?
-              (print! (item "Restart Emacs for changes to take effect")))
+            (if daemon-running?
+                (print! (warn "Restart the Emacs daemon for changes to take effect!"))
+              (when emacs-running?
+                (print! (warn "Restart Emacs for changes to take effect!"))))
             (unless reload?
               (run-hooks 'doom-after-sync-hook)))
           (if reload?

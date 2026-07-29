@@ -179,6 +179,7 @@ the value of the last one, or nil if there are none."
 (define-error 'doom-font-error "Could not find a font on your system" 'doom-error)
 (define-error 'doom-nosync-error "Doom hasn't been initialized yet; did you remember to run 'doom sync' in the shell?" 'doom-error)
 (define-error 'doom-core-error "Unexpected error in Doom's core" 'doom-error)
+(define-error 'doom-compat-error "Can't resolve incompatibilities between Doom versions" 'doom-error)
 (define-error 'doom-cli-error "Unexpected error in Doom's CLI" 'doom-error)
 (define-error 'doom-context-error "Incorrect context error" 'doom-error)
 (define-error 'doom-hook-error "Error in a Doom startup hook" 'doom-error)
@@ -773,7 +774,7 @@ Can chain these comparisons by adding more (COMPn Vn) pairs afterwards.
 The closure is wrapped in `cl-function', meaning ARGLIST will accept anything
 `cl-defun' will. Implicitly adds `&allow-other-keys' if `&key' is present in
 ARGLIST."
-  (declare (indent defun) (doc-string 1) (pure t) (side-effect-free t))
+  (declare (indent defun) (doc-string 1) (side-effect-free t))
   `(cl-function (lambda ,(doom--lambda-allow-other-keys arglist) ,@body)))
 
 (defun doom--fn-arglist (args)
@@ -818,7 +819,7 @@ font-locking and the outer function call."
   "Returns (lambda () (interactive) ,@body)
 A factory for quickly producing interaction commands, particularly for keybinds
 or aliases."
-  (declare (doc-string 1))
+  (declare (doc-string 1) (side-effect-free t))
   `(lambda (&rest _) (interactive) ,@body))
 
 (defmacro cmd!! (command &optional arg &rest args)
@@ -827,7 +828,7 @@ or aliases."
 Like `cmd!', but allows you to change `current-prefix-arg' or pass arguments to
 COMMAND. This macro is meant to be used as a target for keybinds (e.g. with
 `define-key' or `map!')."
-  (declare (doc-string 1) (pure t) (side-effect-free t))
+  (declare (doc-string 1) (side-effect-free t))
   `(lambda (arg &rest _) (interactive "P")
      (let ((current-prefix-arg (or ,arg arg)))
        (,(if args
@@ -912,13 +913,6 @@ corresponding to each rcfile that Doom recognizes (e.g. .doom, .doommodule,
 The primary purpose of functions in this list is to resolve inter-version
 incompatibilities introduced in future versions of Doom.")
 
-(defconst doom-config--alist
-  `((project . ".doom")
-    (module . ".doommodule")
-    (modules . ".doommodules")
-    (profile . ".doomprofile")
-    (profiles . ".doomprofiles")))
-
 (defun doom-config--normalize (type compat alist)
   "Process ALIST through `doom-config-read-functions'.
 
@@ -937,15 +931,21 @@ that the current ALIST was formatted for."
 
 TYPE is a symbol representing one of Doom's dotfiles. It must be one of:
 
-%s
+  `project'  = .doom
+  `module'   = .doommodule
+  `modules'  = .doommodules
+  `profile'  = .doomprofile
+  `profiles' = .doomprofiles
+
 Throws `doom-core-error' if TYPE is not a valid type. See `doom-config--alist'
 for possible values of TYPE."
-  (or (alist-get type doom-config--alist)
+  (or (plist-get '(project  ".doom"
+                   module   ".doommodule"
+                   modules  ".doommodules"
+                   profile  ".doomprofile"
+                   profiles ".doomprofiles")
+                 type)
       (signal 'doom-core-error `(invalid-config-type ,type))))
-(function-put 'doom-config-file 'function-documentation
-              (format (documentation 'doom-config-file)
-                      (cl-loop for (key . file) in doom-config--alist
-                               concat (format "  \\='%s = %s\n" key file))))
 
 (defun doom-config-locate (type path &optional dir?)
   "Search for and return the path to a Doom dotfile of TYPE, starting from PATH.
@@ -958,8 +958,9 @@ If DIR? is non-nil, only return its parent directory. Returns nil if not found."
     (if dir? dir
       (file-name-concat dir file))))
 
-(defun doom-config (keys &optional nocache?)
-  "Return the alist contained in a Doom dotfile.
+(let ((cache (make-hash-table :test 'equal)))
+  (defun doom-config (keys &optional nocache?)
+    "Return the alist contained in a Doom dotfile.
 
 TYPE is a symbol representing the type of Doom dotfile to look for; see
 `doom-config-file' for valid values for TYPE. If KEYS are omitted, the entire
@@ -980,30 +981,29 @@ Consults `doom-config-read-functions' to resolve any inter-version
 incompatibilities in the alist format.
 
 \(fn \\='([INIT-DIR] TYPE [KEYS...]) &optional NOCACHE?)"
-  (declare (side-effect-free t))
-  (cl-check-type keys (or list symbol))
-  (when-let*
-      ((keys (if (symbolp keys) (list keys) (copy-sequence keys)))
-       (dir  (if (stringp (car keys)) (pop keys) default-directory))
-       (type (pop keys))
-       (path (doom-config-locate type dir))
-       (cache (get 'doom-config 'cache))
-       (rc (or (if (not nocache?) (gethash path cache))
-               (when-let*
-                   ((forms (doom-file-read path :by `(read . 2))))
-                 (puthash
-                  path (let ((v (pop forms)) (f (car forms)))
-                         (when (and v (not (stringp v)))
-                           (push v f)
-                           (setq v doom-version))
-                         (cons
-                          v (doom-config--normalize
-                             type v (if (listp f) (eval `(backquote ,f) t)))))
-                  cache)))))
-    (cond ((null keys) (cdr rc))
-          ((symbolp keys) (cdr (assq keys (cdr rc))))
-          ((listp keys) (map-nested-elt (cdr rc) keys)))))
-(put 'doom-config 'cache (make-hash-table :test 'equal))
+    (declare (side-effect-free t))
+    (cl-check-type keys (or list symbol))
+    (when-let*
+        ((keys (if (symbolp keys) (list keys) (copy-sequence keys)))
+         (dir  (if (stringp (car keys)) (pop keys) default-directory))
+         (type (pop keys))
+         (path (doom-config-locate type dir))
+         (rc (or (if (not nocache?) (gethash path cache))
+                 (when-let* ((forms (doom-file-read path :by `(read . 2))))
+                   (puthash
+                    path (let ((v (pop forms)) (f (car forms)))
+                           (when (and v (not (stringp v)))
+                             (if f
+                                 (signal 'doom-core-error
+                                         `(config missing-version ,path))
+                               (setq v doom-version)))
+                           (cons
+                            v (doom-config--normalize
+                               type v (if (listp f) (eval `(backquote ,f) t)))))
+                    cache)))))
+      (cond ((null keys) (cdr rc))
+            ((symbolp keys) (alist-get keys (cdr rc)))
+            ((listp keys) (map-nested-elt (cdr rc) keys))))))
 
 
 ;;; ** Loading

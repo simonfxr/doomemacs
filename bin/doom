@@ -281,10 +281,7 @@ SEE ALSO:
 ;;; * CLI Bootstrapper
 
 (defvar doom-cli-loaddefs-file
-  (if-let* ((path (getenv "__DOOM_LOADDEFS_FILE")))
-      ;; DEPRECATED: will be removed in v3
-      (expand-file-name path)
-    (doom-cache-dir (format "doom-cli-loaddefs.%s.el" doom-version)))
+  (doom-cache-dir (format "doom-cli-loaddefs.%s.el" doom-version))
   "Where to store Doom's CLI autoloads.")
 
 ;; There are a lot of CLIs, and some have expensive initialization, so best we
@@ -304,9 +301,10 @@ SEE ALSO:
                (doom-file-write
                 doom-cli-loaddefs-file
                 `(";; -*- lexical-binding: t; no-byte-compile t; -*-"
-                  ,@(doom-loaddefs--scan-for-cli
+                  ,@(doom-loaddefs--read
                      (seq-filter #'doom-cli-executable-p
-                                 (doom-glob doom-emacs-dir "bin/doom-*")))
+                                 (doom-glob doom-emacs-dir "bin/doom-*"))
+                     #'doom-loaddefs--scan-file nil (doom-emacs-dir "bin/"))
                   (provide 'doom-cli-loaddefs)))))
 
   ;; Eagerly load the two commands that should always be present. Running one of
