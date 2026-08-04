@@ -24,18 +24,21 @@ in modules and ~$DOOMDIR~.
 (add-hook! 'some-mode-hook #'enable-something)
 
 ;; Adding many-to-many functions to hooks
-(add-hook! some-mode #'enable-something #'and-another)
-(add-hook! some-mode '(enable-something and-another))
+(add-hook! 'some-mode-hook #'enable-something #'and-another)
+(add-hook! 'some-mode-hook '(enable-something and-another))
 (add-hook! '(one-mode-hook second-mode-hook) #'enable-something)
-(add-hook! (one-mode second-mode) #'enable-something)
 
 ;; Appending and local hooks
-(add-hook! (one-mode second-mode) :append #'enable-something)
-(add-hook! (one-mode second-mode) :local #'enable-something)
+(add-hook! '(one-mode-hook second-mode-hook) :append #'enable-something)
+(add-hook! '(one-mode-hook second-mode-hook) :local #'enable-something)
 
 ;; With arbitrary forms
-(add-hook! (one-mode second-mode) (setq v 5) (setq a 2))
-(add-hook! (one-mode second-mode) :append :local (setq v 5) (setq a 2))
+(add-hook! '(one-mode-hook second-mode-hook)
+  (setq v 5)
+  (setq a 2))
+(add-hook! '(one-mode-hook second-mode-hook) :append :local
+  (setq v 5)
+  (setq a 2))
 
 ;; Inline named hook functions
 (add-hook! '(one-mode-hook second-mode-hook)
@@ -536,16 +539,15 @@ These are side-by-side comparisons, showing how to bind keys with and without
 (remove-hook! 'some-mode-hook #'enable-something)
 
 ;; Removing N functions from M hooks
-(remove-hook! some-mode #'enable-something #'and-another)
-(remove-hook! some-mode #'(enable-something and-another))
+(remove-hook! 'some-mode-hook #'enable-something #'and-another)
+(remove-hook! 'some-mode-hook #'(enable-something and-another))
 (remove-hook! '(one-mode-hook second-mode-hook) #'enable-something)
-(remove-hook! (one-mode second-mode) #'enable-something)
 
 ;; Removing buffer-local hooks
-(remove-hook! (one-mode second-mode) :local #'enable-something)
+(remove-hook! '(one-mode-hook second-mode-hook) :local #'enable-something)
 
 ;; Removing arbitrary forms (must be exactly the same as the definition)
-(remove-hook! (one-mode second-mode) (setq v 5) (setq a 2))
+(remove-hook! '(one-mode-hook second-mode-hook) (setq v 5) (setq a 2))
 #+end_src
 
 * setq-hook!
@@ -561,6 +563,69 @@ These are side-by-side comparisons, showing how to bind keys with and without
 ;; Set variables after multiple hooks
 (setq-hook! '(eshell-mode-hook term-mode-hook)
   hscroll-margin 0)
+#+end_src
+* sh!
+:PROPERTIES:
+:added: 2.3.0
+:END:
+#+begin_src emacs-lisp :eval no
+(sh! cat file | grep \"test\")        ; pipe between two programs
+(sh! cat file > /some/file)           ; truncate stdout to a file
+(sh! echo \"done\" >> /some/file)     ; append stdout to a file
+(sh! sort < /some/file)               ; read stdin from a file
+(sh! cat file > ,(current-buffer))    ; write stdout into a buffer
+(sh! grep foo < ,(get-buffer \"x\"))  ; read stdin from a buffer
+(sh! make 2> errors.log)              ; send stderr to its own file
+(sh! make 2>> errors.log)             ; append stderr to a file
+#+end_src
+
+* sh<
+:PROPERTIES:
+:added: 2.3.0
+:END:
+#+begin_src emacs-lisp :eval yes
+(format "Today's date: %s" (sh< date))
+#+end_src
+
+#+RESULTS:
+: Today's date: Wed Jul 15 02:04:13 AM EDT 2026
+
+#+begin_src emacs-lisp :eval yes
+(let ((buffer (get-buffer-create "x")))
+  (with-current-buffer buffer
+    (erase-buffer)
+    (insert "hello there\n")
+    (insert "hello foo\n")
+    (insert "hello bar\n")
+    (insert "goodbye foo\n"))
+
+  (prog1 (sh< grep foo < ,buffer)
+    (kill-buffer buffer)))
+#+end_src
+
+#+RESULTS:
+: hello foo
+: goodbye foo
+
+* sh?
+:PROPERTIES:
+:added: 2.3.0
+:END:
+#+begin_src emacs-lisp :eval yes
+;; Assuming /tmp isn't a git repo and $EMACSDIR is
+`(,(sh? git -C "/tmp" rev-parse --show-toplevel)
+  ,(sh? git -C ,doom-emacs-dir rev-parse --show-toplevel))
+#+end_src
+
+#+RESULTS:
+| nil | t |
+
+#+begin_src emacs-lisp :eval no
+(when (sh? git status --porcelain -uno)
+  (message "Modifications found!"))
+
+(when (sh? emacs --version | grep 32.0.50)
+  (message "You're on Emacs 32!"))
 #+end_src
 
 * unsetq-hook!

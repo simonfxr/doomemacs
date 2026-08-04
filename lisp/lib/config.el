@@ -62,7 +62,7 @@
           (lambda (_buf status)
             (if (equal status "finished\n")
                 (progn
-                  (delete-window w)
+                  (local-set-key "q" #'quit-window)
                   (with-current-buffer "*scratch*" ,on-success))
               ,on-failure))
           nil 'local)))))

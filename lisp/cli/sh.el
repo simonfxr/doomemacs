@@ -243,18 +243,8 @@ an unredirected final stage is discarded."
 (defmacro sh! (&rest args)
   "Execute ARGS as a shell command, emitting output to `standard-output'.
 
-Returns t if successful.
-
-Supports pipes and redirects (|, <, >, >>, 2>, 2>>). E.g.
-
-  \\=(sh! cat file | grep \"test\")        ; pipe between two programs
-  \\=(sh! cat file > /some/file)         ; truncate stdout to a file
-  \\=(sh! echo \"done\" >> /some/file)     ; append stdout to a file
-  \\=(sh! sort < /some/file)             ; read stdin from a file
-  \\=(sh! cat file > ,(current-buffer))  ; write stdout into a buffer
-  \\=(sh! grep foo < ,(get-buffer \"x\"))  ; read stdin from a buffer
-  \\=(sh! make 2> errors.log)            ; send stderr to its own file
-  \\=(sh! make 2>> errors.log)           ; append stderr to a file
+Returns t if successful. Supports pipes and redirects (|, <, >, >>, 2>, 2>>).
+E.g.
 
 stdout and stderr are mixed together by default (so `> f' captures both). Use
 `2>'/`2>>' to peel stderr off into its own file or buffer. There is no `2>&1';

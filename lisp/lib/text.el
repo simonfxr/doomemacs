@@ -314,6 +314,44 @@ Respects `require-final-newline'."
   (interactive)
   (set-buffer-file-coding-system 'undecided-dos nil))
 
+;;;###autoload
+(defun doom/set-indent-width (width)
+  "Change the indentation size to WIDTH of the current buffer.
+
+This relies on several heuristics to work. If "
+  (interactive
+   (list (if (integerp current-prefix-arg)
+             current-prefix-arg
+           (read-number "New indent size: "))))
+  (doom-set-indent width)
+  (when (bound-and-true-p dtrt-indent-original-indent)
+    (setq dtrt-indent-original-indent nil))
+  (message "Changed buffer's indent-size to %d" width))
+
+;;;###autoload
+(defun doom/toggle-indent-style ()
+  "Switch between tabs and spaces indentation style in the current buffer."
+  (interactive)
+  (setq indent-tabs-mode (not indent-tabs-mode))
+  (message "Indent style changed to %s" (if indent-tabs-mode "tabs" "spaces")))
+
+;;;###autoload
+(defun doom/retab (arg &optional beg end)
+  "Converts tabs-to-spaces or spaces-to-tabs within BEG and END (defaults to
+buffer start and end, to make indentation consistent. Which it does depends on
+the value of `indent-tab-mode'.
+
+If ARG (universal argument) is non-nil, retab the current buffer using the
+opposite indentation style."
+  (interactive "P\nr")
+  (unless (and beg end)
+    (setq beg (point-min)
+          end (point-max)))
+  (let ((indent-tabs-mode (if arg (not indent-tabs-mode) indent-tabs-mode)))
+    (if indent-tabs-mode
+        (tabify beg end)
+      (untabify beg end))))
+
 
 ;;
 ;;; * Hooks
