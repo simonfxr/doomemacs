@@ -1,3 +1,4 @@
+# -*- doom-docs -*-
 :PROPERTIES:
 :ID:       ca20678f-0f1a-4462-a599-da03f0e16330
 :END:
@@ -172,9 +173,9 @@
   The goal of the universal/prefix argument is to get a slightly different
   behaviour for known commands.
   
-  #+begin_quote
-   󰐃 Doom users with evil enabled will find the universal argument on [[kbd:][SPC u]]
-      instead than [[kbd:][C-u]].
+  #+begin_quote tip
+  Doom users with evil enabled will find the universal argument on [[kbd:][SPC u]] instead
+  than [[kbd:][C-u]].
   #+end_quote
 
 - Prefix argument :: Universal argument

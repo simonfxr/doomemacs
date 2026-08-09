@@ -1,5 +1,15 @@
-#+TITLE: Doom Emacs Documentation
-#+STARTUP: nofold
+# -*- doom-docs -*-
+:PROPERTIES:
+:ID:       fb276826-8c34-43e4-9c18-8d99bdf9dbf8
+:END:
+#+title:    Doom Emacs User Manual
+#+subtitle: Official documentation for the Doom ecosystem
+
+#+begin_quote warning
+Read this documentation within Doom Emacs ([[kbd:][M-x doom/help]]) or online at
+https://docs.doomemacs.org. It will be rendered incorrectly anywhere else (e.g.
+Github).
+#+end_quote
 
 Doom is a configuration framework for [[https://www.gnu.org/software/emacs/][GNU Emacs 26.3+]] tailored for Emacs
 bankruptcy veterans who want less framework in their frameworks and the
@@ -11,10 +21,9 @@ Doom is an opinionated collection of reasonable (and optional) defaults with a
 focus on performance (both runtime and startup) and on abstraction-light,
 readable code design, so that there is less between you and Emacs.
 
-#+begin_quote
+#+begin_quote tip
 The documentation is designed to be viewed within Doom Emacs. Access it by
-pressing =SPC h d h= (or =C-h d h= for non-evil users), or search it with =SPC h
-d s= (or =C-h d s=).
+pressing [[kbd:M-x doom/help]] or search it with [[kbd:M-x doom/help-search-headings]].
 #+end_quote
 
 * Table of Contents :TOC:

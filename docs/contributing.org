@@ -1,3 +1,4 @@
+# -*- doom-docs -*-
 #+TITLE: Contributing
 #+STARTUP: nofold
 

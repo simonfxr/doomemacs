@@ -251,22 +251,6 @@ duplicates."
         (setq flags (cdr flags)))
       (nreverse newflags)))
 
-  (cl-defun doom-module--depth< (keya keyb &optional initorder?)
-    "Return t if module with KEY-A comes before another with KEY-B.
-
-If INITORDER? is non-nil, grab the car of the module's :depth, rather than it's
-cdr. See `doom-module-put' for details about the :depth property."
-    (declare (pure t) (side-effect-free t))
-    (let* ((adepth (doom-module-get keya :depth))
-           (bdepth (doom-module-get keyb :depth))
-           (adepth (if initorder? (car adepth) (cdr adepth)))
-           (bdepth (if initorder? (car bdepth) (cdr bdepth))))
-      (if (or (null adepth) (null bdepth)
-              (= adepth bdepth))
-          (< (or (doom-module-get keya :index) 0)
-             (or (doom-module-get keyb :index) 0))
-        (< adepth bdepth))))
-
   (defun doom-module-get (key &optional property)
     "Returns the plist for GROUP MODULE. Gets PROPERTY, specifically, if set."
     (declare (side-effect-free t))
@@ -295,7 +279,7 @@ cdr. See `doom-module-put' for details about the :depth property."
     (declare (side-effect-free t))
     (if (doom-module-get group module) t))
 
-  (cl-defun doom-module--depth< (keya keyb &optional initorder?)
+  (defun doom-module--depth< (keya keyb &optional initorder?)
     "Return t if module with KEY-A comes before another with KEY-B.
 
 If INITORDER? is non-nil, grab the car of the module's :depth, rather than it's

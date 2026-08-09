@@ -1723,8 +1723,8 @@ the unwritable tidbits."
 ;;;###package saveplace
 ;; persistent point location in buffers
 (setq save-place-file (doom-profile-cache-dir t "saveplace"))
-(add-hook 'doom-first-input-hook #'savehist-mode)
-(with-eval-after-load 'savehist
+(add-hook 'doom-first-input-hook #'save-place-mode)
+(with-eval-after-load 'saveplace
   (defadvice! doom--recenter-on-load-saveplace-a (&rest _)
     "Recenter on cursor when loading a saved place."
     :after-while #'save-place-find-file-hook

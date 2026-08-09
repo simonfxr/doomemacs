@@ -1,5 +1,7 @@
-#+TITLE: Getting Started Guide
-#+STARTUP: nofold
+# -*- doom-docs -*-
+#+title: Getting Started Guide
+#+startup: nofold
+#+property: header-args:elisp :eval no :exports code
 
 GNU Emacs is one grand ol' adventure, let alone Doom Emacs. Before you start
 you'll need to set up Emacs, Doom, and its packages, then learn how to take care

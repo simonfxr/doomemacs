@@ -1,3 +1,4 @@
+# -*- doom-docs -*-
 :PROPERTIES:
 :ID:       7a7065bd-18d5-4622-8d56-6df760fd8015
 :END:
@@ -6,14 +7,14 @@
 #+created:   June 06, 2026
 #+since:     26.06.0
 
-#+begin_quote
-  *This module is hardcoded to be enabled until v3 is released.* Its flags can't
-    be customized yet, but are documented here as a reference for posterity.
+#+begin_quote warning
+*This module is hardcoded to be enabled until v3 is released.* Its flags can't
+be customized yet, but are documented here as a reference for posterity.
 
-    Also, because this is a compatibility module, its packages will rarely be
-    bumped (except to resolve upstream breakage) and it won't be developed to
-    support new features. If you need newer versions, I recommend you install
-    the package manually instead of relying on this module!
+Also, because this is a compatibility module, its packages will rarely be bumped
+(except to resolve upstream breakage) and it won't be developed to support new
+features. If you need newer versions, I recommend you install the package
+manually instead of relying on this module!
 #+end_quote
 
 * Description :unfold:
@@ -61,8 +62,8 @@ This module is hardcoded to be enabled *very* early during startup. Until v3 is
 released, this can't be changed.
 
 * Usage
-#+begin_quote
- 󱌣 /This module's configuration documentation is incomplete./ [[doom-contrib-module:][Complete it?]]
+#+begin_quote wip
+/This module's configuration documentation is incomplete./ [[doom-contrib-module:][Complete it?]]
 #+end_quote
 
 | Syntax                      | Type     | What to use instead                                                       |
@@ -98,8 +99,8 @@ There are in-depth examples for some of these in =docs/examples.org= in this
 module.
 
 * TODO Configuration
-#+begin_quote
-󱌣 This module has no configuration documentation yet. [[doom-contrib-module:][Write some?]]
+#+begin_quote wip
+This module has no configuration documentation yet. [[doom-contrib-module:][Write some?]]
 #+end_quote
 
 * Troubleshooting
@@ -109,6 +110,6 @@ module.
 /This module has no FAQs yet./ [[doom-suggest-faq:][Ask one?]]
 
 * TODO Appendix
-#+begin_quote
-󱌣 This module has no appendix yet. [[doom-contrib-module:][Write one?]]
+#+begin_quote wip
+This module has no appendix yet. [[doom-contrib-module:][Write one?]]
 #+end_quote

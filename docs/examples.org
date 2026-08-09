@@ -1,3 +1,4 @@
+# -*- doom-docs -*-
 :PROPERTIES:
 :ID:       e103c1bc-be8e-4451-8e43-a93d9e35e692
 :END:
@@ -5,10 +6,10 @@
 #+subtitle: Samples of Emacs/Doom dotfiles, concepts, and sub-projects
 #+property: header-args:elisp :results pp
 
-#+begin_quote
- 󰐃 Our documentation was designed to be read in Doom Emacs ([[kbd:][M-x doom/help]]) or
-    online at https://docs.doomemacs.org. Avoid reading it elsewhere (like
-    Github), where it will be rendered incorrectly.
+#+begin_quote warning
+Read this documentation within Doom Emacs ([[kbd:][M-x doom/help]]) or online at
+https://docs.doomemacs.org. It will be rendered incorrectly anywhere else (e.g.
+Github).
 #+end_quote
 
 * Introduction

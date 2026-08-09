@@ -205,13 +205,19 @@ selection of all minor-modes, active or not."
   (browse-url "https://doomemacs.org"))
 
 ;;;###autoload
-(defun doom/report-bug ()
-  "Open the browser on our Discourse.
+(defun doom/report-bug (repo)
+  "Create a new issue in REPO or our Github Discussions board."
+  (interactive
+   (list (completing-read
+          "In which repo? " '("doomemacs/core"
+                              "doomemacs/modules"
+                              "doomemacs/modules-contrib"
+                              "I don't know"))))
 
-If called when a backtrace buffer is present, it and the output of `doom-info'
-will be automatically appended to the result."
-  (interactive)
-  (browse-url "https://git.doomemacs.org/core/issues/new?labels=1.+bug%2C2.+status%3Aunread&template=bug_report.yml"))
+  (browse-url
+   (if (equal repo "I don't know")
+       "https://github.com/orgs/doomemacs/discussions/new?category=issues"
+     (format "https://github.com/%s/issues/new?template=bug_report.yml" repo))))
 
 ;;;###autoload
 (defun doom/help ()

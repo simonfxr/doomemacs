@@ -18,6 +18,9 @@
 ;;
 ;;; Code:
 
+;;
+;;; * Variables
+
 ;;;###autoload
 (defvar doom-docs-dir (doom-emacs-dir "docs/")
   "Where Doom's documentation files are stored. Must end with a slash.")
@@ -40,7 +43,6 @@
     ("doom-report"             . "https://github.com/doomemacs/core/issues/new/choose")
     ("doom-suggest-edit"       . "id:31f5a61d-d505-4ee8-9adb-97678250f4e2")
     ("doom-suggest-faq"        . "id:aa28b732-0512-49ed-a47b-f20586c0f051")
-    ("github"                  . "https://github.com/%s")
 
     ;; TODO: Implement later, once docs are generalized
     ;; ("github-release"          . (lambda (link)
@@ -118,9 +120,39 @@
     ("warning" . ""))
   "An alist mapping Doom notice types to icons.")
 
+(defconst doom-docs--hidden-spec 'doom-docs-hidden)
+
 
 ;;
 ;;; * Helpers
+
+(defun doom-docs--icon (icon label &rest plist)
+  "Prefix LABEL with ICON (from nerd-icons).
+
+Passes PLIST to appropriate nerd-icons-* function."
+  (concat
+   (when (fboundp 'nerd-icons-octicon)
+     (cond ((string-prefix-p "nf-oct-" icon)
+            (concat (apply #'nerd-icons-octicon icon plist)
+                    " "))
+           ((string-prefix-p "nf-md-" icon)
+            (concat (apply #'nerd-icons-mdicon icon plist)
+                    " "))))
+   label))
+
+(defun doom-docs--show-region (beg end visible?)
+  (funcall (if (fboundp 'org-fold-core-region)  ; Org 9.6+
+               #'org-fold-core-region
+             #'org-flag-region)
+           beg end visible?
+           doom-docs--hidden-spec))
+
+(defun doom-docs--visible-p (pt)
+  (if (fboundp 'org-fold-folded-p)
+      (org-fold-folded-p pt doom-docs--hidden-spec)
+    (memq (org-invisible-p pt)
+          '(org-hide-block outline doom-docs-hidden))))
+
 
 ;;; ** Navbar
 
@@ -158,11 +190,7 @@
 
 (defun doom-docs--make-header-link (spec)
   "Create a header link according to SPEC."
-  (let ((icon (and (plist-get spec :icon)
-                   (with-demoted-errors "DOCS ERROR: %s"
-                     (funcall (or (plist-get spec :icon-function)
-                                  #'nerd-icons-mdicon)
-                              (plist-get spec :icon)))))
+  (let ((icon (plist-get spec :icon))
         (label (pcase (plist-get spec :label)
                  ((and (pred functionp) lab)
                   (funcall lab))
@@ -175,21 +203,20 @@
                  link))))
     (propertize
      (concat
-      (and icon
-           (propertize icon 'face
-                       (cadr (or (plist-member spec :icon-face)
-                                 (plist-member spec :face)))))
-      (and icon label " ")
-      (and label
-           (propertize label 'face (cadr (or (plist-get spec :face)
-                                             '(nil link))))))
+      (doom-docs--icon
+       icon
+       (and label
+            (propertize label 'face (cadr (or (plist-get spec :face)
+                                              '(nil link)))))
+       :face (cadr (or (plist-member spec :icon-face)
+                       (plist-member spec :face)))))
      'doom-docs-link link
      'keymap doom-docs--header-link-keymap
      'help-echo (or (plist-get spec :help-echo)
                     (format "LINK: %s" link))
      'mouse-face 'highlight)))
 
-(setq doom-docs--header-link-keymap
+(defvar doom-docs--header-link-keymap
   (let ((km (make-sparse-keymap)))
     (define-key km [header-line mouse-2] 'doom-docs--open-header-link)
     (define-key km [mouse-2] 'doom-docs--open-header-link)
@@ -252,7 +279,7 @@
        (while (re-search-forward "^[ \t]*\\#" nil t)
          (unless (org-in-src-block-p t)
            (catch 'abort
-             (org-fold-core-region
+             (doom-docs--show-region
               (line-beginning-position)
               (cond ((looking-at "+\\(?:title\\|subtitle\\): +")
                      (match-end 0))
@@ -264,7 +291,7 @@
                     ((looking-at "+\\(?:begin\\|end\\)_\\([^ \n]+\\)")
                      (line-end-position))
                     ((line-beginning-position 2)))
-              doom-docs-minor-mode 'doom-doc-hidden))))))))
+              doom-docs-minor-mode))))))))
 
 (defun doom-docs--hide-drawers-h ()
   "Hide all property drawers."
@@ -280,7 +307,7 @@
                    ((memq (org-element-type el) '(drawer property-drawer))))
          (when (org-element-property-inherited :level el)
            (cl-decf end))
-         (org-fold-core-region beg end doom-docs-minor-mode 'doom-doc-hidden))))
+         (doom-docs--show-region beg end doom-docs-minor-mode))))
     ;; FIX: If the cursor remains within a newly folded region, that folk will
     ;;   come undone, so we move it.
     (if pt (goto-char pt))))
@@ -296,20 +323,20 @@
          ;; prevent `org-ellipsis' around hidden regions
          (org-show-entry))
        (if (member "noorg" tags)
-           (org-fold-core-region (line-end-position 0)
-                                 (save-excursion
-                                   (org-end-of-subtree t)
-                                   (forward-line 1)
-                                   (if (and (bolp) (eolp))
-                                       (line-beginning-position)
-                                     (line-end-position 0)))
-                                 doom-docs-minor-mode 'doom-doc-hidden)
-         (org-fold-core-region (save-excursion
-                                 (goto-char (line-beginning-position))
-                                 (re-search-forward " +:[^ ]" (line-end-position))
-                                 (match-beginning 0))
-                               (line-end-position)
-                               doom-docs-minor-mode 'doom-doc-hidden))))))
+           (doom-docs--show-region (line-end-position 0)
+                                   (save-excursion
+                                     (org-end-of-subtree t)
+                                     (forward-line 1)
+                                     (if (and (bolp) (eolp))
+                                         (line-beginning-position)
+                                       (line-end-position 0)))
+                                   doom-docs-minor-mode)
+         (doom-docs--show-region (save-excursion
+                                   (goto-char (line-beginning-position))
+                                   (re-search-forward " +:[^ ]" (line-end-position))
+                                   (match-beginning 0))
+                                 (line-end-position)
+                                 doom-docs-minor-mode))))))
 
 (defun doom-docs--hide-stars-h ()
   "Update invisible property to VISIBILITY for markers in the current buffer."
@@ -317,10 +344,9 @@
    (goto-char (point-min))
    (with-silent-modifications
      (while (re-search-forward "^\\(\\*[ \t]\\|\\*\\*+\\)" nil t)
-       (org-fold-core-region (match-beginning 0)
-                             (match-end 0)
-                             doom-docs-minor-mode
-                             'doom-doc-hidden)))))
+       (doom-docs--show-region (match-beginning 0)
+                               (match-end 0)
+                               doom-docs-minor-mode)))))
 
 (defvar doom-docs--babel-cache nil)
 (defun doom-docs--hide-src-blocks-h ()
@@ -361,13 +387,14 @@
                                 (skip-chars-forward "\n")
                                 (point))))))
          (unless (member exports '(nil "both" "code" "t"))
-           (org-fold-core-region beg end doom-docs-minor-mode 'doom-doc-hidden))))
+           (doom-docs--show-region beg end doom-docs-minor-mode))))
      (unless doom-docs-minor-mode
        (save-excursion
          (dolist (pos doom-docs--babel-cache)
            (goto-char pos)
            (org-babel-remove-result)
-           (org-element-cache-refresh pos))
+           (when (fboundp 'org-element-cache-refresh)
+             (org-element-cache-refresh pos)))
          (kill-local-variable 'doom-docs--babel-cache)
          (restore-buffer-modified-p nil))))))
 
@@ -375,25 +402,26 @@
 (defun doom-docs--expand-macros-h ()
   "Expand {{{macros}}} with their value."
   (org-with-wide-buffer
-    (goto-char (point-min))
-    (make-local-variable 'doom-docs--macro-cache)
-    (while (re-search-forward "{{{[^}]+}}}" nil t)
-      (with-silent-modifications
-        (if doom-docs-minor-mode
-            (when-let* ((element (org-element-context))
-                        (key (org-element-property :key element))
-                        (cachekey (org-element-property :value element))
-                        (template (cdr (assoc-string key org-macro-templates t))))
-              (let ((value (or (cdr (assoc-string cachekey doom-docs--macro-cache))
-                               (setf (alist-get cachekey doom-docs--macro-cache nil nil 'equal)
-                                     (org-macro-expand element org-macro-templates)))))
-                (add-text-properties (match-beginning 0)
-                                     (match-end 0)
-                                     `(display ,value))))
-          (remove-text-properties (match-beginning 0)
-                                  (match-end 0)
-                                  '(display))))
-      (org-element-cache-refresh (point)))))
+   (goto-char (point-min))
+   (make-local-variable 'doom-docs--macro-cache)
+   (while (re-search-forward "{{{[^}]+}}}" nil t)
+     (with-silent-modifications
+       (if doom-docs-minor-mode
+           (when-let* ((element (org-element-context))
+                       (key (org-element-property :key element))
+                       (cachekey (org-element-property :value element))
+                       (template (cdr (assoc-string key org-macro-templates t))))
+             (let ((value (or (cdr (assoc-string cachekey doom-docs--macro-cache))
+                              (setf (alist-get cachekey doom-docs--macro-cache nil nil 'equal)
+                                    (org-macro-expand element org-macro-templates)))))
+               (add-text-properties (match-beginning 0)
+                                    (match-end 0)
+                                    `(display ,value))))
+         (remove-text-properties (match-beginning 0)
+                                 (match-end 0)
+                                 '(display))))
+     (when (fboundp 'org-element-cache-refresh)
+       (org-element-cache-refresh (point))))))
 
 (defun doom-docs--prettify-notices-h ()
   "Render notices with an icon and indentation."
@@ -455,13 +483,17 @@ depending.")
   "Hides metadata, tags, & drawers and activates all org-mode prettifications.
 This primes `org-mode' for reading."
   :lighter " Doom Docs"
-  :after-hook (org-restart-font-lock)
+  :after-hook (progn
+                (org-restart-font-lock)
+                (if (doom-docs--visible-p (point))
+                    (goto-char (org-find-visible))))
   (unless (derived-mode-p 'org-mode)
     (user-error "Not an org mode buffer"))
-  (org-fold-add-folding-spec
-   'doom-doc-hidden '(:visible nil
-                      :ellipsis nil
-                      :isearch-ignore t))
+  (when (fboundp 'org-fold-add-folding-spec)  ; Org 9.6+
+    (org-fold-add-folding-spec
+     doom-docs--hidden-spec '(:visible nil
+                              :ellipsis nil
+                              :isearch-ignore t)))
   (mapc (lambda (sym)
           (if doom-docs-minor-mode
               (set (make-local-variable sym) t)
@@ -520,19 +552,12 @@ This primes `org-mode' for reading."
     (define-key map "\C-c\C-e" #'read-only-mode)
     map))
 
-(defun doom-docs--toggle-read-only-h ()
-  (doom-docs-minor-mode (if buffer-read-only +1 -1)))
-
 ;;;###autoload
 (define-derived-mode doom-docs-mode org-mode "Doom Manual"
   "A derivative of `org-mode' for Doom's documentation files."
   :after-hook (visual-line-mode -1)  ; uses hard wrapping
   (let ((gc-cons-threshold most-positive-fixnum)
         (gc-cons-percentage 1.0))
-    (org-fold-add-folding-spec
-     'doom-doc-hidden '(:visible nil
-                        :ellipsis nil
-                        :isearch-ignore t))
     (require 'org-id)
     (require 'ob)
     (setq-local org-id-link-to-org-use-id t
@@ -552,6 +577,9 @@ This primes `org-mode' for reading."
                 (append '((:eval . "no") (:tangle . "no"))
                         org-babel-default-header-args)
                 save-place-ignore-files-regexp ".")
+    (when (featurep 'org-modern)
+      (setq-local org-modern-table nil
+                  org-modern-block-name nil))
 
     (font-lock-add-keywords nil doom-docs-font-lock-keywords)
     (unless org-inhibit-startup
@@ -576,6 +604,9 @@ This primes `org-mode' for reading."
 ;;     (setq-local org-glossary-global-terms (doom-glob doom-docs-dir "appendix.org"))
 ;;     (org-glossary-mode +1)))
 ;; (add-hook 'doom-docs-org-mode-hook #'doom-docs-init-glossary-h)
+
+(defun doom-docs--toggle-read-only-h ()
+  (doom-docs-minor-mode (if buffer-read-only +1 -1)))
 
 ;;;###autoload
 (defun doom-docs-read-only-h ()
@@ -794,24 +825,25 @@ exist, and `org-link' otherwise."
     (add-text-properties
      start end
      (list 'display
-           (concat (nerd-icons-mdicon "nf-md-function") ; "󰊕"
-                   " " (propertize fn
-                                   'face
-                                   (if (fboundp (intern fn))
-                                       'font-lock-function-name-face
-                                     'shadow)))))))
+           (doom-docs--icon
+            "nf-md-function"  ; "󰊕"
+            (propertize fn
+                        'face
+                        (if (fboundp (intern fn))
+                            'font-lock-function-name-face
+                          'shadow)))))))
 
 (defun doom-docs--face-link-activate-fn (start end face _bracketed-p)
   (when buffer-read-only
     (add-text-properties
      start end
      (list 'display
-           (concat (nerd-icons-mdicon "nf-md-format_text") ; "󰊄"
-                   " " (propertize face
-                                   'face
-                                   (if (facep (intern face))
-                                       (intern face)
-                                     'shadow)))))))
+           (doom-docs--icon "nf-md-format_text"  ; "󰊄"
+                            (propertize face
+                                        'face
+                                        (if (facep (intern face))
+                                            (intern face)
+                                          'shadow)))))))
 
 (defun doom-docs--command-keys (command)
   "Convert command reference TEXT to key binding representation."
@@ -869,10 +901,9 @@ exist, and `org-link' otherwise."
          start end
          (list 'face overall-face
                'display
-               (concat
-                (nerd-icons-octicon "nf-oct-stack" ; ""
-                                    :face icon-face)
-                " " module-path)))))))
+               (doom-docs--icon "nf-oct-stack"  ; ""
+                                module-path
+                                :face icon-face)))))))
 
 (defun doom-docs--package-link-activate-fn (start end package _bracketed-p)
   (if (not buffer-read-only)
@@ -891,10 +922,8 @@ exist, and `org-link' otherwise."
        start end
        (list 'face overall-face
              'display
-             (concat
-              (nerd-icons-octicon "nf-oct-package" ; ""
-                                  :face icon-face)
-              " " package))))))
+             (doom-docs--icon "nf-oct-package"  ; ""
+                              package :face icon-face))))))
 
 (defun doom-docs--package-link-follow-fn (pkg _prefixarg)
   "TODO"

@@ -1,3 +1,4 @@
+# -*- doom-docs -*-
 :PROPERTIES:
 :ID:       5fa8967a-532f-4e0c-8ae8-25cd802bf9a9
 :END:
@@ -5,10 +6,10 @@
 #+subtitle: Answers to common issues and questions
 #+startup:  nonum show2levels*
 
-#+begin_quote
- 󰐃 Our documentation was designed to be read in Doom Emacs ([[kbd:][M-x doom/help]]) or
-    online at https://docs.doomemacs.org. Avoid reading it elsewhere (like
-    Github) where it will be rendered incorrectly.
+#+begin_quote warning
+Read this documentation within Doom Emacs ([[kbd:][M-x doom/help]]) or online at
+https://docs.doomemacs.org. It will be rendered incorrectly anywhere else (e.g.
+Github).
 #+end_quote
 
 * General
@@ -272,10 +273,10 @@ For example:
       doom-big-font (font-spec :family "JetBrainsMono" :size 24))
 #+end_src
 
-#+begin_quote
- 󰐃 If you or Emacs can't find your font, use ~M-x describe-font~ to look them
-    up, or run ~$ fc-list~ to see all the available fonts on your system. *Font
-    issues are /rarely/ Doom issues!*
+#+begin_quote tip
+If you or Emacs can't find your font, use ~M-x describe-font~ to look them up, or
+run ~$ fc-list~ to see all the available fonts on your system. *Font issues are
+/rarely/ Doom issues!*
 #+end_quote
 
 *** To change fonts on the fly:
@@ -623,9 +624,9 @@ keybinds to work:
       [C-left] nil)
 #+end_src
 
-#+begin_quote
- 󰐃 I use [C-left] because it is easier to type than "<C-left>", but they are
-    equivalent; two different ways to refer to the same key.
+#+begin_quote tip
+I use ~[C-left]~ because it is easier to type than ~"<C-left>"~, but they are
+equivalent; two different ways to refer to the same key.
 #+end_quote
 ** Recursive load error on startup
 If you see an error like:
@@ -643,9 +644,9 @@ Then these are the three most common explanations:
 
 - *GNU* =tar= and/or =gzip= are not installed on your system.
 
-  #+begin_quote
-    *Warning macOS and *BSD distro users:* you likely have BSD variants of
-      =tar= and =gzip= installed by default. Emacs requires the GNU variants!
+  #+begin_quote warning
+  *Warning macOS and *BSD distro users:* you likely have BSD variants of
+  =tar= and =gzip= installed by default. Emacs requires the GNU variants!
   #+end_quote
 
 - =tar= and/or =gzip= aren't in your =$PATH=, somehow. Once you've corrected
@@ -838,14 +839,14 @@ function isn't known to be defined where it's used.
 There's more about quoting [[https://emacsdocs.org/docs/elisp/Quoting][in the Emacs manual]].
 
 ** TODO How does Doom Emacs start up so quickly?
-#+begin_quote
- 󱌣 *This post is a work in progress!* However, there's a post on our Discourse
-    that outlines [[https://discourse.doomemacs.org/t/how-does-doom-start-up-so-quickly/163/1][some of our older techniques]].
+#+begin_quote wip
+*This post is a work in progress!* However, there's a post on our Discourse that
+outlines [[https://discourse.doomemacs.org/t/how-does-doom-start-up-so-quickly/163/1][some of our older techniques]].
 #+end_quote
 
 ** TODO How does Doom Emacs improve runtime performance?
-#+begin_quote
- 󱌣 *This post is a work in progress!*
+#+begin_quote wip
+*This post is a work in progress!*
 #+end_quote
 
 ** Why does Doom not use dash, f, s, or similar libraries?
@@ -916,9 +917,9 @@ exactly what you want from the get go. In the rare event a text object fails
 you, a combination of [[kbd:][o]] (swaps your cursor between the two ends of the region)
 and motion keys can adjust the ends of your selection.
 
-#+begin_quote
- 󰐃 There are also text objects for xml tags ([[kbd:][x]]), C-style function arguments
-    ([[kbd:][a]]), angle brackets, and single/double quotes.
+#+begin_quote tip
+There are also text objects for xml tags ([[kbd:][x]]), C-style function arguments ([[kbd:][a]]),
+angle brackets, and single/double quotes.
 #+end_quote
 
 This is certainly more to remember compared to a pair of expand and contract
