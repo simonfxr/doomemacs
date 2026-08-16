@@ -143,6 +143,18 @@ each package."
         (message "No packages to update")))))
 
 ;;;###autoload
+(defun doom/bump-packages-in-dir (dir &optional select)
+  "Bump modules under DIR."
+  (interactive
+   (list (read-directory-name "Bump packages in: ")))
+  (dolist (file (doom-files-in dir :match "/packages\\.el$"))
+    (with-current-buffer
+        (or (get-file-buffer file)
+            (find-file-noselect file))
+      (doom/bump-packages-in-buffer select)
+      (save-buffer))))
+
+;;;###autoload
 (defun doom/bump-module (category &optional module select)
   "Bump packages in CATEGORY MODULE.
 If SELECT (prefix arg) is non-nil, prompt you to choose a specific commit for

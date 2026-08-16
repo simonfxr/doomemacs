@@ -7,8 +7,8 @@
 #+startup:  nonum show2levels*
 
 #+begin_quote warning
-Read this documentation within Doom Emacs ([[kbd:][M-x doom/help]]) or online at
-https://docs.doomemacs.org. It will be rendered incorrectly anywhere else (e.g.
+Read this documentation within Doom Emacs ([[M-x:doom/help]]) or online at
+https://docs.doomemacs.org. It may be rendered incorrectly anywhere else (e.g.
 Github).
 #+end_quote
 
@@ -23,48 +23,24 @@ author.
 :PROPERTIES:
 :ID:       6f325ee8-228a-4b05-8ce9-4a997948d46a
 :END:
-These four sections of [[id:a3bf32ae-8218-48c1-a7d9-a6fd61e5734a][our user manual]] answer this question:
-
-- [[id:fba3642f-b01e-405b-80ac-2900df22e978][Why Emacs?]]
-- [[id:e3172459-abcb-45cb-9135-9692f320a836][Why /not/ Emacs?]]
-- [[id:46d2058d-249e-45a7-a7a2-58bade48df65][Why Doom?]]
-- [[id:da317a3c-1672-40e2-85d5-b4246482af2c][Why /not/ Doom?]]
+The [[id:a3bf32ae-8218-48c1-a7d9-a6fd61e5734a][user manual]] answer this question.
 
 ** How does Doom compare to <insert starter kit>?
 I've compiled comparisons to several starter kits in [[id:f2186c7b-9f48-4b0b-ac0b-d891b5b1e1b3][our migration guide]].
 
 ** Is Doom a fork of another starter kit?
 No. I started Doom from scratch in 2013 to learn Emacs and Emacs Lisp, and to
-write a private config for myself. Starter kits were brought to my attention
-later, when early Doom users vocally compared them.
-
-That's not to say I've taken no inspiration from them since. Doom's earliest
-file structure was inspired by Prelude's, until it was replaced with a module
-system. Other concepts (like [[kbd:][SPC]] as a leader key) came from Spacemacs or were
-PRed from migrating users, and were accepted because they seemed sensible.
-
-More similarities (and differences) will no doubt emerge as our userbase grows
-and more starter kits appear.
-
-** Doom claims to be an Emacs framework, not a starter kit. What's the difference?
-I don't claim to own these terms, but I use them to distinguish [[https://git.doomemacs.org/core][Doom's core]] (a
-framework) from [[https://git.doomemacs.org/modules][Doom's module library]] (a starter kit).
-
-My premise is: starter kits and Emacs frameworks have different goals. Where
-starter kits help you avoid work by doing it for you, an Emacs framework helps
-you /do/ that work yourself, but more effectively (by providing extra tools,
-APIs, or organizational systems for writing/debugging). Of course, there will be
-some crossover.
+write a private config for myself.
 
 ** Who maintains Doom Emacs?
-My name is [[https://github.com/hlissner][Henrik]], I'm this project's author and its sole maintainer, for the
+My name is [[github:hlissner][Henrik]], I'm this project's author and its sole maintainer, for the
 moment. I plan to onboard co-maintainers once the project has:
 
-- Proper technical documentation for users, contributors, and
-  maintainers. Many important organizational questions haven't been formally
-  answered or committed to paper: such as our versioning scheme, git
-  conventions, community policies, and code/documentation style guides. Even
-  Doom's goals aren't formally stated anywhere.
+- Proper technical documentation for users, contributors, and maintainers. Many
+  important organizational questions haven't been formally answered or committed
+  to paper: such as our versioning scheme, git conventions, community policies,
+  and code/documentation style guides. Even Doom's goals aren't formally stated
+  anywhere.
 - More unit, integration, and package tests. Total coverage isn't required (or
   desired), but Emacs issues are complex and esoteric, so /some/ measure of
   automated sanity checks (and protocols for merges and releases) are needed to
@@ -74,7 +50,7 @@ moment. I plan to onboard co-maintainers once the project has:
   co-maintainers in good conscience. I could live with them when Doom was my
   private config, but that is no longer the case. It needs to be rewritten.
 
-Most of these issues will be resolved in the final 3.0.0 release.
+Most of these issues will be resolved in the final v3.0 release.
 
 I am looking for [[id:29d9a145-8f2e-4d22-b4d0-de8a2c72698d][module maintainers]] though!
 
@@ -82,14 +58,12 @@ I am looking for [[id:29d9a145-8f2e-4d22-b4d0-de8a2c72698d][module maintainers]]
 As a kid in the Cretaceous period (1999), the [[https://github.com/id-Software/DOOM][source code]] of idsoftware's
 classic Doom was my first exposure to programming. Totally clueless about C and
 compilers, all I could do was peek at it from time to time and hope I'd absorb
-its secrets if I stared hard enough. It didn't work, but it sure jump-started by
+its secrets if I stared long enough. It didn't work, but it sure jump-started my
 gamedev addiction.
 
-So "Doom Emacs" was what you got when you combined childhood, demon-carnage
-nostalgia, [[https://www.youtube.com/user/n4sco][terrible]] [[https://github.com/hlissner/emacs-solaire-mode][naming]] [[https://github.com/hlissner/vim-forrestgump][sense]], and the sneaking suspicion that Emacs is the
-unwritten tenth circle Dante censored for humanity's protection.
-
-I've doomed us all.
+"Doom Emacs" combines childhood, demon-carnage nostalgia, [[https://www.youtube.com/user/n4sco][terrible]] [[https://github.com/hlissner/emacs-solaire-mode][naming]] [[https://github.com/hlissner/vim-forrestgump][sense]],
+and the sneaking suspicion that Emacs is the unwritten tenth circle Dante
+censored for all our collective sanity. I've doomed us all.
 
 ** Why does Doom use straight.el and not package.el?
 =package.el= simply doesn't cut it. Its flaws become apparent the more packages
@@ -99,9 +73,9 @@ see updates:
 - No disaster recovery ::
   When things go wrong, we don't always have time to deal with it. Or we need to
   wait for upstream to deploy a fix. While we wait, we still have work to do,
-  but now what? Emacs is broken! =package.el= doesn't give you any options to
-  roll back, so you /have/ to deal with it, and now. Or hope your old config was
-  backed up.
+  but now what? Emacs is broken! =package.el= doesn't give you any options to roll
+  back, so you /have/ to deal with it, and now. Or hope your old config was backed
+  up.
 
   Though Doom doesn't have a 'doom rollback' command (yet), the ability to
   quickly checkout an old commit of a problematic package (or Doom itself),
@@ -113,8 +87,8 @@ see updates:
   becomes a gamble if you aren't constantly backing up your packages (then
   recompiling them if you're up/downgrading Emacs).
 
-  =melpa-stable= was well intentioned, but it offers no guarantees or standards
-  on how/when maintainers tag their projects. I'd rather the user decide for
+  =melpa-stable= was well intentioned, but it offers no guarantees or standards on
+  how/when maintainers tag their projects. I'd rather the user decide for
   themselves, because they're the ones in the trenches.
 - Can't install packages from superior sources ::
   Often, a crucial fix sits in a pull request somewhere for too long, a package
@@ -130,53 +104,49 @@ see updates:
 Package management needs to be easier, because Emacs is hard enough already.
 Doom fills these gaps with =straight.el='s help, and beyond.
 
-Granted, you /can/ get most of the above with a little Git know-how, but it
-stops being convenient as you reach package 5 or 15, your tenacity permitting.
+Granted, you /can/ get most of the above with a little Git know-how, but it stops
+being convenient as you reach package 5 or 15, your tenacity permitting.
 
 ** Why is startup time important? Why not use the daemon?
 It isn't, but it gets a disproportional amount of attention because it's the
 first thing Doom's users notice. Doom is perfectly compatible with the daemon
 and I don't intend to discourage its use. If I had to say something about it,
-it's that I'm unhappy that a daemon is needed at all to get sane startup times
-out of Emacs.
+it's that I'm unhappy that the daemon is the first thing people reach for when
+startup time becomes a concern, rather than optimization. Emacs packages rarely
+care about it.
 
-It's left to the user to know or care about optimal load paths, and to implement
-them, but that's a lot to ask when the problem domain is so vast, esoteric, and
-a moving target (with a high cost-to-benefit). Who has the time to inspect, much
-less fix, all their packages? And maintain that effort across Emacs or package
-updates? It's easier to use the daemon, so people do.
+It's left to the user to know (or care) about optimal load paths and to
+implement them themselves, but that's a tall order with such a vast, esoteric,
+and ever-changing problem domain (with a high-cost-to-benefit). Who has the time
+to inspect — much less fix — all their packages? And maintain that effort across
+Emacs or package updates? It's easier to use the daemon, so people do.
 
-That said, there's no one to blame for that. I consider Doom's effort, the
+There's no single person to blame for that. I consider Doom's effort, the
 daemon, even native compilation (though all excellent endeavors) stop-gap
 measures for a deeper, underlying issue in Emacs that needs smarter people than
 I to address.
 
-Rather than startup time, runtime performance is a bigger priority, though the
-two rarely stray far from each other.
+But while we wait, I'll keep looking for ways to squeeze out another millisecond
+at startup. And more important than startup time is runtime performance, though
+the two rarely stray far from each other.
 
 ** Where do I follow the development of the project?
 :PROPERTIES:
 :ID:       4af14dad-5b74-43a7-8c9a-153227eed4a9
 :END:
-Our development resources are listed [[id:a20e3feb-f1e4-4bd3-92a9-6dfb17bcb24b][in our manual]].
+The most up-to-date project resources are listed in [[repo:doomemacs/community]].
 
 ** Where do I report issues, request features, or get user support?
-Check out [[id:2f277e96-654d-406f-8797-b9a7d2ccc218][our community resources]] for a complete list of communities and
-platforms. I'd recommend [[https://discourse.doomemacs.org/get-help][our Discourse]].
-
-** I don't like Discord. Can Doom move to IRC/Telegram/Matrix/other?
-This is requested *a lot*--and not always so kindly. We have [[https://discourse.doomemacs.org][a Discourse]] and
-[[https://discourse.doomemacs.org/t/a-matrix-space-for-doom-emacs/2664/12][there are plans for a Matrix space]], but that's as many platforms as I have
-bandwidth for. Please do not ask me to reconsider.
+The most up-to-date community resources are listed in [[repo:doomemacs/community]].
 
 ** How do I add a question to the FAQ?
 :PROPERTIES:
 :ID:       aa28b732-0512-49ed-a47b-f20586c0f051
 :END:
 There is no submission process for FAQs. Our community leaders select them from
-our Discord, Discourse, and Github communities (sometimes elsewhere) based on
-frequency (actual or anticipated). Ask your questions there. If they make the
-cut they will naturally find their way here.
+our Discord and Github communities (sometimes elsewhere) based on frequency
+(actual or anticipated). Ask your questions there. If they make the cut they
+will naturally find their way here.
 
 * How do I...
 :PROPERTIES:
@@ -184,16 +154,6 @@ cut they will naturally find their way here.
 :END:
 For common how-to and configuration questions from Doom users. You'll find more
 [[https://discourse.doomemacs.org/tags/faq][on our Discourse]].
-
-** Find out what version of Doom am I running?
-Use ~M-x doom/info~ or ~$ doom info~ to produce detailed information about your
-installation and environment.
-
-Alternatively, ~M-x doom/version~ or ~$ doom version~ will only list the
-versions of installed Doom components.
-
-The installed version of Doom core is also displayed in the Doom dashboard's
-mode-line.
 
 ** Turn (Doom) Emacs into a <insert language here> IDE with LSP?
 :PROPERTIES:
@@ -206,28 +166,29 @@ Doom's LSP support and install a supported LSP client.
 This provides code completion, lookup {definition,references,documentation}
 functionality, and syntax checking, all in one:
 
-1. Enable Doom's [[doom-module::tools lsp]] module. ([[id:01cffea4-3329-45e2-a892-95a384ab2338][How do I enable modules?]])
-2. Enable the ~+lsp~ flag on the ~:lang~ module corresponding to the language
-   you want LSP support for. E.g. For python, enable [[doom-module::lang python +lsp]]. For
-   rust, enable [[doom-module::lang rust +lsp]]. ([[id:01cffea4-3329-45e2-a892-95a384ab2338][How do I enable module flags?]])
+1. Enable Doom's [[module::tools lsp]] module. ([[id:01cffea4-3329-45e2-a892-95a384ab2338][How do I enable modules?]])
+2. Enable the ~+lsp~ flag on the ~:lang~ module corresponding to the language you
+   want LSP support for. E.g. For python, enable [[module::lang python +lsp]]. For rust,
+   enable [[module::lang rust +lsp]]. ([[id:01cffea4-3329-45e2-a892-95a384ab2338][How do I enable module flags?]])
 3. Install [[https://emacs-lsp.github.io/lsp-mode/page/languages/][a supported LSP client]] on your system using your OS package manager
-   OR from within Emacs using ~M-x lsp-install-server~ (warning: not all servers
+   OR from within Emacs using [[M-x:lsp-install-server]] (warning: not all servers
    can be installed this way).
 4. Run ~$ doom sync~ on the command line.
 5. Restart Emacs.
-6. (Optional) If Emacs fails to find your LSP server, you may need to run ~$
-   doom env~ to regenerate your envvar file (which contains your =$PATH=, which
-   tells Emacs where to find programs on your system).
+6. (Optional) If Emacs fails to find your LSP server, you may need to run ~$ doom
+   env~ to regenerate your envvar file (which contains your =$PATH=, which tells
+   Emacs where to find programs on your system).
 
 *** Potential issues
 1. Some language modules lack LSP support (either because it doesn't exist or
    I'm not aware of it -- let me know!). If you're certain a language is
-   supported by [[doom-package:lsp-mode]], simply adding [[fn:lsp!]] to that major mode's hook will be
-   enough to enable it:
+   supported by [[package:lsp-mode]], simply adding [[fns:lsp!]] to that major mode's
+   hook will be enough to enable it:
 
    #+begin_src elisp
-   ;; Remember to replace MAJOR-MODE with the major mode that powers the language.
-   ;; E.g. `ruby-mode-local-vars-hook' or `python-mode-local-vars-hook'
+   ;;; Add to $DOOMDIR/config.el
+   ;; Replace MAJOR-MODE with the mode that powers the language. E.g.
+   ;; `ruby-mode-local-vars-hook' or `python-mode-local-vars-hook'
    (add-hook 'MAJOR-MODE-local-vars-hook #'lsp! 'append)
 
    ;; For Elisp gurus: Doom provides MAJOR-MODE-local-vars-hook, and we use it
@@ -240,7 +201,7 @@ functionality, and syntax checking, all in one:
    as Cider for Clojure or Sly for Common Lisp).
 
 When in doubt, check that language module's documentation! Look up a module's
-documentation with [[kbd:][<help> d m]] (or ~M-x doom/help-modules~).
+documentation with [[kbd:][<help> d m]] (or [[M-x:doom/help-modules]]).
 
 ** Change my fonts
 Doom exposes a couple variables for setting fonts. They are:
@@ -252,17 +213,21 @@ Doom exposes a couple variables for setting fonts. They are:
 - [[var:doom-emoji-font]]: used for rendering emoji. Only needed if you want to use
   a font other than your operating system’s default.
 - [[var:doom-symbol-font]]: used for rendering symbols.
-- [[var:doom-serif-font]]: the sans-serif font to use wherever the [[face:fixed-pitch-serif]]
-  face is used.
-- [[var:doom-big-font]]: the large font to use when [[fn:doom-big-font-mode]] is active.
+- [[var:doom-serif-font]]: the sans-serif font to use wherever the
+  [[face:fixed-pitch-serif]] face is used.
+- [[var:doom-big-font]]: the large font to use when [[minor:doom-big-font-mode]] is
+  active.
 
 Each of these variables accept one of:
-
-- A font-spec object: ~(font-spec :family "FontName" :size 12.0 :weight 'light)~
-- An xft font string:
-  - Short form: ~"JetBrainsMono-12"~
-  - Long form:  ~"Terminus (TTF):pixelsize=12:antialias=off"~
-- An XLFD string: ~"-*-Fira Code-regular-normal-normal-*-11-*-*-*-*-*-*-*"~
+#+begin_src emacs-lisp
+;; A font-spec object:
+(font-spec :family "FontName" :size 12.0 :weight 'light)
+;; An xft font string:
+"JetBrainsMono-12"                           ; short form
+"Terminus (TTF):pixelsize=12:antialias=off"  ; long form
+;; An XLFD string:
+"-*-Fira Code-regular-normal-normal-*-11-*-*-*-*-*-*-*"
+#+end_src
 
 For example:
 #+begin_src emacs-lisp
@@ -274,30 +239,28 @@ For example:
 #+end_src
 
 #+begin_quote tip
-If you or Emacs can't find your font, use ~M-x describe-font~ to look them up, or
+If you or Emacs can't find your font, use [[M-x:describe-font]] to look them up, or
 run ~$ fc-list~ to see all the available fonts on your system. *Font issues are
 /rarely/ Doom issues!*
 #+end_quote
 
 *** To change fonts on the fly:
 1. Select your ~setq~ statements,
-2. Evaluate them with ~M-x eval-region~ (evil users can use the [[kbd:][gr]] operator to
+2. Evaluate them with [[M-x:eval-region]] (evil users can use the [[kbd:][g r]] operator to
    evaluate regions of elisp, non-evil users can use [[kbd:][C-x C-e]]),
-3. Then reload the fonts: ~M-x doom/reload-font~.
+3. Then reload the fonts: [[M-x:doom/reload-font]].
 
 Your changes should take effect immediately.
 
 ** Change, customize, or make themes?
-- To change themes, add ~(setq doom-theme 'name-of-theme)~ to
-  =$DOOMDIR/config.el=.
+- To change themes, add ~(setq doom-theme 'name-of-theme)~ to =$DOOMDIR/config.el=.
 - To switch themes on-the-fly, type [[kbd:][<help> t]] or ~M-x load-theme~.
 - To customize or write themes, see our guide on [[https://discourse.doomemacs.org/t/how-to-switch-customize-or-write-themes/37][the Discourse]].
 
 ** Properly update Doom?
 You can update Doom one of two ways:
 
-1. The correct way: by running ~$ doom upgrade~ in the shell and restarting
-   Emacs.
+1. The correct way: by running ~$ doom upgrade~ in the shell and restarting Emacs.
 2. The manual way (if ~doom upgrade~ is broken for some reason):
 
    #+begin_src bash
@@ -313,17 +276,17 @@ procedure for manual updates if you need it.
 ** Bind my own keys (or change existing ones)?
 Emacs provides a couple functions to bind keys:
 
+- ~keymap-set KEYMAP KEY DEF~
 - ~define-key KEYMAP KEY DEF~
 - ~global-set-key KEY DEF~
 - ~local-set-key KEY DEF~
 - ~evil-define-key STATES KEYMAP KEY DEF &rest ...~
 
 However, Doom provides a more general ~map!~ macro, to conveniently wrap up the
-above four into a more succinct syntax. Comprehensive examples of ~map!~'s usage
+above five into a more succinct syntax. Comprehensive examples of ~map!~'s usage
 can be found in its documentation (keyboard shortcut: [[kbd:][<help> f map\!]]).
 
-There are also live examples =map!='s usage in
-=config/default/+evil-bindings.el=.
+There are also live examples =map!='s usage in =config/default/+evil-bindings.el=.
 
 Unfortunately, binding keys in Emacs can be a complicated affair. A more
 detailed guide on keys, keymaps, and keymap precedence can be found [[https://discourse.doomemacs.org/t/how-to-re-bind-keys/56][on our
@@ -337,7 +300,7 @@ This is documented in more detail in our user manual:
 - [[id:8e0d2c05-6028-4e68-a50d-b81851f3f258][How to bind aliases for your leader / localleader prefix]]
 
 ** Change the style of (or disable) line-numbers?
-Doom uses the [[doom-package:display-line-numbers]] package, which is included with Emacs 26+.
+Doom uses the [[package:display-line-numbers]] package, built-in as of Emacs 26+.
 
 *** To disable line numbers entirely
 #+begin_src emacs-lisp
@@ -349,8 +312,8 @@ Doom uses the [[doom-package:display-line-numbers]] package, which is included w
 #+end_src
 
 *** To switch to relative line numbers
-To change the style of line numbers, change the value of the
-~display-line-numbers-type~ variable. It accepts the following values:
+To change the style of line numbers, change [[var:display-line-numbers-type]]. It
+accepts the following values:
 #+begin_example
 t            normal line numbers
 'relative    relative line numbers
@@ -364,17 +327,17 @@ For example:
 (setq display-line-numbers-type 'relative)
 #+end_src
 
-You'll find more precise documentation on the variable through [[kbd:][<help> v
-display-line-numbers-type]] ([[kbd:][<help>]] is [[kbd:][SPC h]] for [[doom-package:evil]] users, [[kbd:][C-h]] otherwise).
+Look up more precise documentation for this variable in Emacs by typing [[kbd:][<help> v
+display-line-numbers-type]].
 
 *** To cycle through different styles of line numbers
-Use ~M-x doom/toggle-line-numbers~ (bound to [[kbd:][<leader> t l]] by default) to cycle
+Use [[M-x:doom/toggle-line-numbers]] (bound to [[kbd:][<leader> t l]] by default) to cycle
 through the available line number styles in the current buffer.
 
 E.g. ~normal -> relative -> visual -> disabled -> normal~
 
 ** Disable Evil (vim emulation)?
-By disabling the [[doom-module::editor evil]] module ([[id:01cffea4-3329-45e2-a892-95a384ab2338][how to toggle modules]]).
+By disabling the [[module::editor evil]] module ([[id:01cffea4-3329-45e2-a892-95a384ab2338][how to toggle modules]]).
 
 Read the "[[id:f3925da6-5f0b-4d11-aa08-7bb58bea1982][Removing evil-mode]]" section in the module's documentation for precise
 instructions.
@@ -385,12 +348,13 @@ instructions.
 :END:
 As a rule of thumb, run ~$ doom sync~ whenever you:
 
-- Update Doom with ~$ git pull~ instead of ~$ doom upgrade~,
+- Update Doom manually, instead of using ~$ doom upgrade~,
 - Change your ~doom!~ block in =$DOOMDIR/init.el=,
 - Change =autoload.el= or =autoload/*.el= files in any module (or =$DOOMDIR=),
 - Change the =packages.el= file in any module (or =$DOOMDIR=).
 - Install an Emacs package or dependency outside of Emacs (i.e. through your OS
   package manager).
+- When you up or downgrade Emacs.
 
 If anything is misbehaving, it's a good idea to run ~$ doom sync~ first, to rule
 out any issues with missing packages or autoloads.
@@ -398,13 +362,12 @@ out any issues with missing packages or autoloads.
 This command is never needed for changes to =$DOOMDIR/config.el=.
 
 ** Suppress confirmation prompts when executing a doom command?
-~-!~ or ~--force~ are the universal "suppress all prompts" switch for most
-=doom= commands.
+~-!~ or ~--force~ are the universal "suppress all prompts" switch for most =doom=
+commands.
 
 ** Copy or sync my config to another system?
-*Short answer:* it is safe to sync =$DOOMDIR= across systems, but not
-=$EMACSDIR=. Once moved, use ~$ doom sync~ to ensure everything is set up
-correctly.
+*Short answer:* it is safe to sync =$DOOMDIR= across systems, but not =$EMACSDIR=.
+Once moved, use ~$ doom sync~ to ensure everything is set up correctly.
 
 *Long answer:* packages can contain baked-in absolute paths and non-portable
 byte-code. It is never a good idea to mirror it across multiple systems, unless
@@ -414,10 +377,10 @@ should be solved by running ~$ doom sync~ on the other end, once moved.
 ** Start over, in case something went terribly wrong?
 Delete =$EMACSDIR/.local/straight= and run ~$ doom sync~.
 
-** Restore the s and S keys to their default vim behavior ([[doom-ref:][#1307]])
-[[kbd:][s]] and [[kbd:][S]] have been intentionally replaced with the [[doom-package:evil-snipe]] plugin, which
-provides 2-character versions of the f/F/t/T motion keys, ala [[https://github.com/goldfeld/vim-seek][vim-seek]] or
-[[https://github.com/justinmk/vim-sneak][vim-sneak]].
+** Restore the s and S keys to their default vim behavior ([[repo:#1307]])
+[[kbd:][s]] and [[kbd:][S]] have been intentionally replaced with the [[package:evil-snipe]] plugin, which
+provides 2-character versions of the f/F/t/T motion keys, ala [[github:goldfeld/vim-seek][goldfeld/vim-seek]]
+or [[github:justinmk/vim-sneak][justinmk/vim-sneak]].
 
 These keys were changed because they are redundant with [[kbd:][cl]] and [[kbd:][cc]] respectively
 (and the new behavior was deemed more useful).
@@ -463,9 +426,8 @@ The common explanations for this are:
   the error can shed more light on it (and will be required if you ask the
   community for help debugging it).
 
-- You have disabled the [[doom-module::ui doom-dashboard]] module. Read about
-  [[id:5e267107-81fa-45b4-8ff3-26d4b98e508e][what Doom modules are]] and [[id:01cffea4-3329-45e2-a892-95a384ab2338][how to
-  toggle them]].
+- You have disabled the [[module::ui doom-dashboard]] module. Read about [[id:5e267107-81fa-45b4-8ff3-26d4b98e508e][what Doom modules
+  are]] and [[id:01cffea4-3329-45e2-a892-95a384ab2338][how to toggle them]].
 
 If you're still stuck, run ~$ doom doctor~. It can detect a variety of common
 issues and may give you some clues as to what is wrong.
@@ -527,8 +489,8 @@ Here are a few common causes for random crashes:
   (typically symbols). Try changing your font by changing ~doom-font~ or
   ~doom-symbol-font~.
 
-- Ligatures can cause Emacs to crash. Try a different [[doom-module::ui ligatures +fira][ligature font]] or disable
-  the [[doom-module::ui ligatures]] module altogether.
+- Ligatures can cause Emacs to crash. Try a different [[module::ui ligatures +fira][ligature font]] or disable
+  the [[module::ui ligatures]] module altogether.
 
 - On some systems (particularly MacOS), manipulating the fringes or window
   margins can cause Emacs to crash. This is most prominent in Doom's Dashboard
@@ -547,7 +509,7 @@ Here are a few common causes for random crashes:
     (setq org-startup-indented nil))
   #+end_src
 
-  Or disable the [[doom-module::ui doom-dashboard]] and [[doom-module::tools magit]] modules (see [[doom-ref:][#1170]]).
+  Or disable the [[module::ui doom-dashboard]] and [[module::tools magit]] modules (see [[repo:#1170]]).
 
 If these don't help, check our troubleshooting guides for [[id:f88eaf35-97c4-48de-85ef-2d53f8615d4a][hard crashes]] or
 [[id:0b744192-c648-452d-ba62-1b4c76dc3aee][freezes/hangs]].
@@ -582,10 +544,10 @@ There are a couple ways to address this:
    #+end_src
 
 3. Use [[https://editorconfig.org/][editorconfig]] to configure code style on a per-project basis. If you
-   enable Doom's [[doom-module::tools editorconfig]] module, Doom will recognize
-   =.editorconfigrc= files.
+   enable Doom's [[module::tools editorconfig]] module, Doom will recognize =.editorconfigrc=
+   files.
 
-4. Or trust in [[doom-package:dtrt-indent]]; a plugin Doom uses to analyze and detect indentation
+4. Or trust in [[package:dtrt-indent]]; a plugin Doom uses to analyze and detect indentation
    when you open a file (that isn't in a project with an editorconfig file).
    This isn't foolproof, and won't work for files that have no content in them,
    but it can help in one-off scenarios.
@@ -602,6 +564,12 @@ If you're getting this error you must reset the owner of
 6. Change the owner to your account name.
 
 ([[https://stackoverflow.com/questions/885793/emacs-error-when-calling-server-start][source]])
+
+** Keybinds have gone missing after startup!
+Keybinds are set late in the startup process, so if any errors occur before
+then, keybinds are usually the first casualty. If you find keys are missing
+(like on the [[kbd:][<leader>]] key), inspect the \*Messages\* buffer for warnings/errors.
+This buffer can be opened with [[M-x:view-echo-area-messages]].
 
 ** My new keybinds don't work
 Emacs has a complex and hierarchical keybinding system. If a global keybind
@@ -628,6 +596,7 @@ keybinds to work:
 I use ~[C-left]~ because it is easier to type than ~"<C-left>"~, but they are
 equivalent; two different ways to refer to the same key.
 #+end_quote
+
 ** Recursive load error on startup
 If you see an error like:
 #+begin_example
@@ -645,8 +614,9 @@ Then these are the three most common explanations:
 - *GNU* =tar= and/or =gzip= are not installed on your system.
 
   #+begin_quote warning
-  *Warning macOS and *BSD distro users:* you likely have BSD variants of
-  =tar= and =gzip= installed by default. Emacs requires the GNU variants!
+  *MacOS and *BSD distro users:* you likely have BSD variants of =tar= and =gzip=
+  installed by default. Emacs may tolerate them, but you are likely to run into
+  issues without the GNU variants!
   #+end_quote
 
 - =tar= and/or =gzip= aren't in your =$PATH=, somehow. Once you've corrected
@@ -751,72 +721,6 @@ gets processed ASAP?]]" above.
 ** How do I create and maintain a PR branch for Doom Emacs?
 [[id:40f24cd4-8108-411d-bdcd-0a2ef945b1e3][Our contributing guide offers a few techniques]].
 
-* Sponsors
-:PROPERTIES:
-:ID:       739da458-feb0-42c3-abbc-11cbe3aaa273
-:END:
-For the generous folks who want to sponsor the project and its author.
-
-** How do I sponsor the project?
-:PROPERTIES:
-:ID:       0b737d2b-c13b-4562-9274-015bc226a53f
-:END:
-Consider becoming my [[https://github.com/sponsors/hlissner][Github sponsor]]. If you're not a fan of Github sponsorship,
-my page lists a couple alternatives.
-
-If you do decide to sponsor me, thank you for your support! It is a big help,
-and directly translates to more hours on my Doom, Emacs-related, or open-source
-capers.
-
-** How do I claim my tier rewards?
-Once you have sponsored, you'll receive an automated email telling you how, but
-in case you didn't: email me at contact@henrik.io or DM me on Discord
-(@Henrik#0666) with *your github username* and (optionally) *Discourse
-username*, and I'll help sort you out!
-
-** Are there other ways to support the project or get sponsorship perks?
-:PROPERTIES:
-:ID:       29d9a145-8f2e-4d22-b4d0-de8a2c72698d
-:END:
-Yes! By becoming a module maintainer, community moderator, or regular you get
-the same perks as sponsors [[https://github.com/sponsors/hlissner][on the 25/mo tier]]. Here's what they do:
-
-- *Module maintainers* look after one or more Doom modules. They become my
-  consultants for that module(s)' ecosystem, packages, and implementation, and
-  issues about them. Some Emacs Lisp expertise is helpful, but it's more
-  important that you are knowledgeable about your chosen module's ecosystem.
-- *Moderators* look after our Github, Discord, and/or Discourse communities.
-  They keep our issue tracker, github projects, and repos organized, and they
-  keep the peace by warning/banning bad actors. They're held to a higher
-  standard, however, as they represent us.
-- *Regulars* are pillars of our community; they're folks that frequent our
-  Discord and/or Discourse, are active, helpful, and friendly. This is the only
-  role you can't apply for, but we keep a eye out for folks to give it to!
-
-If code, documentation, or bug reports are more your thing, visit [[id:eb67a668-20ac-43ec-880b-883b6949ca76][our
-contributing manual]] for ideas.
-
-** What is the difference between "first shake" and "first priority"?
-Some of my Sponsor tier rewards offer "first shake" or "first priority" on open
-issues/feature requests. To explain what these mean:
-
-- Issues that get *first shake* get triaged and investigated before other
-  issues, and if it can be resolved in one sitting, I will.
-- Issues that get *first priority* get entirely resolved before I move on to
-  anything else.
-
-That said, the exception to these rules are issues that are extraordinarily
-difficult, outside my expertise, or depend on other development efforts to
-resolve.
-
-Folks that depend on Doom for their work or businesses would benefit from
-getting first priority, to ensure their issues are resolved ASAP. Or check out
-[[https://github.com/sponsors/hlissner?frequency=one-time&sponsor=hlissner][my one-time tiers]] to hire me for dedicated support.
-
-** I have a question, comment, or complaint about sponsorships...
-Feel free to DM me (Henrik#0666) on [[https://doomemacs.org/discord][Discord]], ask on [[https://discourse.doomemacs.org][Discourse]], or email me at
-contact@henrik.io.
-
 * Technical
 :PROPERTIES:
 :ID:       8b6f6bd0-da2f-4744-95b2-843a6fd283b6
@@ -824,37 +728,53 @@ contact@henrik.io.
 For questions regarding Doom's code design, defaults, or conventions.
 
 ** Why does Doom sharp-quote function symbols?
-~#'symbol~ is short for ~(function symbol)~, the same way ~'symbol~ is short for
-~(quote symbol)~.
+This is documented [[https://emacsdocs.org/docs/elisp/Anonymous-Functions#special-form-function-function-object][in the Emacs manual]]. I use it to indicate to anyone reading
+my code (or the byte-compiler) that I intend to use a symbol as a function,
+rather than as data.
 
-I use it to indicate to the byte-compiler (or human readers) that a symbol will
-be treated as a function rather than literal data.
+** How does Doom Emacs run/start up so fast?
+The answer to this question changes from time to time, as Emacs and its packages
+evolve, so it's difficult to document it without it quickly going out of date.
+The source code is the best place to look and I've put in effort to ensure each
+change is explained in adjacent comments.
 
-However, at runtime, the sharp-quote serves no functional purpose like it does
-in other lisps. ~(funcall 'some-function)~ will function identically to
-~(funcall #'some-function)~. The sole difference is at compile-time: the
-byte-compiler performs additional checks on function symbols and will warn if a
-function isn't known to be defined where it's used.
+- Doom's hackiest startup optimizations live in [[file:../early-init.el]].
+- Doom's universally-applicable runtime optimizations live in
+  file:../lisp/doom-emacs.el in the "Runtime optimizations" section.
+- Running ~doom sync~ generates an init-file, which concatenates all package
+  autoloads, along with a number of optimizations, into one elisp file. This
+  way, it isn't necessary for Doom to load package.el or straight.el, nor will
+  it load dozens-to-hundreds of package autoloads, like it would in your
+  standard Emacs session. This will be familiar to anyone that has used
+  [[fns:package-quickstart-refresh]] before. Doom's "quickstart" file packs more
+  optimization's.
+- Doom lazy loads most of its packages either:
+  - Until you use them,
+  - The first input, the first file you open, or the first time you switch to a
+    new buffer (see [[var:doom-first-input-hook]], [[var:doom-first-file-hook]], and
+    [[var:doom-first-buffer-hook]]).
+  - Expensive packages are loaded incrementally, over time. For example, instead
+    of loading ~magit~ after 3 seconds, Doom will load its dependencies,
+    sequentially after a brief idle delay (compat, with-editor, eieio,
+    transient, git-commit, *then* magit), reducing first-load impact.
+- Doom goes the extra mile to lazy load sub-components of expensive packages.
+  For example:
+  - In ~org-mode~, Doom lazy loads major mode libraries until their src blocks are
+    first fontified, executed, or exported,
+  - ~auto-revert-mode~ has been modified to only monitor (and auto-revert) visible
+    buffers, only checking on buried buffers when they are switched to.
+    Normally, this mode would abuse file watchers or continuously poll the
+    buffers.
 
-There's more about quoting [[https://emacsdocs.org/docs/elisp/Quoting][in the Emacs manual]].
-
-** TODO How does Doom Emacs start up so quickly?
-#+begin_quote wip
-*This post is a work in progress!* However, there's a post on our Discourse that
-outlines [[https://discourse.doomemacs.org/t/how-does-doom-start-up-so-quickly/163/1][some of our older techniques]].
-#+end_quote
-
-** TODO How does Doom Emacs improve runtime performance?
-#+begin_quote wip
-*This post is a work in progress!*
-#+end_quote
+These are the more high-profile optimizations, but there are many more. Feel
+free to ask us about specific ones on our Discord or Github Discussions board.
 
 ** Why does Doom not use dash, f, s, or similar libraries?
-=subr-x=, =seq=, =map=, =pcase=, and =cl-lib= are all built into Emacs and,
-since Emacs 27.1 (the minimum version Doom supports), have made Dash and co
-(mostly) redundant. One of Doom's goals is to prefer native functionality where
-possible or trivial. That said, many third-party packages depend on them, so
-chances are they are already installed on your system.
+=subr-x=, =seq=, =map=, =pcase=, and =cl-lib= are all built into Emacs and, since Emacs
+27.1 (the minimum version Doom supports), have made Dash and co (mostly)
+redundant. One of Doom's goals is to prefer native functionality where possible
+or trivial. That said, many third-party packages depend on them, so chances are
+they are already installed on your system.
 
 ** Why does Doom discourage the use of ~M-x customize~?
 =Customize= exists so that you don't need to be a Lisp programmer to configure
@@ -866,22 +786,23 @@ navigating Emacs Lisp, then abandoned. Here's why:
   load order, which is troublesome to support in middleware like Doom (or user
   configuration) when lazy loading is involved.
 
-- I don't see many instances in the wild where this load-order quirk is
-  accommodated. I think this is because those writing/offering that code are
-  Lisp programmers, who don't use =Customize= and may not be exposed to its
-  quirks, but for beginners this is frustration waiting to happen.
+- I don't see many instances in the wild (e.g. in packages) where this
+  load-order quirk is accommodated. I think this is because those
+  writing/offering that code are Lisp programmers who are less likely to be
+  =Customize= users and may not be exposed to its quirks, but for beginners this
+  is frustration waiting to happen.
 
 - =Customize= works flawlessly if it is the sole source of truth for your Emacs
   configuration, but /all/ Emacs configs eventually take on Lisp. At this point
-  you acquire a second source of truth that =Customize= is happy to (quietly)
-  override.
+  you acquire a second source of truth that =Customize= is happy to (quietly and
+  unexpectedly) override.
 
 - Without its /unparalleled/ extensibility, I believe Emacs isn't particularly
   interesting or effective software. And =Customize= exposes only a superficial
   portion of that extensibility. Learning Lisp is inevitable if you want to deal
   with issues or tweak where =Customize= can't, and Doom wants to help you face
-  Lisp, rather than work around it. Otherwise, you may be happier using modern,
-  better polished, and less-DIY competitors.
+  Lisp rather than work around it. Otherwise, you may be happier using a modern,
+  better polished, and less-DIY text editor.
 
 - =Customize='s commands are safe for read-only use (e.g. to browse/search
   settings), but I'm not convinced it can be compete with Emacs'
@@ -893,7 +814,7 @@ All that said, I take no steps to disable or cripple =Customize= in Doom
 to cause issues). If used sparingly, you may not even run into these issues.
 
 ** Why no =expand-region= for evil users (by default)?
-I believe [[doom-package:expand-region]] is redundant with and less precise than evil's text
+I believe [[package:expand-region]] is redundant with and less precise than evil's text
 objects and motions.
 
 - There's a text object for every "step" of expansion that expand-region
@@ -911,7 +832,7 @@ objects and motions.
   the surrounding brackets/parentheses, etc. There is no reverse of this
   however; you'd have to restart visual mode.
 
-The [[doom-package:expand-region]] way dictates you start at some point and expand/contract until
+The [[package:expand-region]] way dictates you start at some point and expand/contract until
 you have what you want selected. The vim/evil way would rather you select
 exactly what you want from the get go. In the rare event a text object fails
 you, a combination of [[kbd:][o]] (swaps your cursor between the two ends of the region)
@@ -928,7 +849,7 @@ editing paradigm. Vimmers will feel right at home. To everyone else: mastering
 them will have a far-reaching effect on your effectiveness in vim environments.
 I highly recommend putting in the time to learn them.
 
-That said, if you aren't convinced, it is trivial to install [[doom-package:expand-region]] and
+That said, if you aren't convinced, it is trivial to install [[package:expand-region]] and
 binds keys to it yourself:
 #+begin_src emacs-lisp
 ;;; in $DOOMDIR/packages.el
@@ -939,24 +860,24 @@ binds keys to it yourself:
       :nv "C-+" #'er/expand-region)
 #+end_src
 
-** Why ~doom env~ instead of ~exec-path-from-shell~?
+** Why use ~doom sync --env~ or ~doom env~ instead of ~exec-path-from-shell~?
 For some context: there are scenarios where Emacs launches in an isolated
 environment where it cannot see your =$PATH= or other needed environment
 variables. This affects macOS users (all =Emacs.app= bundles launch Emacs in an
 isolated environment), Linux users who misconfigure their launchers to use the
 wrong shell, or Windows users who may have no shell environment at all.
 
-[[doom-package:exec-path-from-shell]] was written to mitigate this, by polling the shell at
-startup for those environment variables. ~$ doom env~ was written as more
-reliable (and slightly faster) substitute. Here's why it's better:
+[[package:exec-path-from-shell]] was written to mitigate this, by polling the shell at
+startup for those environment variables. ~$ doom env~ was written as more reliable
+(and slightly faster) substitute. Here's why it's better:
 
-1. [[doom-package:exec-path-from-shell]] must spawn (at least) one process at startup to scrape
+1. [[package:exec-path-from-shell]] must spawn (at least) one process at startup to scrape
    your shell environment. This can be slow depending on the user's shell
    configuration and may fail on non-standard shells (like =fish=). A single
-   program (like =pyenv= or =nvm=) or config framework (like =oh-my-zsh=) could
-   all our startup optimizations in one fell swoop.
+   program (like =pyenv= or =nvm=) or config framework (like =oh-my-zsh=) could all
+   our startup optimizations in one fell swoop.
 
-2. [[doom-package:exec-path-from-shell]] takes a whitelist approach and captures only =$PATH= and
+2. [[package:exec-path-from-shell]] takes a whitelist approach and captures only =$PATH= and
    =$MANPATH= by default. You must be proactive in order to capture all the
    envvars relevant to your development environment and tools.
 
@@ -975,16 +896,3 @@ yourself:
 (when (display-graphic-p)
   (exec-path-from-shell-initialize))
 #+end_src
-
-** Why =ws-butler= over =whitespace-cleanup= or =delete-trailing-whitespace=?
-I believe [[doom-package:ws-butler]] is less imposing on teammates/project maintainers; it only
-cleans up whitespace on the lines you've touched.
-
-You know the story: a PR with 99 whitespace adjustments around a one-line
-contribution. Why? Because they added [[fn:delete-trailing-whitespace]] (or
-[[fn:whitespace-cleanup]]) to [[var:before-save-hook]], which mutates entire buffers.
-
-Automated processes that mutate entire files (or worse, whole projects) should
-be deliberately invoked, and by someone privvy to the consequences, rather than
-automated. =ws-butler= achieves that balance by only cleaning whitespace on
-lines that you have modified since opening the file.

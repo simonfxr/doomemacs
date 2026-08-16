@@ -278,12 +278,6 @@ multiple frames focused at once)."
       (cons 'custom-theme-directory
             (delq 'custom-theme-directory custom-theme-load-path)))
 
-;; If a packages doesn't use `user-emacs-directory' or `locate-user-emacs-file'
-;; to set their file/dir variables, then we need to set them ourselves to avoid
-;; littering in ~/.emacs.d/.
-(setq desktop-dirname  (doom-profile-state-dir t "desktop")
-      pcache-directory (doom-profile-cache-dir t "pcache/"))
-
 ;; Write custom.el settings to $DOOMDIR/custom.el instead of $EMACSDIR/init.el,
 ;; allowing users to version control them and not interfere with Doom init.
 (setq custom-file (doom-user-dir "custom.el"))
@@ -295,21 +289,6 @@ Otherwise, `en/disable-command' (in novice.el.gz) is hardcoded to write them to
 `user-init-file')."
   (let ((user-init-file custom-file))
     (apply fn args)))
-
-;; Ensure that, if the user does want package.el, it is configured correctly.
-;; You really shouldn't be using it, though...
-(with-eval-after-load 'package
-  (setq package-user-dir (file-name-concat doom-local-dir "elpa/")
-        package-gnupghome-dir (expand-file-name "gpg" package-user-dir))
-  (let ((s (if (gnutls-available-p) "s" "")))
-    ;; I omit Marmalade because its packages are manually submitted rather than
-    ;; pulled, and so often out of date.
-    (add-to-list 'package-archives `("melpa" . ,(format "http%s://melpa.org/packages/" s)))
-    (add-to-list 'package-archives `("org"   . ,(format "http%s://orgmode.org/elpa/"   s))))
-  ;; Refresh package.el the first time you call `package-install', so it's still
-  ;; trivially usable. Remember to run 'doom sync' to purge them; they can
-  ;; conflict with packages installed via straight!
-  (add-transient-hook! 'package-install (package-refresh-contents)))
 
 
 ;;
@@ -1534,6 +1513,10 @@ with `set-indent-vars!'."
               (comint-truncate-buffer)))))))
 
 
+;;;###package desktop
+(setq desktop-dirname (doom-profile-state-dir t "desktop"))
+
+
 ;;;###package ediff
 (with-eval-after-load 'ediff
   (setq ediff-diff-options "-w" ; turn off whitespace checking
@@ -1614,6 +1597,23 @@ with `set-indent-vars!'."
     (defun doom-truly-disable-hl-line-h ()
       (unless hl-line-mode
         (kill-local-variable 'doom--hl-line-mode)))))
+
+
+;;;###package package
+;; Sure, Doom doesn't use package.el (nor recommend it), but if the user wants
+;; to, let's ensure it is configured correctly for them.
+(with-eval-after-load 'package
+  (setq package-user-dir (file-name-concat doom-local-dir "elpa/")
+        package-gnupghome-dir (expand-file-name "gpg" package-user-dir))
+  (let ((s (if (gnutls-available-p) "s" "")))
+    ;; I omit Marmalade because its packages are manually submitted rather than
+    ;; pulled, and so often out of date.
+    (add-to-list 'package-archives `("melpa" . ,(format "http%s://melpa.org/packages/" s)))
+    (add-to-list 'package-archives `("org"   . ,(format "http%s://orgmode.org/elpa/"   s))))
+  ;; Refresh package.el the first time you call `package-install', so it's still
+  ;; trivially usable. Remember to run 'doom sync' to purge them; they can
+  ;; conflict with packages installed via straight!
+  (add-transient-hook! 'package-install (package-refresh-contents)))
 
 
 ;;;###package paren

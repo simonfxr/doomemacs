@@ -217,14 +217,12 @@
         ;; PERF,UX: Premature redisplays/redraws can substantially affect startup
         ;;   times and/or flash a white/unstyled Emacs frame during startup, so I
         ;;   try real hard to suppress them until we're sure the session is ready.
-        (setq-default inhibit-redisplay t
-                      inhibit-message t)
+        (setq-default inhibit-message t)
         ;; COMPAT: If the above vars aren't reset, Emacs could appear frozen or
         ;;   garbled after startup (or in case of an startup error).
         (defun doom--reset-inhibited-vars-h ()
           (remove-hook 'post-command-hook #'doom--reset-inhibited-vars-h)
-          (setq-default inhibit-redisplay nil
-                        inhibit-message nil))
+          (setq-default inhibit-message nil))
         (add-hook 'post-command-hook #'doom--reset-inhibited-vars-h -100))
 
       ;; PERF: Doom disables the UI elements by default, so that there's less for

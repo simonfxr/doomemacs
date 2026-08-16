@@ -1,9 +1,10 @@
+# -*- doom-docs -*-
 #+title: Doom Core API Demos
 #+property: header-args:elisp :results pp :exports both :eval never-export
 
-This file adds demonstrations of Doom API for the [[doom-package:elisp-demos]]
-package, installed by the [[doom-module::lang emacs-lisp]] module, which displays
-these demos in documentation buffers (produced by help.el or helpful).
+This file adds demonstrations of Doom API for the [[package:elisp-demos]] package,
+installed by the [[module::lang emacs-lisp]] module, which displays these demos in
+documentation buffers (produced by help.el or helpful).
 
 The emacs-lisp module also configures elisp-demos to search for =demos.org= files
 in modules and ~$DOOMDIR~.

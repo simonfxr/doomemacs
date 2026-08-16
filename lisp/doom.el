@@ -439,7 +439,7 @@ Each function is passed one argument: the doom-profile being started up."
                (message "Error loading profile: %s" (error-message-string e))
                (message "Run 'doom sync' to regenerate it!"))))
         (if interactive?
-            (signal 'doom-nosync-error '(doom-initialize ,profile-id))))
+            (signal 'doom-nosync-error `(doom-initialize ,profile-id))))
       (unless doom-profile
         (setq doom-profile
               (make-doom-profile :name (car key)
