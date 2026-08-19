@@ -282,6 +282,7 @@ multiple frames focused at once)."
 ;; allowing users to version control them and not interfere with Doom init.
 (setq custom-file (doom-user-dir "custom.el"))
 
+;; REVIEW: Fix this upstream
 (define-advice en/disable-command (:around (fn &rest args) write-to-data-dir)
   "Save safe-local-variables to `custom-file' instead of `user-init-file'.
 
@@ -956,43 +957,43 @@ If NOW is non-nil, PACKAGES will be marked for incremental loading next time
 Emacs is idle for `doom-incremental-first-idle-timer' seconds (falls back to
 `doom-incremental-idle-timer'), then in `doom-incremental-idle-timer' intervals
 afterwards."
-  (let* ((gc-cons-threshold most-positive-fixnum)
-         (first-idle-timer (or doom-incremental-first-idle-timer
-                               doom-incremental-idle-timer)))
-    (if (not now)
-        (cl-callf append doom-incremental-packages packages)
-      (while packages
-        (let ((req (pop packages))
-              idle-time)
-          (if (featurep req)
-              (doom-log 2 "start:iloader: Already loaded %s (%d left)" req (length packages))
-            (condition-case-unless-debug e
-                (and
-                 (or (null (setq idle-time (current-idle-time)))
-                     (< (float-time idle-time) first-idle-timer)
-                     (not
-                      (while-no-input
-                        (doom-log 2 "start:iloader: Loading %s (%d left)" req (length packages))
-                        ;; If `default-directory' doesn't exist or is
-                        ;; unreadable, Emacs throws file errors.
-                        (let ((default-directory doom-emacs-dir)
-                              (inhibit-message t)
-                              (file-name-handler-alist
-                               (list (rassq 'jka-compr-handler file-name-handler-alist))))
-                          (require req nil t)
-                          t))))
-                 (push req packages))
-              (error
-               (message "Error: failed to incrementally load %S because: %s" req e)
-               (setq packages nil)))
-            (if (null packages)
-                (doom-log 2 "start:iloader: Finished!")
-              (run-at-time (if idle-time
-                               doom-incremental-idle-timer
-                             first-idle-timer)
-                           nil #'doom-load-packages-incrementally
-                           packages t)
-              (setq packages nil))))))))
+  (with-delayed-gc!
+    (let ((first-idle-timer (or doom-incremental-first-idle-timer
+                                doom-incremental-idle-timer)))
+      (if (not now)
+          (cl-callf append doom-incremental-packages packages)
+        (while packages
+          (let ((req (pop packages))
+                idle-time)
+            (if (featurep req)
+                (doom-log 2 "start:iloader: Already loaded %s (%d left)" req (length packages))
+              (condition-case-unless-debug e
+                  (and
+                   (or (null (setq idle-time (current-idle-time)))
+                       (< (float-time idle-time) first-idle-timer)
+                       (not
+                        (while-no-input
+                          (doom-log 2 "start:iloader: Loading %s (%d left)" req (length packages))
+                          ;; If `default-directory' doesn't exist or is
+                          ;; unreadable, Emacs throws file errors.
+                          (let ((default-directory doom-emacs-dir)
+                                (inhibit-message t)
+                                (file-name-handler-alist
+                                 (list (rassq 'jka-compr-handler file-name-handler-alist))))
+                            (require req nil t)
+                            t))))
+                   (push req packages))
+                (error
+                 (message "Error: failed to incrementally load %S because: %s" req e)
+                 (setq packages nil)))
+              (if (null packages)
+                  (doom-log 2 "start:iloader: Finished!")
+                (run-at-time (if idle-time
+                                 doom-incremental-idle-timer
+                               first-idle-timer)
+                             nil #'doom-load-packages-incrementally
+                             packages t)
+                (setq packages nil)))))))))
 
 (defun doom-load-packages-incrementally-h ()
   "Begin incrementally loading packages in `doom-incremental-packages'.
@@ -1012,16 +1013,14 @@ If this is a daemon session, load them all immediately instead."
 
 (defun doom-run-switch-buffer-hooks-h (&optional _)
   "Trigger `doom-switch-buffer-hook' when selecting a new buffer."
-  (let ((gc-cons-threshold most-positive-fixnum))
-    (run-hooks 'doom-switch-buffer-hook)))
+  (with-delayed-gc! (run-hooks 'doom-switch-buffer-hook)))
 
 (defun doom-run-switch-window-hooks-h (&optional _)
   "Trigger `doom-switch-window-hook' when selecting a window in the same frame."
   (unless (or (minibufferp)
               (not (equal (old-selected-frame) (selected-frame)))
               (equal (old-selected-window) (minibuffer-window)))
-    (let ((gc-cons-threshold most-positive-fixnum))
-      (run-hooks 'doom-switch-window-hook))))
+    (with-delayed-gc! (run-hooks 'doom-switch-window-hook))))
 
 (defvar doom-switch-frame-hook-debounce-delay 2.0
   "The delay for which `doom-switch-frame-hook' won't trigger again.
@@ -1033,7 +1032,7 @@ the frame through some other means.")
 
 (defun doom--run-switch-frame-hooks-fn (_)
   (remove-hook 'pre-redisplay-functions #'doom--run-switch-frame-hooks-fn)
-  (let ((gc-cons-threshold most-positive-fixnum))
+  (with-delayed-gc!
     (dolist (fr (visible-frame-list))
       (let ((state (frame-focus-state fr)))
         (when (and state (not (eq state 'unknown)))
@@ -1507,8 +1506,7 @@ with `set-indent-vars!'."
              ;;   expensive in longer buffers, especially in
              ;;   `compilation-filter-hook' which fires rapidly.
              (* 80 comint-buffer-maximum-size))
-          (let ((gc-cons-threshold most-positive-fixnum)
-                (gc-cons-percentage 1.0))
+          (with-delayed-gc!
             (with-silent-modifications
               (comint-truncate-buffer)))))))
 

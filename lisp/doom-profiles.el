@@ -49,7 +49,7 @@ list of paths or profile config files (semi-colon delimited on Windows).")
 Can be changed externally by setting $DOOMPROFILELOADFILE.")
 
 (defvar doom-profile-init-dir-name "init.d"
-  "The subdirectory of `doom-profile-dir'")
+  "The subdirectory of `doom-profile-dir'.")
 
 ;;; Profile storage variables
 (define-obsolete-variable-alias 'doom-profile-generators 'doom-profile-generate-functions "2.3.0")
@@ -236,7 +236,7 @@ cannot bootload from an arbitrary location."
     (nreverse profiles)))
 
 (defun doom-profiles-write-load-file (profiles &optional file)
-  "Generate a profile bootstrapper for Doom to load at startup."
+  "Generate an elisp loader for PROFILES at FILE."
   (unless file
     (setq file doom-profile-load-file))
   (doom-file-write
@@ -349,7 +349,9 @@ caches them in `doom--profiles'. If RELOAD? is non-nil, refresh the cache."
 ;;; ** Profile Generators
 
 (defun doom-profile-generate (&optional profile reload?)
-  "Generate profile init files."
+  "Generate PROFILE init files.
+
+Regenerates the last profile if RELOAD? is non-nil."
   (doom-initialize-packages)
   (let* ((p (or profile doom-profile))
          (default-directory (doom-profile-init-dir p))

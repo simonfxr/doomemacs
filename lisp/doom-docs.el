@@ -332,9 +332,7 @@ Returns PROP if specified, the context otherwise."
 ;;; ** Transformer functions
 
 (defmacro doom-docs--with-buffer (&rest body)
-  `(let ((gc-cons-threshold most-positive-fixnum)
-         (gc-cons-percentage 1.0))
-     (org-with-wide-buffer ,@body)))
+  `(with-delayed-gc! (org-with-wide-buffer ,@body)))
 
 (defun doom-docs--hide-meta-h ()
   "Hide all meta or comment lines."
@@ -502,9 +500,9 @@ Returns PROP if specified, the context otherwise."
     (flymake-mode . -1)
     (flycheck-mode . -1)
     (spell-fu-mode . -1)
-    (visual-line-mode . -1)
     (mixed-pitch-mode . -1)
-    (variable-pitch-mode . -1))
+    (variable-pitch-mode . -1)
+    (indent-bars-mode . -1))
   "An alist of minor modes to toggle with `doom-docs-minor-mode'.
 
 The CAR is the minor mode symbol, and CDR should be either +1 or -1,
@@ -574,9 +572,6 @@ This primes `org-mode' for reading."
 ;;
 ;;; * `doom-docs-mode'
 
-(defvar doom-docs-font-lock-keywords '()
-  "Extra font-lock keywords for Doom documentation.")
-
 (defvar doom-docs-mode-map
   (let ((map (make-sparse-keymap))
         (cmd (cmds! buffer-read-only #'kill-current-buffer)))
@@ -588,12 +583,8 @@ This primes `org-mode' for reading."
 ;;;###autoload
 (define-derived-mode doom-docs-mode org-mode "Doom Manual"
   "A derivative of `org-mode' for Doom's documentation files."
-  :after-hook
-  (progn
-    (visual-line-mode -1)  ; uses hard wrapping
-    (doom-docs--locations-load nil (list (current-buffer))))
-  (let ((gc-cons-threshold most-positive-fixnum)
-        (gc-cons-percentage 1.0))
+  :after-hook (doom-docs-mode--post-hook)
+  (with-delayed-gc!
     (require 'org-id)
     (require 'ob)
     (setq-local org-id-link-to-org-use-id t
@@ -613,11 +604,27 @@ This primes `org-mode' for reading."
                 (append '((:eval . "no") (:tangle . "no"))
                         org-babel-default-header-args)
                 save-place-ignore-files-regexp "."
+                org-todo-keyword-faces
+                '(("TODO" . (bold default))
+                  ("DONE" . shadow))
+                org-startup-numerated t
+                org-startup-indented t
                 org-startup-with-inline-images t
-                org-startup-with-link-previews t)
-    (when (featurep 'org-modern)
-      (setq-local org-modern-table nil
-                  org-modern-block-name nil))
+                org-display-remote-inline-images 'cache
+                ;; Don't highlight LaTeX in Doom docs. We won't need it and it
+                ;; interferes with shell command snippets that may contain a $.
+                org-highlight-latex-and-related nil)
+
+    ;; HACK: Due to some backwards compatibility cludge in
+    ;;   `org-set-regexps-and-options', it tries to read the default value of
+    ;;   `org-todo-keywords', which requires this effort to temporarily change
+    ;;   its value (to use a simpler value in doom-docs-mode buffers).
+    (let ((old-value (copy-sequence (default-value 'org-todo-keywords))))
+      (setq-default org-todo-keywords '((sequence "TODO" "DONE")))
+      ;; ...and-parse buffer options so the above vars can be overridden by
+      ;; #+STARTUP et co.
+      (unwind-protect (org-set-regexps-and-options)
+        (setq-default org-todo-keywords old-value)))
 
     ;; Ensure links are fully localized to doom-docs-mode buffers.
     (mapc #'make-local-variable '(org-link-types-re
@@ -629,25 +636,38 @@ This primes `org-mode' for reading."
     (org-link-make-regexps)
     (if (featurep 'org-element) (org-element-update-syntax))
 
-    ;; Don't highlight LaTeX in Doom docs. We won't need it.
-    (dlet (org-highlight-latex-and-related)
-      (org-compute-latex-and-related-regexp))
-
     (unless org-inhibit-startup
-      (unless (local-variable-p 'org-startup-with-inline-images)
-        (setq org-display-remote-inline-images 'cache)
-        (org-display-inline-images))
-      (unless (local-variable-p 'org-startup-indented)
-        (org-indent-mode +1))
-      (unless (local-variable-p 'org-startup-numerated)
-        (when (bound-and-true-p org-num-mode)
-          (org-num-mode -1))
-        (org-num-mode +1))
-      (unless (local-variable-p 'org-startup-folded)
-        (let ((org-startup-folded 'content)
-              org-cycle-hide-drawer-startup)
-          (org-set-startup-visibility))))
+      (org-unmodified
+       (when org-startup-with-inline-images
+         (quiet!  ; silence image downloading messages
+           (if (fboundp 'org-link-preview)
+               (org-link-preview '(16))
+             (org-display-inline-images))))
+       (when org-startup-indented
+         (org-indent-mode +1))
+       (when org-startup-numerated
+         (when (bound-and-true-p org-num-mode)
+           (org-num-mode -1))
+         (org-num-mode +1))
+       (unless (or (bound-and-true-p org-inhibit-startup-visibility-stuff)
+                   (not org-startup-folded))
+         (dlet ((org-startup-folded 'content)
+                org-cycle-hide-drawer-startup)
+           (org-set-startup-visibility)))))
     (add-hook 'read-only-mode-hook #'doom-docs--toggle-read-only-h nil 'local)))
+
+(defun doom-docs-mode--post-hook ()
+  "Last-minute cleanup after `doom-docs-mode' initializes (and after hooks)."
+  (unless org-inhibit-startup
+    (with-delayed-gc!
+      (dolist (mode '(visual-line-mode  ; doom-docs use hard line wrapping
+                      ;; Redundant with `doom-docs-minor-mode'
+                      org-modern-mode
+                      org-appear-mode))
+        (if (and (boundp mode)
+                 (symbol-value mode))
+            (funcall mode -1)))
+      (doom-docs--locations-load nil (list (current-buffer))))))
 
 (defun doom-docs--toggle-read-only-h ()
   (doom-docs-minor-mode (if buffer-read-only +1 -1)))
@@ -770,25 +790,36 @@ This primes `org-mode' for reading."
 
 (defun doom-docs-link--repo-follow (link)
   (browse-url
-   (letf! (defun repo (link suffix subexp)
-            (let (user repo)
-              (when-let* ((match (match-string subexp link)))
-                (if (string-match-p "/" match)
-                    (let ((seg (split-string match "/")))
-                      (setq user (car seg)
-                            repo (cadr seg)))
-                  (setq repo match)))
-              (doom-docs--repo-url user repo (file-name-concat suffix (match-string 2 link)))))
+   (letf! (defun repo (link &rest suffix)
+            (doom-docs--repo-url
+             (save-match-data
+               (if (and (stringp link) (string-match-p "/" link))
+                   (split-string link "/")
+                 (list nil link)))
+             nil (if suffix (apply #'file-name-concat suffix))))
      (save-match-data
-       (cond ((string-match "^\\([^/]+\\(?:/[^/]+\\)?\\)?#\\([0-9]+\\(?:#.*\\)?\\)" link)
-              (repo link "issues" 1))
-             ((string-match "^\\([^/]+\\(?:/[^/]+\\)?@\\)?\\([a-f0-9]\\{7,\\}\\(?:#.*\\)?\\)" link)
-              (repo link "commit" 1))
-             ((string-match "^\\([^/]+\\(?:/[^/]+\\)?@\\)?\\(v[0-9].*\\)" link)
-              (repo link "releases/tag" 1))
-             ((string-match "^\\([^/]+\\(?:/[^/]+\\)?\\)" link)
-              (repo link nil 1))
-             ((user-error "Invalid doom-rev link: %S" link)))))))
+       (cond
+        ;; ^[[user/]repo]#123[#issuecomment-4701619356]$
+        ((string-match "^\\([^/]+\\(?:/[^/]+\\)?\\)?#\\([0-9]+\\(?:#.*\\)?\\)" link)
+         (repo (match-string 1 link) "issues" (match-string 2 link)))
+        ;; ^[user/]repo[@rev]:path/to/file[#L303]$
+        ((string-match "^\\([^/]+\\(?:/[^/@]+\\)?\\)\\(?:@\\([^:]+\\)\\)?:\\(.+\\)$" link)
+         (repo (match-string 1 link) "blob"
+               (or (match-string 2 link)
+                   (let ((ref (doom-call-process "git" "describe" "--tags" "--abbrev=0")))
+                     (if (zerop (car ref)) (cdr ref) "HEAD")))
+               (match-string 3 link)))
+        ;; ^[[user/]repo@]v0.24$
+        ((string-match "^\\(?:\\([^/]+\\(?:/[^/]+\\)?\\)@\\)?\\(v[0-9][0-9.]*\\)" link)
+         ;; TODO: Redirect to changelog later
+         (repo (match-string 1 link) "releases/tag" (match-string 2 link)))
+        ;; ^[[user/]repo@]a1b2c3d4e$
+        ((string-match "^\\(?:\\([^/]+\\(?:/[^/]+\\)?\\)@\\)?\\([a-f0-9]\\{7,\\}\\)" link)
+         (repo (match-string 1 link) "commit" (match-string 2 link)))
+        ;; ^[user/]repo[[#?]...]$
+        ((string-match "^\\([^/]+\\(?:/[^/]+\\)?\\)\\([#?].+\\)?$" link)
+         (repo (match-string 1 link) (match-string 2 link)))
+        ((user-error "Invalid repo link: %S" link)))))))
 
 
 ;;; ** package:*
@@ -927,6 +958,23 @@ This primes `org-mode' for reading."
                 (funcall (or (command-remapping fn) fn)
                          (or (intern-soft path)
                              (user-error "Can't find documentation for %S" path))))))
+
+      ;; This is repeated from the :lang org module in case the module is
+      ;; disabled.
+      (org-link-set-parameters
+       "file" :face (lambda (path)
+                      (if (or
+                           ;; file uris is not a valid path on windows
+                           ;; ref https://lists.gnu.org/archive/html/bug-gnu-emacs/2024-05/threads.html#00729
+                           ;; emacs <= 29 crashes for (file-exists-p "file://whatever")
+                           (if (featurep :system 'windows)
+                               (or (string-prefix-p "//" path)
+                                   ;; filter out network shares on windows (slow)
+                                   (string-prefix-p "\\\\" path)))
+                           (file-exists-p path))
+                          'org-link
+                        '(:inherit (error org-link) :underline nil))))
+
       (org-link-set-parameters
        "var"
        :follow (call #'describe-variable)
@@ -1014,35 +1062,34 @@ This primes `org-mode' for reading."
 ;;; * Commands
 
 (defun doom-docs--locations-load (&optional force? buffers)
-  (when (or force? (null doom-docs--id-files))
-    (with-temp-buffer
-      (delay-mode-hooks
-        (dlet ((gc-cons-threshold most-positive-fixnum)
-               (gc-cons-percentage 1.0)
-               (org-inhibit-startup t)
-               (org-id-locations-file doom-docs--id-location-file)
-               (org-id-track-globally t)
-               org-id--locations-checksum
-               org-id-locations-file-relative
-               org-id-extra-files
-               org-id-files
-               org-id-locations
-               org-id-extra-files
-               org-agenda-files)
-          (if (or force? (not (file-exists-p org-id-locations-file)))
-              (letf! (defun org-buffer-list (&rest _) nil)
-                (org-id-update-id-locations
-                 (doom-files-in (doom-docs-load-path) :match "/[^.].+\\.org$")))
-            (org-id-locations-load))
-          (setq doom-docs--id-files (copy-sequence org-id-files)
-                doom-docs--id-locations (copy-hash-table org-id-locations))))))
-  (let ((files (copy-sequence doom-docs--id-files))
-        (locations (copy-hash-table doom-docs--id-locations)))
-    (dolist (buffer (ensure-list buffers))
-      (with-current-buffer buffer
-        (when (eq major-mode 'doom-docs-mode)
-          (setq-local org-id-files files
-                      org-id-locations locations))))))
+  (with-delayed-gc!
+    (when (or force? (null doom-docs--id-files))
+      (with-temp-buffer
+        (delay-mode-hooks
+          (dlet ((org-inhibit-startup t)
+                 (org-id-locations-file doom-docs--id-location-file)
+                 (org-id-track-globally t)
+                 org-id--locations-checksum
+                 org-id-locations-file-relative
+                 org-id-extra-files
+                 org-id-files
+                 org-id-locations
+                 org-id-extra-files
+                 org-agenda-files)
+            (if (or force? (not (file-exists-p org-id-locations-file)))
+                (letf! (defun org-buffer-list (&rest _) nil)
+                  (org-id-update-id-locations
+                   (doom-files-in (doom-docs-load-path) :match "/[^.].+\\.org$")))
+              (org-id-locations-load))
+            (setq doom-docs--id-files (copy-sequence org-id-files)
+                  doom-docs--id-locations (copy-hash-table org-id-locations))))))
+    (let ((files (copy-sequence doom-docs--id-files))
+          (locations (copy-hash-table doom-docs--id-locations)))
+      (dolist (buffer (ensure-list buffers))
+        (with-current-buffer buffer
+          (when (eq major-mode 'doom-docs-mode)
+            (setq-local org-id-files files
+                        org-id-locations locations)))))))
 
 ;;;###autoload
 (defun doom/reload-docs (&optional force?)

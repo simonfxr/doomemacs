@@ -749,6 +749,15 @@ Can chain these comparisons by adding more (COMPn Vn) pairs afterwards.
                        =  version-list-=
                        /= version-list-=))
 
+(defmacro with-delayed-gc! (&rest body)
+  "Evaluate BODY with GC deferred."
+  (declare (indent defun))
+  (if (featurep 'igc)
+      (macroexp-progn body)
+    `(let ((gc-cons-threshold most-positive-fixnum)
+           (gc-cons-percentage 1.0))
+       ,@body)))
+
 
 ;;; ** Closure factories
 

@@ -37,7 +37,7 @@
 For example, if running the unrecognized command \\='doom foo', Doom will search
 for an executable named doom-foo or doom-foo.el in this list of paths. If one is
 found, is executable, and uses doomscript in its shebang line, it will be loaded
-(ignoring any `run!' calls)."
+\(ignoring any `run!' calls)."
   :type '(repeat directory))
 
 
@@ -223,7 +223,7 @@ Can be `pwsh' if invoked via bin/doom.ps1, or `sh' in unix environments.")
 ;;; * Custom hooks
 
 (defcustom doom-cli-initialize-hook ()
-  "TODO"
+  "Functions to run when `doom-cli-initialize' is called during startup."
   :type 'hook)
 
 (defcustom doom-cli-create-context-functions ()
@@ -1885,7 +1885,7 @@ yet. They won't be included in command listings (by help documentation)."
 
 (defmacro defcli-group! (&rest body)
   "Declare common properties for any CLI commands defined in BODY."
-  (declare (indent 1))
+  (declare (indent defun))
   (when (stringp (car body))
     (push :group body))
   `(let ((doom-cli--group-plist (copy-sequence doom-cli--group-plist)))
@@ -1935,7 +1935,7 @@ example:
     tall.
 
 See `doom-cli--restart' for implementation details."
-  (throw 'exit (flatten-list args)))
+  (throw 'exit (flatten-list args)))  ; caught by `run!'
 
 (defun call! (&rest command)
   "A convenience wrapper around `doom-cli-call'.

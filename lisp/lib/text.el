@@ -149,13 +149,14 @@ selected, returns (nil . nil)."
       (cons beg end))))
 
 ;;;###autoload
-(defun doom-region (&optional preserve-properties?)
+(defun doom-region (&optional no-properties?)
   "Return the contents of the active selection.
 
-Return nil if nothing is selected."
+Return nil if nothing is selected. If NO-PROPERTIES? is non-nil, text properties
+are stripped from the returned string."
   (when (doom-region-active-p)
-    (let* ((bounds (doom-region-bounds)))
-      (if preserve-properties?
+    (let ((bounds (doom-region-bounds)))
+      (if no-properties?
           (buffer-substring-no-properties (car bounds) (cdr bounds))
         (buffer-substring (car bounds) (cdr bounds))))))
 

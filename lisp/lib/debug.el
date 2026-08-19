@@ -1,55 +1,58 @@
 ;;; lisp/lib/debug.el -*- lexical-binding: t; -*-
 
 ;;;###autoload
-(defvar doom-debug--variables
-  `(;; Doom variables
+(defvar doom-debug--vars
+  '(;; Doom variables
     (doom-print-level debug)
     (doom-inhibit-log nil)
 
     ;; Emacs variables
     (async-debug t 2)
-    debug-on-error
-    epg-debug
+    (debug-on-error t)
+    (epg-debug t)
     (gcmh-verbose t 3)
-    init-file-debug
+    (init-file-debug t)
     (jka-compr-verbose t 3)
     (message-log-max 16384)
     (native-comp-async-report-warnings-errors silent 2)
     (native-comp-warning-on-missing-source t 2)
-    url-debug
-    use-package-verbose
-    (warning-suppress-types nil)))
+    (url-debug t)
+    (use-package-verbose t)
+    (warning-suppress-types nil))
+  "An alist of debug variables to set when `doom-debug-mode' is toggled.
+
+Each entry is a (VAR NEW-VALUE DEBUG-LEVEL) sub-list. VAR is the variable
+symbol, NEW-VALUE is what to set it to while `doom-debug-mode' is active, and
+DEBUG-LEVEL dictates at what `doom-log-level' it should be set at, defaulting to
+1.")
+
+(defvar doom-debug--unbound-vars nil)
 
 ;;;###autoload
 (progn
   (cl-defun set-debug-var! (var &optional (debug-val t) (level 1))
     "Set VAR to DEBUG-VAL (or `t') when `doom-debug-mode' is active at >=LEVEL."
-    (setf (alist-get var doom-debug--variables) (cons debug-val level))))
+    (setf (alist-get var doom-debug--vars) (list debug-val level))))
 
-(defvar doom-debug--unbound-variables nil)
+(cl-defun doom-debug--set-var ((var val &optional level))
+  (if (boundp var)
+      (if (or (not doom-debug-mode)
+              (> (or level 1) doom-log-level))
+          (when-let* ((val (get var 'doom-debug-value)))
+            (set-default-toplevel-value var (car val))
+            (put var 'doom-debug-value nil))
+        (doom-log 3 "debug:vars: %s = %S" var val)
+        (unless (get var 'doom-debug-value)
+          (put var 'doom-debug-value (list (default-toplevel-value var))))
+        (set-default-toplevel-value var val))
+    (cl-pushnew (list var val level) doom-debug--unbound-vars
+                :test #'eq
+                :key #'car)))
 
 (defun doom-debug--watch-vars-h (&rest _)
-  (when-let* ((vars (copy-sequence doom-debug--unbound-variables)))
-    (setq doom-debug--unbound-variables nil)
+  (when-let* ((vars (copy-sequence doom-debug--unbound-vars)))
+    (setq doom-debug--unbound-vars nil)
     (mapc #'doom-debug--set-var vars)))
-
-(defun doom-debug--set-var (spec)
-  (cond ((listp spec)
-         (pcase-let ((`(,var ,val ,level) spec))
-           (if (boundp var)
-               (set-default-toplevel-value
-                var (if (or (not doom-debug-mode)
-                            (> (or level 1) doom-log-level))
-                        (prog1 (get var 'initial-value)
-                          (put var 'initial-value nil))
-                      (doom-log 3 "debug:vars: %s = %S" var val)
-                      (put var 'initial-value (default-toplevel-value var))
-                      val))
-             (add-to-list 'doom-debug--unbound-variables spec))))
-        ((boundp spec)
-         (doom-log 3 "debug:vars: %s = %S" spec doom-debug-mode)
-         (set-default-toplevel-value spec doom-debug-mode))
-        ((add-to-list 'doom-debug--unbound-variables (cons spec t)))))
 
 (defun doom-debug--timestamped-message-a (format-string &rest _args)
   "Advice to run before `message' that prepends a timestamp to each message."
@@ -76,19 +79,17 @@
   "Toggle `debug-on-error' and `init-file-debug' for verbose logging."
   :global t
   :group 'doom
-  ;; Watch for changes in `doom-debug--variables', or when packages load (and
-  ;; potentially define one of `doom-debug--variables'), in case some of them
-  ;; aren't defined when `doom-debug-mode' is first loaded.
+  :after-hook (mapc #'doom-debug--set-var doom-debug--vars)
+  (with-memoization (get 'doom-log-level 'initial-value) doom-log-level)
+  (setq-default doom-log-level
+                (if doom-debug-mode
+                    (or (and (integerp current-prefix-arg)
+                             (> current-prefix-arg 0)
+                             (max 1 (min 3 (or current-prefix-arg 1))))
+                        (max 1 doom-log-level))
+                  (prog1 (get 'doom-log-level 'initial-value)
+                    (put 'doom-log-level 'initial-value nil))))
   (cond (doom-debug-mode
-         (when (called-interactively-p 'any)
-           (message "Debug mode level %d enabled! (Run 'M-x view-echo-area-messages' to see logs)"
-                    doom-log-level))
-         (when-let* ((level (and (integerp current-prefix-arg)
-                                 (> current-prefix-arg 0)
-                                 (max 1 (min 3 (or current-prefix-arg 1))))))
-           (setf (alist-get 'doom-log-level doom-debug--variables)
-                 (list level)))
-         (doom-log "debug: enabled! (log-level=%d)" doom-log-level)
          ;; Produce more helpful (and visible) error messages from errors
          ;; emitted from hooks (particularly mode hooks), that usually go
          ;; unnoticed otherwise.
@@ -98,17 +99,19 @@
          ;; The constant debug output from GC is mostly unhelpful. I still
          ;; want it logged to *Messages*, just out of the echo area.
          (advice-add #'gcmh-idle-garbage-collect :around #'doom-debug-shut-up-a)
-         (add-variable-watcher 'doom-debug--variables #'doom-debug--watch-vars-h)
+         ;; Watch for changes in `doom-debug--vars', or when packages load
+         ;; (and potentially define one of `doom-debug--vars'), in case
+         ;; some of them aren't defined when `doom-debug-mode' is first loaded.
+         (add-variable-watcher 'doom-debug--vars #'doom-debug--watch-vars-h)
          (add-hook 'after-load-functions #'doom-debug--watch-vars-h))
         (t
          (advice-remove #'run-hooks #'doom-run-hooks)
          (advice-remove #'message #'doom-debug--timestamped-message-a)
          (advice-remove #'gcmh-idle-garbage-collect #'doom-debug-shut-up-a)
-         (remove-variable-watcher 'doom-debug--variables #'doom-debug--watch-vars-h)
+         (remove-variable-watcher 'doom-debug--vars #'doom-debug--watch-vars-h)
          (remove-hook 'after-load-functions #'doom-debug--watch-vars-h)
-         (doom-log "debug: disabled")
-         (message "Debug mode disabled!")))
-  (mapc #'doom-debug--set-var doom-debug--variables))
+         (setq doom-debug--unbound-vars nil)
+         (message "Debug mode disabled!"))))
 
 (defun doom-debug-shut-up-a (fn &rest args)
   "Suppress output from FN, even in debug mode."

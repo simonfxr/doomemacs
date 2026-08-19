@@ -4,50 +4,11 @@
  (version . "2.2.2")
  (homepage . "https://doomemacs.org")
 
- (commit
-  (preset doom-conventional-commits +modules)
-  (scopes "cli" "lib"
-          (docs
-           "install"
-           (lambda (scope _plist)
-             "Allow any filename in docs/* as a scope for docs commits."
-             (member
-              scope (doom-files-in (doom-path (dir!) "../docs")
-                                   :match "\\.org$"
-                                   :map #'file-name-base))))))
+ (commits (style doom) (scopes "cli" "lib" "docs"))
 
  (make
   ("LICENSE"
    (lambda (_)
      (insert-file-contents (dir! "LICENSE"))
      (and (re-search-forward "(c) 2014-\\(20[0-9]\\{2\\}\\) Henrik")
-          (replace-match (format-time-string "%Y") t t nil 1)))))
-
- (publish
-  (targets "docs/index.org"
-           "docs"
-           "modules/*/README.org"
-           "modules/*/*/README.org")
-  (env
-   (global-menus
-    ("± Suggest edits" . "doom-suggest-edit:")
-    ("? Help"
-     . ,(lambda! (&key title)
-          (cond ((equal title "Changelog")   "doom-help-changelog:")
-                ((string-prefix-p ":" title) "doom-help-modules:")
-                ("doom-help:")))))
-   (menus
-    (("docs/*.org" "modules/README.org")
-     (left ("← Back to index" . "doom-index:")))
-    ("docs/index.org"
-     (left ("↖ FAQ" . "doom-faq:")))
-    ("modules/*/README.org"
-     (left ("← Back to module index" . "doom-module-index:")))
-    ("modules/*/*/README.org"
-     (left ("← Back to module index" . "doom-module-index:"))
-     (right ("↖ History"
-             . ,(lambda! (&key category module)
-                  (format "doom-module-history:%s/%s" (doom-keyword-name category) module)))
-            ("! Issues"
-             . ,(lambda! (&key category module)
-                  (format "doom-module-issues::%s %s" category module)))))))))
+          (replace-match (format-time-string "%Y") t t nil 1))))))

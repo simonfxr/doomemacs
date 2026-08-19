@@ -318,15 +318,26 @@ SEE ALSO:
   (defcli-alias! up upgrade)
   (defcli-alias! doc doctor)
 
-  (defcli-obsolete! (profiles sync) (profile sync "--all") "2.1.0")
-  (defcli-obsolete! ((build b)) (sync "--rebuild") "2.1.0")
-  (defcli-obsolete! ((purge p)) (gc) "2.1.0")
-  (defcli-obsolete! (run) (emacs) "2.1.0")
-
   (defcli-stub! module)
   (defcli-stub! nuke)
   (defcli-stub! package)
   (defcli-stub! rollback)
+
+  (defcli! run ()
+    "Project-local tasks (for build pipelines, CI/CD, etc).
+
+If this command has no sub-commands, it's because no enabled modules define any
+(did you remember to enable :doom cli?) or the current project doesn't define
+any from its .doom file or .doom.d directory.
+
+If you expected this command to launch Doom Emacs, that command was moved to
+'doom emacs' in v2.1.0."
+    :partial t)
+
+  ;; DEPRECATED: Backwards compatibility will be removed in v3.
+  (defcli-obsolete! (profiles sync) (profile sync "--all") "2.1.0")
+  (defcli-obsolete! ((build b)) (sync "--rebuild") "2.1.0")
+  (defcli-obsolete! ((purge p)) (gc) "2.1.0")
 
   (with-doom-context 'module
     (dolist (key (doom-module-list))

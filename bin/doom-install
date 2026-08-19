@@ -20,8 +20,7 @@
      &flags
      (config?  ("--config" :yes)  "Create `$DOOMDIR' or dummy files therein?")
      (envfile? ("--env")          "(Re)generate an envvars file? (see `$ doom help env`)")
-     (install? ("--install" :yes) "Auto-install packages?")
-     (hooks?   ("--hooks" :yes)   "Deploy Doom's git hooks to itself?"))
+     (install? ("--install" :yes) "Auto-install packages?"))
   "Installs and sets up Doom Emacs for the first time.
 
 This command does the following:
@@ -96,15 +95,6 @@ Change `$DOOMDIR' with the `--doomdir' option, e.g.
     (when aot?
       (after! straight
         (setq straight--native-comp-available t)))
-
-    (if (eq hooks? :no)
-        (print! (warn "Not deploying commit-msg and pre-push git hooks, as requested"))
-      (print! (start "Deploying commit-msg and pre-push git hooks"))
-      (print-group!
-        (condition-case e
-            (call! `(ci deploy-hooks ,@(if yes? '("--force"))))
-          (user-error
-           (print! (warn "%s") (error-message-string e))))))
 
     (if (eq install? :no)
         (print! (warn "Not installing plugins, as requested"))
