@@ -1,7 +1,7 @@
 ;; -*- mode: lisp-data -*-
 "3.0.0"
 ((name . doomemacs/core)
- (version . "2.2.2")
+ (version . "2.2.3")
  (homepage . "https://doomemacs.org")
 
  (commits (style doom) (scopes "cli" "lib" "docs"))

@@ -4,7 +4,7 @@
 :END:
 #+title:    Frequently Asked Questions
 #+subtitle: Answers to common issues and questions
-#+startup:  nonum show2levels*
+#+startup:  nonum show2levels
 
 #+begin_quote warning
 Read this documentation within Doom Emacs ([[M-x:doom/help]]) or online at

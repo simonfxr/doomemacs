@@ -97,6 +97,14 @@ Falls back to unicode icons, where specified, omitting icons otherwise.")
   "Face used for doom:* links."
   :group 'doom)
 
+(defface doom-docs-title '((t :inherit org-document-title :weight bold :height 1.4))
+  "Face used for #+TITLEs in `doom-docs-minor-mode'."
+  :group 'doom)
+
+(defface doom-docs-info '((t :inherit org-document-info :weight normal :height 1.15))
+  "Face used for #+SUBTITLE, #+DATE, #+AUTHOR, #+EMAIL in `doom-docs-minor-mode'."
+  :group 'doom)
+
 (defface doom-docs-symbol
   '((t :inherit font-lock-keyword-face
        :box (:line-width (-1 . -1) :color "grey35")))
@@ -133,6 +141,12 @@ Falls back to unicode icons, where specified, omitting icons otherwise.")
 
 (defface doom-docs-module '((t :inherit doom-docs-header-link :weight bold :underline nil))
   "Face used for links to enabled Doom modules in `doom-docs-mode'."
+  :group 'doom)
+
+(defface doom-docs-abbr
+  '((((background light)) :underline (:line-width 1 :color "grey65"))
+    (((background dark))  :underline (:line-width 1 :color "grey35")))
+  "Face used for abbreviations and definition lookup links."
   :group 'doom)
 
 
@@ -211,9 +225,12 @@ Passes PLIST to appropriate nerd-icons-* function."
   "Return the `org-element-context' at POS in BUFFER.
 
 Returns PROP if specified, the context otherwise."
-  (when-let* ((ctxt (with-current-buffer (or buffer (current-buffer))
-                      (when (eq major-mode 'doom-docs-mode)
-                        (org-element-context (org-element-at-point pos))))))
+  (when-let*
+      ((ctxt (with-current-buffer (if (bufferp buffer) buffer (current-buffer))
+               (when (eq major-mode 'doom-docs-mode)
+                 (save-excursion
+                   (goto-char pos)
+                   (org-element-context))))))
     (if prop
         (org-element-property prop ctxt)
       ctxt)))
@@ -536,12 +553,12 @@ This primes `org-mode' for reading."
           org-hide-macro-markers))
   (when doom-docs-minor-mode
     (make-local-variable 'doom-docs--initial-values))
-  (mapc (lambda! ((face . plist))
+  (mapc (lambda! ((face . newface))
           (if doom-docs-minor-mode
-              (push (apply #'face-remap-add-relative face plist) doom-docs--cookies)
+              (push (face-remap-add-relative face newface) doom-docs--cookies)
             (mapc #'face-remap-remove-relative doom-docs--cookies)))
-        '((org-document-title :weight bold :height 1.4)
-          (org-document-info  :weight normal :height 1.15)))
+        '((org-document-title . doom-docs-title)
+          (org-document-info  . doom-docs-info)))
   (mapc (lambda! ((mode . state))
           (if doom-docs-minor-mode
               (if (and (boundp mode) (symbol-value mode))
@@ -610,6 +627,7 @@ This primes `org-mode' for reading."
                 org-startup-numerated t
                 org-startup-indented t
                 org-startup-with-inline-images t
+                org-startup-folded 'show3levels
                 org-display-remote-inline-images 'cache
                 ;; Don't highlight LaTeX in Doom docs. We won't need it and it
                 ;; interferes with shell command snippets that may contain a $.
@@ -651,8 +669,7 @@ This primes `org-mode' for reading."
          (org-num-mode +1))
        (unless (or (bound-and-true-p org-inhibit-startup-visibility-stuff)
                    (not org-startup-folded))
-         (dlet ((org-startup-folded 'content)
-                org-cycle-hide-drawer-startup)
+         (dlet (org-cycle-hide-drawer-startup)
            (org-set-startup-visibility)))))
     (add-hook 'read-only-mode-hook #'doom-docs--toggle-read-only-h nil 'local)))
 
@@ -690,31 +707,32 @@ This primes `org-mode' for reading."
 ;;
 ;;; * Custom links
 
-(defun doom-docs-link-help-echo (_window object pos)
-  (when-let* ((context (doom-docs-context-at-pos pos object))
-              (target (doom-docs--get-link-description context))
-              (type (org-element-property :type context)))
-    (string-join
-     (delq
-      nil `(,(propertize
-              (if-let* ((name (org-link-get-parameter type :help-name)))
-                  (format "%s" (if (functionp name)
-                                   (funcall name target)
-                                 name))
-                "")
-              'face 'bold)
-            ,target
-            "::"
-            ,(when-let* ((label (org-link-get-parameter type :help-desc)))
-               (or (ignore-errors
-                     (car (split-string (if (functionp label)
-                                            (funcall label target)
-                                          label)
-                                        "\n")))
-                   (propertize "<unknown>" 'face 'font-lock-doc-face)))))
-     " ")))
+(defun doom-docs-link-help-echo (window object pos)
+  (with-selected-window window
+    (when-let* ((context (doom-docs-context-at-pos pos object))
+                (target (doom-docs--get-link-description context))
+                (type (org-element-property :type context)))
+      (string-join
+       (delq
+        nil `(,(propertize
+                (if-let* ((name (org-link-get-parameter type :help-name)))
+                    (format "%s" (if (functionp name)
+                                     (funcall name target)
+                                   name))
+                  "")
+                'face 'bold)
+              ,target
+              ,(when-let* ((label (org-link-get-parameter type :help-desc)))
+                 (concat
+                  ":: " (or (ignore-errors
+                              (car (split-string (if (functionp label)
+                                                     (funcall label target)
+                                                   label)
+                                                 "\n")))
+                            (propertize "<unknown>" 'face 'font-lock-doc-face))))))
+       " "))))
 
-(defun doom-docs-link-activate-func (beg end target _)
+(defun doom-docs-link-activate-func (beg end target bracket?)
   (when org-descriptive-links
     (let* ((context (org-element-context (org-element-at-point-no-context beg)))
            (desc (doom-docs--get-link-description context t)))
@@ -725,12 +743,13 @@ This primes `org-mode' for reading."
                       (icon (if (functionp icon) (funcall icon link) icon)))
             (add-text-properties beg (1+ beg) `(display ,(concat icon " ")))))
         (unless desc
-          (add-text-properties
-           (+ beg 2) (save-excursion
-                       (goto-char (+ beg 2))
-                       ;; Can't use :type because it could be aliased
-                       (+ 1 (point) (skip-chars-forward "^:" end)))
-           '(invisible t)))))))
+          (let ((offset (if bracket? 2 0)))
+            (add-text-properties
+             (+ beg offset) (save-excursion
+                              (goto-char (+ beg offset))
+                              ;; Can't use :type because it could be aliased
+                              (+ 1 (point) (skip-chars-forward "^:" end)))
+             '(invisible t intangible t cursor-intangible t))))))))
 
 
 ;;; ** kbd:*
@@ -767,12 +786,13 @@ This primes `org-mode' for reading."
                  ,(propertize (concat keystr (make-string total ?\s))
                               'face 'doom-docs-kbd))))))
 
-(defun doom-docs-link--kbd-help-echo (_window object pos)
-  (when-let* ((key (doom-docs--get-link-description
-                    (doom-docs-context-at-pos pos))))
-    (concat "Key sequence: "
-            (propertize (doom-docs-link--kbd key t)
-                        'face 'help-key-binding))))
+(defun doom-docs-link--kbd-help-echo (window object pos)
+  (with-selected-window window
+    (when-let* ((key (doom-docs--get-link-description
+                      (doom-docs-context-at-pos pos object))))
+      (concat "Key sequence: "
+              (propertize (doom-docs-link--kbd key t)
+                          'face 'help-key-binding)))))
 
 
 ;;; ** M-x:*
@@ -892,6 +912,58 @@ This primes `org-mode' for reading."
                                                     (point))))
         (org-show-entry)
         (recenter)))))
+
+
+;;; ** abbr:*
+
+(defvar doom-docs--abbr-cache nil
+  "Hash table mapping words to definitions and location.")
+
+(defun doom-docs--abbr-file ()
+  (doom-path doom-docs-dir "appendix.org"))
+
+(defun doom-docs--abbr-populate (&optional force?)
+  (or (and (not force?)
+           (hash-table-p doom-docs--abbr-cache))
+      (with-temp-buffer
+        (setq doom-docs--abbr-cache (make-hash-table :test 'equal))
+        (insert-file-contents (doom-docs--abbr-file))
+        (dlet ((org-inhibit-startup t))
+          (delay-mode-hooks (org-mode)))
+        (while (re-search-forward "^\\(- +\\)\\([^:]+\\):: *" nil t)
+          (let ((indent (string-width (match-string 1)))
+                (beg (match-beginning 1))
+                (words (match-string-no-properties 2))
+                (def (string-trim
+                      (buffer-substring-no-properties
+                       (match-end 0) (save-excursion (org-end-of-item) (point)))
+                      "\n" "\n")))
+            (unless (eolp)
+              (with-temp-buffer
+                (insert def)
+                (indent-rigidly (point-min) (point-max) (- indent))
+                (setq def (buffer-string))))
+            (dolist (word (split-string words ", "))
+              (puthash (downcase (string-trim word)) (cons def beg) doom-docs--abbr-cache))))
+        t)))
+
+(defun doom-docs-link--abbr-follow (target)
+  (doom-docs--abbr-populate)
+  (if-let* ((def (gethash (downcase target) doom-docs--abbr-cache)))
+      (let ((file (doom-docs--abbr-file)))
+        (with-current-buffer
+            (switch-to-buffer (or (get-file-buffer file)
+                                  (find-file-noselect file)))
+          (goto-char (cdr def))
+          (when (org-invisible-p (cdr def))
+            (org-reveal '(4)))))
+    (user-error "No appendix definition for %S" target)))
+
+(defun doom-docs-link--abbr-help-desc (target)
+  (doom-docs--abbr-populate)
+  (if-let* ((def (gethash (downcase target) doom-docs--abbr-cache)))
+      (car def)
+    (propertize "<No appendix definition for %S>" 'face 'warning)))
 
 
 ;;; ** Link abbrevs
@@ -1044,7 +1116,7 @@ This primes `org-mode' for reading."
                                           ((locate-library %) 'warning)
                                           ('error)))))
        :help-echo #'doom-docs-link-help-echo
-       :help-name "Emacs package"
+       :help-name "Emacs package:"
        :help-desc #'doom-docs-link--package-help-desc)
       (org-link-set-parameters
        "module"
@@ -1052,8 +1124,16 @@ This primes `org-mode' for reading."
        :face 'doom-docs-module
        :activate-func #'doom-docs-link-activate-func
        :help-echo #'doom-docs-link-help-echo
-       :help-name "Doom module"
+       :help-name "Doom module:"
        :help-desc #'doom-docs-link--module-help-desc)
+      (org-link-set-parameters
+       "abbr"
+       :follow #'doom-docs-link--abbr-follow
+       :face 'doom-docs-abbr
+       :activate-func #'doom-docs-link-activate-func
+       :help-echo #'doom-docs-link-help-echo
+       :help-name "Abbreviation:"
+       :help-desc #'doom-docs-link--abbr-help-desc)
 
       (setq doom-docs--link-parameters org-link-parameters))))
 
@@ -1093,11 +1173,12 @@ This primes `org-mode' for reading."
 
 ;;;###autoload
 (defun doom/reload-docs (&optional force?)
-  "Reload org ID locations in `doom-docs-mode' buffers.
+  "Reload org ID locations & appendix terms in `doom-docs-mode' buffers.
 
 If FORCE? is non-nil, do it even if they're already loaded."
   (interactive (list 'interactive))
-  (doom-docs--locations-load force? (doom-buffers-in-mode 'doom-docs-mode)))
+  (doom-docs--locations-load force? (doom-buffers-in-mode 'doom-docs-mode))
+  (doom-docs--abbr-populate force?))
 
 (provide 'doom-docs)
 ;;; doom-docs.el ends here

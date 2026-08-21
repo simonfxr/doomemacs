@@ -4,7 +4,7 @@
 :END:
 #+title:    Appendix
 #+subtitle: A glossary of (Doom) Emacs terms, acronyms, & concepts
-#+startup:  nonum show2levels*
+#+startup:  nonum
 
 * Glossary
 ** General :category:
