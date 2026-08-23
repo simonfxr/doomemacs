@@ -182,8 +182,8 @@ SEE ALSO:
   https://doomemacs.org               Homepage
   https://docs.doomemacs.org          Official documentation
   https://wiki.doomemacs.org          Community wiki
-  https://doomemacs.org/discuss       Github discussions & user support board
-  https://doomemacs.org/discord       Discord chat server"
+  https://discuss.doomemacs.org       Github discussions & user support board
+  https://discord.doomemacs.org       Discord chat server"
   :partial t)
 
 (defcli! :before
@@ -306,6 +306,15 @@ SEE ALSO:
                                  (doom-glob doom-emacs-dir "bin/doom-*"))
                      #'doom-loaddefs--scan-file nil (doom-emacs-dir "bin/"))
                   (provide 'doom-cli-loaddefs)))))
+
+  ;; Temporary measure allow doom-* sub-scripts to be executed independently.
+  (add-hook! 'doom-cli-before-run-functions
+    (defun doom-cli-loaddefs-delete-h (context)
+      (when (member (doom-cli-context-command context)
+                    '(("doom" "sync")
+                      ("doom" "upgrade")))
+        (doom-log "Deleting loaddefs file: %s" doom-cli-loaddefs-file)
+        (delete-file doom-cli-loaddefs-file))))
 
   ;; Eagerly load the two commands that should always be present. Running one of
   ;; these commands is required for the rest of the commands to work.

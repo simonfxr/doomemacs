@@ -4,6 +4,7 @@
 :END:
 #+title:    Appendix
 #+subtitle: A glossary of (Doom) Emacs terms, acronyms, & concepts
+#+filetags: nosearch
 #+startup:  nonum
 
 * Glossary

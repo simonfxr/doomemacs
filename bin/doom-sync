@@ -62,7 +62,6 @@ OPTIONS:
     during the execution of this command. Use --rebuild as well to do so for all
     packages."
   :benchmark t
-  (delete-file doom-cli-loaddefs-file)
   (when aot?
     (after! straight
       (setq straight--native-comp-available t)))

@@ -452,7 +452,7 @@ your shell environment into a file that is loaded when Doom Emacs starts up. Run
 
 For issue #2, you'll need to investigate your launcher. There are too many
 launchers write a walkthrough for, you'll have better luck asking about it on
-[[https://doomemacs.org/discord][our Discord]] or [[https://discourse.doomemacs.org][Discourse]].
+[[https://discord.doomemacs.org][our Discord]] or [[https://discuss.doomemacs.org][Github Discussions]].
 
 ** Changes to my config aren't taking effect
 1. Make sure you don't have both =~/.doom.d= and =~/.config/doom= directories.
@@ -678,7 +678,7 @@ I approve PRs in bulk, often days before merging them. This is done to:
 
 If your PR was approved, you only have to wait for Henrik to get off his
 glorious Canadian behind and merge it. If it's been a week or so with no
-progress, feel free to ping him in-thread or [[https://doomemacs.org/discord][on Discord]] (in the #contributing
+progress, feel free to ping him in-thread or [[https://discord.doomemacs.org][on Discord]] (in the #contributing
 channel).
 
 ** Why was my issue deleted or tagged "delete me"?
@@ -710,7 +710,7 @@ Some examples:
 - An issue that omits important information, like steps to reproduce or system
   information.
 - A post asking how to configure or use Emacs to achieve some effect (our issue
-  tracker is for bug reports, not support; ask on [[https://doomemacs.org/discord][Discord]] or [[https://discourse.doomemacs.org][Discourse]] instead).
+  tracker is for bug reports, not support; ask on [[https://discord.doomemacs.org][Discord]] or [[https://discourse.doomemacs.org][Discourse]] instead).
 - A convoluted and unfocused issue that present multiple issues in one.
 - A rude user that won't meet us half way and/or expects us to do all the work
   for them.

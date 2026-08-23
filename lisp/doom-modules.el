@@ -213,10 +213,11 @@ properties:
            (cons (doom-module-group key) (doom-module-name key)))
           ((doom-module-context-p key)
            (doom-module-context-key key))
-          ((car-safe key)
-           (if (nlistp (cdr-safe key))
-               key
-             (cons (car key) (cadr key))))
+          ((consp key)
+           (cond ((nlistp (cdr-safe key)) key)
+                 ;; Handle v3 keys
+                 ((> (length key) 2) (cons (cadr key) (caddr key)))
+                 ((cons (car key) (cadr key)))))
           ((signal 'wrong-type-argument
                    `((or doom-module doom-module-context cons) ,key)))))
 
@@ -435,6 +436,145 @@ MODULE-LOAD-PATH can be a list of module tree root directories or `t' (return
 all modules in all known sources, collapsed by precedence)."
     (declare (side-effect-free t))
     (mapcar #'doom-module-locate-path (doom-module-list module-load-path initorder?))))
+
+;;;###autoload
+(defun doom-module-key<-str (str)
+  "Parse a module key string into a module key.
+
+STR is a module key string is in the format \"[source ]:group category[
+[+flags...]]\".
+
+See `doom-module-key' for the format and documentation for module keys."
+  (cons t (mapcar #'intern (split-string str " " t))))
+
+;;;###autoload
+(defun doom-module-at-point (&optional fallback?)
+  "Return the module under point.
+
+Determines if the point is in a `doom!' block, a `modulep!' call, or returns the
+current file's containing module in the format of a list (SOURCE GROUP MODULE
+[FLAGS...])."
+  (cond ((save-excursion
+           (ignore-errors
+             (thing-at-point--beginning-of-sexp)
+             (unless (eq (char-after) ?\()
+               (backward-char))
+             (let ((sexp (sexp-at-point)))
+               (and (eq (car-safe sexp) 'modulep!)
+                    (cons t (cdr sexp)))))))
+        ((and buffer-file-name
+              (file-equal-p buffer-file-name (doom-user-dir "init.el")))
+         (save-excursion
+           (let ((origin (point))
+                 (syntax (syntax-ppss)))
+             (when (and (> (ppss-depth syntax) 0)
+                        (not (ppss-string-terminator syntax)))
+               (let ((parens (ppss-open-parens syntax))
+                     (doom-depth 1))
+                 (while (and parens (progn (goto-char (car parens))
+                                           (not (looking-at "(doom!\\_>"))))
+                   (setq parens (cdr parens)
+                         doom-depth (1+ doom-depth)))
+                 (when parens ;; Are we inside a `doom!' block?
+                   (goto-char origin)
+                   (let* ((doom-start (car parens))
+                          (bare-symbol
+                           (if (ppss-comment-depth syntax)
+                               (= (save-excursion (beginning-of-thing 'list)) doom-start)
+                             (null (cdr parens))))
+                          (sexp-start (if bare-symbol
+                                          (beginning-of-thing 'symbol)
+                                        (or (cadr parens) (beginning-of-thing 'list))))
+                          (match-start nil))
+                     (goto-char sexp-start)
+                     (while (and (not match-start)
+                                 (re-search-backward
+                                  "\\_<:\\(?:\\sw\\|\\s_\\)+\\_>" ;; Find a keyword.
+                                  doom-start 'noerror))
+                       (unless (looking-back "(" (pos-bol))
+                         (let ((kw-syntax (syntax-ppss)))
+                           (when (and (= (ppss-depth kw-syntax) doom-depth)
+                                      (not (ppss-string-terminator kw-syntax))
+                                      (not (ppss-comment-depth kw-syntax)))
+                             (setq match-start (point))))))
+                     (when match-start
+                       (let (category module flag)
+                         ;; `point' is already at `match-start'.
+                         (setq category (symbol-at-point))
+                         (goto-char origin)
+                         (if bare-symbol
+                             (setq module (symbol-at-point))
+                           (let ((symbol (symbol-at-point))
+                                 (head (car (list-at-point))))
+                             (if (and (symbolp head) (not (keywordp head))
+                                      (not (eq head symbol)))
+                                 (setq module head
+                                       flag symbol)
+                               (setq module symbol))))
+                         (list t category module flag))))))))))
+        ((and fallback? buffer-file-name)
+         (when-let* ((mod (doom-module-from-path buffer-file-name)))
+           (append (list t (car mod) (cdr mod))
+                   (doom-module-get mod :flags))))))
+
+;; DEPRECATED: Will be replaced in v3.
+(let ((cache (make-hash-table :test 'equal)))
+  (defun doom-module--summary (key)
+    "Return the #+SUBTITLE for a module with KEY."
+    (with-memoization (gethash key cache)
+      (let ((docs "<no summary>")
+            (readme (doom-module-expand-path (cons (cadr key) (caddr key)) "README.org")))
+        (when (and (stringp readme) (file-exists-p readme))
+          (with-temp-buffer
+            (insert-file-contents readme nil 0 512)
+            (save-match-data
+              (when (re-search-forward "^#\\+subtitle: +\\(.+\\)$" nil t)
+                (setq docs (match-string-no-properties 1))))))
+        docs))))
+
+(defun doom-module--annotate (cand)
+  "Generic annotator for `doom-module' completion candidates."
+  (when-let* ((key (doom-module-key<-str cand))
+              (desc (doom-module--summary key)))
+    (let ((state (doom-module-active-p (cadr key) (caddr key))))
+      (concat (propertize " " 'display '(space :align-to 30))
+              (propertize (format "%3s" (if state "on" "off"))
+                          'face (if state 'success 'shadow))
+              "   "
+              (propertize desc 'face 'completions-annotations)))))
+
+;;;###autoload
+(defun doom-module-completing-read (prompt)
+  "Prompts to select a module from the list all available modules.
+
+PROMPT is the message to display when prompting (see `completing-read').
+
+Returns a module key in the (SOURCE GROUP MODULE) format, where SOURCE and
+MODULE are symbols and GROUP is a keyword."
+  (when-let*
+      ((modules (doom-module-list 'all))
+       (choice (completing-read
+                prompt
+                (let ((cands (cl-loop for (grp . mod) in modules
+                                      unless (and (eq grp :user) (null mod))
+                                      collect (if mod
+                                                  (format "%s %s" grp mod)
+                                                (format "%s" grp))))
+                      (sortfn (fn! (sort % #'string-lessp))))
+                  (lambda (str pred action)
+                    (if (eq action 'metadata)
+                        `(metadata
+                          (category . doom-module)
+                          (annotation-function . doom-module--annotate)
+                          (display-sort-function . ,sortfn)
+                          (cycle-sort-function . ,sortfn))
+                      (complete-with-action action cands str pred))))
+                nil t nil nil
+                (when-let* ((key (doom-module-at-point t)))
+                  (format-spec "%g %m"
+                               `((?g . ,(nth 1 key))
+                                 (?m . ,(or (nth 2 key) ""))))))))
+    (doom-module-key<-str choice)))
 
 
 ;;; ** doom-module-context

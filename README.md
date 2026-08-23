@@ -9,7 +9,7 @@
 ![Latest commit](https://img.shields.io/github/last-commit/doomemacs/core?style=flat-square)
 <!-- ![Build status: master](https://img.shields.io/github/workflow/status/doomemacs/core/CI/master?style=flat-square) -->
 [![Discord Server](https://img.shields.io/discord/406534637242810369?color=738adb&label=Discord&logo=discord&logoColor=white&style=flat-square)][discord]
-[![Discussions board](https://img.shields.io/github/discussions/doomemacs/community?label=Discussions&logo=github&style=flat-square)][discuss]
+[![Github Discussions](https://img.shields.io/github/discussions/doomemacs/community?label=Discussions&logo=github&style=flat-square)][discuss]
 
 ![Doom Emacs Screenshot](https://raw.githubusercontent.com/doomemacs/core/screenshots/main.png)
 
@@ -220,8 +220,8 @@ kind!
 
 
 [contribute]: docs/contributing.org
-[discord]: https://doomemacs.org/discord
-[discuss]: https://doomemacs.org/discuss
+[discord]: https://discord.doomemacs.org
+[discuss]: https://discuss.doomemacs.org
 [community-faq]: https://github.com/doomemacs/community?tab=readme-ov-file#frequently-asked-questions
 [documentation]: docs/index.org
 [faq]: https://github.com/doomemacs/core/blob/master/docs/faq.org
