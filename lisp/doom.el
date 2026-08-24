@@ -74,12 +74,11 @@
                                         load-file-name)))
 
   ;; Doom core will support Emacs 27.1+ for a *long* time, but the official
-  ;; module libraries require 29.1+. Also keep in mind that certain modules may
-  ;; have stricter requirements (e.g. tree-sitter needs 29.1+).
+  ;; module libraries require 29.1+.
   (when (< emacs-major-version 27)
     (user-error
      (concat
-      "Detected Emacs " emacs-version ", but Doom requires 27.1 or newer (30.2 is\n\n"
+      "Detected Emacs " emacs-version ", but Doom requires 27.1 or newer (31.1 is\n\n"
       "recommended). The current Emacs executable in use is:\n\n  " (car command-line-args)
       "\n\nA guide for installing a newer version of Emacs can be found at:\n\n  "
       (format "https://docs.doomemacs.org/-/install/%s"

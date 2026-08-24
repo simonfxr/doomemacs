@@ -5,7 +5,7 @@
 #
 #   nix-shell --argstr emacsdir ~/.config/emacs \
 #             --argstr doomdir ~/.config/doom \
-#             --argstr emacs 30.2 \
+#             --argstr emacs 31.1 \
 #             --arg modules '[ ./modules/lang/ruby ./modules/lang/go ]'
 #
 # Supported emacs versions:

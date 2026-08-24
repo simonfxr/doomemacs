@@ -7,6 +7,12 @@
 #+filetags: nosearch
 #+startup:  nonum
 
+#+begin_quote warning :hide yes
+Read this documentation within Doom Emacs ([[M-x:doom/help]]) or online at
+https://docs.doomemacs.org. It may be rendered incorrectly anywhere else (e.g.
+Github).
+#+end_quote
+
 * Glossary
 ** General :category:
 - Calendar Version, Calendar Versioning :: See https://calver.org.
