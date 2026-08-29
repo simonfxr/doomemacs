@@ -52,6 +52,13 @@
     ("doom-root"    . doom-docs--link-root)
     ("doom-up"      . doom-docs--link-up)
 
+    ("doom-home" . "https://doomemacs.org/")
+    ("doom-wiki" . "https://wiki.doomemacs.org/")
+    ("doom-docs" . "https://docs.doomemacs.org/")
+    ("doom-git" . "https://git.doomemacs.org/")
+    ("doom-discuss" . "https://discuss.doomemacs.org/")
+    ("doom-discord" . "https://discord.doomemacs.org/")
+
     ("doom-contrib-edit"       . "id:31f5a61d-d505-4ee8-9adb-97678250f4e2")
     ("doom-contrib-faq"        . "id:aa28b732-0512-49ed-a47b-f20586c0f051")
     ("doom-contrib-core"       . "id:9ac0c15c-29e7-43f8-8926-5f0edb1098f0")
@@ -258,13 +265,6 @@ Returns PROP if specified, the context otherwise."
 
 ;;; ** Navbar
 
-(defvar doom-docs--header-link-keymap
-  (let ((km (make-sparse-keymap)))
-    (define-key km [header-line mouse-2] #'doom-docs--open-header-link)
-    (define-key km [mouse-2] #'doom-docs--open-header-link)
-    (define-key km [follow-link] 'mouse-face)
-    km))
-
 (defun doom-docs--file-type (&optional dir)
   (let ((dir (or dir default-directory))
         key)
@@ -277,13 +277,17 @@ Returns PROP if specified, the context otherwise."
 
 (defun doom-docs--make-header-link (link)
   (cl-destructuring-bind (label target . icons) link
-    (propertize
-     (doom-docs--icon icons label :height 0.6)
-     'face 'doom-docs-header-link
-     'doom-docs-link target
-     'keymap doom-docs--header-link-keymap
-     'help-echo target
-     'mouse-face 'highlight)))
+    (let ((map (make-sparse-keymap)))
+      (define-key map [header-line mouse-2] #'doom-docs--open-header-link)
+      (define-key map [mouse-2] #'doom-docs--open-header-link)
+      (define-key map [follow-link] 'mouse-face)
+      (propertize
+       (doom-docs--icon icons label :height 0.6)
+       'face 'doom-docs-header-link
+       'doom-docs-link target
+       'keymap map
+       'help-echo target
+       'mouse-face 'highlight))))
 
 (defun doom-docs--make-header (type)
   "Create a header string for the current buffer."
@@ -300,7 +304,7 @@ Returns PROP if specified, the context otherwise."
       (when (memq (car type) '(module group))
         (push (list "Issues" "doom-issues:" "nf-md-flag") rhs)
         (push (list "History" "doom-history:" "nf-md-history") rhs))
-      (push (list "Suggest edits" "doom-contrib-edits:" "nf-md-account_edit" "✎") rhs)
+      (push (list "Suggest edits" "doom-contrib-edit:" "nf-md-account_edit" "✎") rhs)
       (push (list "Help" "doom-help:" "nf-md-timeline_help_outline" "🗎") rhs))
     (let ((left  (mapconcat #'doom-docs--make-header-link (reverse lhs) "  "))
           (right (mapconcat #'doom-docs--make-header-link (reverse rhs) "  ")))
@@ -317,39 +321,44 @@ Returns PROP if specified, the context otherwise."
 (defun doom-docs--open-header-link (ev)
   "Open the header link which is the target of the event EV."
   (interactive "e")
-  (let* ((string-and-pos (posn-string (event-start ev)))
-         (docs-buf (window-buffer (posn-window (event-start ev))))
-         (linkstr (concat "[[" (get-pos-property (cdr string-and-pos)
-                                                 'doom-docs-link
-                                                 (car string-and-pos))
-                          "]]")))
-    (with-temp-buffer
-      (with-silent-modifications
-        (setq buffer-file-name (buffer-file-name docs-buf))
-        (setq-local org-link-abbrev-alist-local
-                    (buffer-local-value 'org-link-abbrev-alist-local docs-buf))
-        (with-silent-modifications (insert linkstr))
-        (let ((org-inhibit-startup t))
-          (doom-docs-mode))
-        (goto-char (point-min))
-        (pcase (org-element-link-parser)
-          (`nil (user-error "No valid link in %S" link))
-          ((and link (guard (not (equal (org-element-end link) (1+ (length linkstr))))))
-           (user-error "Garbage after link in %S (%S)"
-                       linkstr (substring linkstr (1- (org-element-end link)))))
-          (link (org-link-open link)))
-        (org-show-subtree)))))
+  (with-delayed-gc!
+    (let* ((string-and-pos (posn-string (event-start ev)))
+           (window (posn-window (event-start ev)))
+           (buffer (window-buffer (posn-window (event-start ev))))
+           (linkstr (concat "[[" (get-pos-property (cdr string-and-pos)
+                                                   'doom-docs-link
+                                                   (car string-and-pos))
+                            "]]")))
+      (pcase (with-temp-buffer
+               (setq buffer-file-name (buffer-file-name buffer))
+               (with-silent-modifications
+                 (let ((org-inhibit-startup t)
+                       org-mode-hook
+                       doom-docs-mode-hook)
+                   (doom-docs-mode))
+                 (save-excursion (insert linkstr))
+                 (org-element-link-parser)))
+        (`nil (user-error "No valid link in %S" link))
+        ((and link (guard (not (equal (org-element-end link) (1+ (length linkstr))))))
+         (user-error "Garbage after link in %S (%S)"
+                     linkstr (substring linkstr (1- (org-element-end link)))))
+        (link (with-selected-window window
+                (org-link-open link)
+                (org-show-entry)
+                (org-show-children)))))))
 
 (defvar doom-docs--type nil)
 (defun doom-docs--display-menu-h ()
   "Toggle virtual menu line at top of buffer."
   (setq header-line-format
-        (and buffer-read-only
+        (and doom-docs-view-mode
              (doom-docs--make-header
               (or doom-docs--type
                   (setq-local doom-docs--type
                               (doom-docs--file-type default-directory))))))
-  (add-hook 'window-state-change-hook #'doom-docs--display-menu-h nil t))
+  (if doom-docs-view-mode
+      (add-hook 'window-state-change-hook #'doom-docs--display-menu-h nil 'local)
+    (remove-hook 'window-state-change-hook #'doom-docs--display-menu-h 'local)))
 
 
 ;;; ** Transformer functions
@@ -450,9 +459,7 @@ Returns PROP if specified, the context otherwise."
               (results (if src? (org-babel-where-is-src-block-result))))
          (save-excursion
            (when (and src?
-                      (if (stringp exports)
-                          (member exports '("results" "both"))
-                        org-export-use-babel)
+                      (member exports '("results" "both"))
                       (not results)
                       doom-docs-view-mode)
              (cl-pushnew beg doom-docs--block-cache :test #'=)
@@ -541,7 +548,8 @@ Returns PROP if specified, the context otherwise."
     (mixed-pitch-mode . -1)
     (variable-pitch-mode . -1)
     (indent-bars-mode . -1)
-    (org-appear-mode . -1))
+    (org-appear-mode . -1)
+    (diff-hl-mode . -1))
   "An alist of minor modes to toggle with `doom-docs-view-mode'.
 
 The CAR is the minor mode symbol, and CDR should be +1 to enable the mode during
@@ -598,7 +606,9 @@ This primes `org-mode' for reading."
         '(org-pretty-entities
           org-descriptive-links
           org-hide-emphasis-markers
-          org-hide-macro-markers))
+          org-hide-macro-markers
+          ;; Don't prompt to "create headings" on broken links
+          org-link-search-must-match-exact-headline))
   (if doom-docs-view-mode
       (add-hook 'read-only-mode-hook #'doom-docs--turn-off-view-mode-h nil 'local)
     (remove-hook 'read-only-mode-hook #'doom-docs--turn-off-view-mode-h 'local)))
@@ -687,7 +697,7 @@ This primes `org-mode' for reading."
                                   org-link-plain-re
                                   org-link-bracket-re
                                   org-link-any-re))
-    (setq-local org-link-parameters (copy-sequence doom-docs--link-parameters))
+    (setq-local org-link-parameters (mapcar #'copy-sequence doom-docs--link-parameters))
     (org-link-make-regexps)
     (if (featurep 'org-element) (org-element-update-syntax))
 
@@ -838,13 +848,14 @@ This primes `org-mode' for reading."
 
 ;;; ** M-x:*
 
-(defun doom-docs-link--M-x-activate-func (beg end target _)
+(defun doom-docs-link--M-x-activate-func (beg end target bracketed?)
   (when org-descriptive-links
     (let ((context (org-element-context (org-element-at-point-no-context beg))))
       (unless (doom-docs--get-link-description context t)
-        (add-text-properties
-         (+ beg 2 3) (+ beg 2 4)
-         '(display " "))))))
+        (let ((offset (if bracketed? 2 0)))
+          (add-text-properties
+           (+ beg offset 3) (+ beg offset 4)
+           '(display " ")))))))
 
 
 ;;; ** repo:*
@@ -951,7 +962,7 @@ This primes `org-mode' for reading."
                                             (substring (symbol-name flag) 1))
                                     (save-excursion (org-get-next-sibling)
                                                     (point))))
-        (org-show-entry)
+        (org-show-subtree)
         (recenter)))))
 
 
@@ -1003,8 +1014,15 @@ This primes `org-mode' for reading."
 (defun doom-docs-link--abbr-help-desc (target)
   (doom-docs--abbr-populate)
   (if-let* ((def (gethash (downcase target) doom-docs--abbr-cache)))
-      (car def)
+      (replace-regexp-in-string org-link-any-re "\\3" (car def))
     (propertize "<No appendix definition for %S>" 'face 'warning)))
+
+
+;;; ** filter:*
+
+(defun doom-docs-link--filter-follow (match)
+  (and (org-tags-sparse-tree nil match)
+       (message "Filtered to: %s" target)))
 
 
 ;;; ** Link abbrevs
@@ -1104,6 +1122,11 @@ This primes `org-mode' for reading."
                           'org-link
                         '(:inherit (error org-link) :underline nil))))
       (org-link-set-parameters "elisp" :face 'link-visited)
+      (org-link-set-parameters
+       "filter"
+       :follow #'doom-docs-link--filter-follow
+       :activate-func #'doom-docs-link-activate-func
+       :face 'link-visited)
 
       (org-link-set-parameters
        "var"
@@ -1284,7 +1307,7 @@ documentation.
                 (when (memq (get-char-property (line-end-position) 'invisible)
                             '(outline org-fold-outline))
                   (org-show-hidden-entry)))))
-        (doom-project-browse dir)))))
+        (doom-project-browse (file-name-as-directory dir))))))
 
 ;;;###autoload
 (defun doom/docs-news (&optional interactive?)
@@ -1296,12 +1319,6 @@ documentation.
               (apply #'format "v%d.%d.org" (seq-take (version-to-list doom-version) 2))
               t)
              interactive?))
-
-;;;###autoload
-(defun doom/docs-faq (&optional interactive?)
-  "Visit Doom's project FAQ."
-  (interactive '(interactive))
-  (doom/docs (doom-path doom-docs-dir "faq.org") interactive?))
 
 ;;;###autoload
 (defun doom/docs-search (&optional initial-input)
@@ -1391,7 +1408,8 @@ documentation.
       (when pos
         (goto-char pos)
         (when (doom-docs--invisible-p (point))
-          (org-show-subtree))))))
+          (org-show-entry)
+          (org-show-children))))))
 
 (provide 'doom-docs)
 ;;; doom-docs.el ends here

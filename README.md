@@ -216,6 +216,22 @@ kind!
   [liberapay] or [paypal]. My work contends with studies, adventures in indie
   gamedev and freelance work. Donations help me allocate more time to my Emacs
   and OSS capers.
+  
+## LLM Policy
+
+Generative AI is not used in the development of this project (except to test,
+debug, and improve [LLM
+modules](https://github.com/doomemacs/modules/tree/main/modules/tools/llm)).
+LLM-generated (or assisted) contributions are **highly** discouraged, but
+tolerated so long as they meet the following criteria:
+
+1. LLM-generated contributions are small,
+2. LLM-use is disclosed,
+3. [Issue](https://github.com/doomemacs/.github/blob/main/.github/ISSUE_TEMPLATE/bug_report.yml) and [pull request](https://github.com/doomemacs/.github/blob/main/.github/PULL_REQUEST_TEMPLATE.md) templates are followed (it is disruptive when LLMs omit key information and AI disclosures, or follow arbitrary heading structures),
+4. A human responds to reviews and questions.
+
+Failing that, related issues/PRs will be immediately closed and refused with
+notice. Repeat offenders will be banned.
 
 
 [contribute]: docs/contributing.org
