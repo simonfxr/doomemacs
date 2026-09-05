@@ -444,12 +444,15 @@ TRIGGER-HOOK is a list of quoted hooks and/or sharp-quoted functions."
                            ;; internally). In that case assume this hook was
                            ;; invoked non-interactively.
                            (and (boundp hook)
-                                (symbol-value hook)))
-                       (or (null predicate)
-                           (funcall predicate)))
-              (setq running? t)  ; prevent infinite recursion
-              (doom-run-hooks hook-var)
-              (set hook-var nil))))
+                                (symbol-value hook))))
+              ;; The predicate or hooks could change the active buffer, breaking
+              ;; `after-find-file' (doomemacs/core#8884).
+              (save-current-buffer
+                (when (or (null predicate)
+                          (funcall predicate))
+                  (setq running? t)  ; prevent infinite recursion
+                  (doom-run-hooks hook-var)
+                  (set hook-var nil))))))
       (when (daemonp)
         ;; In a daemon session we don't need all these lazy loading shenanigans.
         ;; Just load everything immediately.
@@ -654,7 +657,7 @@ The def* forms accepted are:
   (setq body (macroexp-progn body))
   (when (memq (car bindings) '(defun defun* defun! defmacro defadvice))
     (setq bindings (list bindings)))
-  (dolist (binding (nreverse bindings) body)
+  (dolist (binding (reverse bindings) body)
     (setq
      body (pcase binding
             (`(defmacro . ,rest) `(cl-macrolet (,rest) ,body))
@@ -1005,7 +1008,7 @@ incompatibilities in the alist format.
                              (if f
                                  (signal 'doom-core-error
                                          `(config missing-version ,path))
-                               (setq v doom-version)))
+                               (setq v (doom-version))))
                            (cons
                             v (doom-config--normalize
                                type v (if (listp f) (eval `(backquote ,f) t)))))
@@ -1113,16 +1116,26 @@ to reverse this and trigger `after!' blocks at a more reasonable time."
     `(progn
        (cl-callf2 delq ',feature features)
        (defadvice! ,advice-fn (&rest _)
+         ,(format (concat "Defers `%s' until on of these functions are called:\n\n"
+                          "%s\n\n"
+                          "Created by `defer-feature!'.")
+                  ',feature ',fns)
          :before ',fns
-         ;; Some plugins (like yasnippet) will invoke a fn early to parse
-         ;; code, which would prematurely trigger this. In those cases, well
-         ;; behaved plugins will use `delay-mode-hooks', which we can check for:
+         ;; Some plugins (like yasnippet) will invoke a fn early to parse code,
+         ;; which would prematurely trigger this. In those cases, well behaved
+         ;; plugins will use `delay-mode-hooks', which we can check for:
          (unless delay-mode-hooks
-           ;; ...Otherwise, announce to the world this package has been loaded,
-           ;; so `after!' handlers can react.
-           (provide ',feature)
-           (dolist (fn ',fns)
-             (advice-remove fn #',advice-fn)))))))
+           (unwind-protect
+               (unless (featurep ',feature)
+                 ;; If anything in `after-load-functions' or `after-load-alist'
+                 ;; changes the current buffer, it could break the function
+                 ;; being advised and cause unexpected errors.
+                 (save-current-buffer
+                   ;; ...Otherwise, announce to the world this package has been
+                   ;; loaded, so `after!' handlers can react.
+                   (provide ',feature)))
+             (dolist (fn ',fns)
+               (advice-remove fn #',advice-fn))))))))
 
 
 ;;; ** Hooks

@@ -81,6 +81,9 @@
 
 Falls back to unicode icons, where specified, omitting icons otherwise.")
 
+(defvar doom-docs-enable-view-mode t
+  "If non-nil, activate `doom-docs-view-mode' when entering `doom-docs-mode'.")
+
 (defvar doom-docs--id-locations nil)
 (defvar doom-docs--id-files nil)
 (defvar doom-docs--id-location-file (doom-profile-cache-dir t "doom-docs-org-ids"))
@@ -94,64 +97,54 @@ Falls back to unicode icons, where specified, omitting icons otherwise.")
 (defface doom-docs-header-link
   '((((background light)) :foreground "black" :weight bold)
     (((background dark))  :foreground "white" :weight bold))
-  "Face used for buttons in the header line."
-  :group 'doom)
+  "Face used for buttons in the header line.")
 
 (defface doom-docs-link '((t :inherit org-link :underline nil))
-  "Face used for doom:* links."
-  :group 'doom)
+  "Face used for doom:* links.")
 
 (defface doom-docs-title '((t :inherit org-document-title :weight bold :height 1.4))
-  "Face used for #+TITLEs in `doom-docs-view-mode'."
-  :group 'doom)
+  "Face used for #+TITLEs in `doom-docs-view-mode'.")
 
 (defface doom-docs-info '((t :inherit org-document-info :weight normal :height 1.15))
-  "Face used for #+SUBTITLE, #+DATE, #+AUTHOR, #+EMAIL in `doom-docs-view-mode'."
-  :group 'doom)
+  "Face used for #+SUBTITLE, #+DATE, #+AUTHOR, #+EMAIL in `doom-docs-view-mode'.")
 
 (defface doom-docs-symbol
   '((t :inherit font-lock-keyword-face
        :box (:line-width (-1 . -1) :color "grey35")))
-  "Face used for all symbol links (var, func, cmd, face) in `doom-docs-mode'."
-  :group 'doom)
+  "Face used for all symbol links (var, func, cmd, face) in `doom-docs-mode'.")
 
 (defface doom-docs-variable '((t :inherit doom-docs-symbol))
-  "Face used for links to elisp variables in `doom-docs-mode'."
-  :group 'doom)
+  "Face used for links to elisp variables in `doom-docs-mode'.")
 
 (defface doom-docs-function '((t :inherit doom-docs-symbol))
-  "Face used for links to elisp functions in `doom-docs-mode'."
-  :group 'doom)
+  "Face used for links to elisp functions in `doom-docs-mode'.")
 
 (defface doom-docs-face '((t :inherit doom-docs-symbol))
-  "Face used for links to elisp face symbols in `doom-docs-mode'."
-  :group 'doom)
+  "Face used for links to elisp face symbols in `doom-docs-mode'.")
 
 (defface doom-docs-command '((t :inherit doom-docs-symbol))
-  "Face used for links to interactive elisp commands in `doom-docs-mode'."
-  :group 'doom)
+  "Face used for links to interactive elisp commands in `doom-docs-mode'.")
 
 (defface doom-docs-kbd '((t :inherit help-key-binding))
-  "Face used for links to Emacs key sequences in `doom-docs-mode'."
-  :group 'doom)
+  "Face used for links to Emacs key sequences in `doom-docs-mode'.")
 
 (defface doom-docs-repo '((t :inherit doom-docs-link :weight bold))
-  "Face used for repo: links in `doom-docs-mode'."
-  :group 'doom)
+  "Face used for repo: links in `doom-docs-mode'.")
 
 (defface doom-docs-package '((t :inherit package-name :weight bold :underline nil))
-  "Face used for links to Emacs packages in `doom-docs-mode'."
-  :group 'doom)
+  "Face used for links to Emacs packages in `doom-docs-mode'.")
 
 (defface doom-docs-module '((t :inherit doom-docs-header-link :weight bold :underline nil))
-  "Face used for links to enabled Doom modules in `doom-docs-mode'."
-  :group 'doom)
+  "Face used for links to enabled Doom modules in `doom-docs-mode'.")
+
+(defface doom-docs-shell-command
+  '((t :inherit (org-code org-block fixed-pitch) :weight bold))
+  "Face used to highlight shell commands in `doom-docs-mode'.")
 
 (defface doom-docs-abbr
   '((((background light)) :underline (:line-width 1 :color "grey65"))
     (((background dark))  :underline (:line-width 1 :color "grey35")))
-  "Face used for abbreviations and definition lookup links."
-  :group 'doom)
+  "Face used for abbreviations and definition lookup links.")
 
 
 ;;
@@ -261,6 +254,69 @@ Returns PROP if specified, the context otherwise."
       (let ((id (org-id-new)))
         (org-id-add-location id fname)
         id))))
+
+
+;;; ** Backwards-compatible link previews
+
+(defun doom-docs--link-asset-follow (path _)
+  (find-file (doom-docs--link-asset-download path)))
+
+(defun doom-docs--link-asset-download (path)
+  "Return a local file for asset PATH, downloading URLs into the cache."
+  (if (string-match-p "\\`https?://" path)
+      (let* ((cache-dir (doom-cache-dir "doom-docs"))
+             (cache-file (doom-path cache-dir (md5 path))))
+        (unless (file-exists-p cache-file)
+          (make-directory cache-dir t)
+          (dlet ((recentf-exclude '(always))
+                 (projectile-enable-caching nil))
+            (url-copy-file path cache-file)))
+        cache-file)
+    (expand-file-name path doom-docs-dir)))
+
+(defun doom-docs--link-asset-image (path link)
+  "Return an image object for asset PATH, or nil."
+  (let ((file
+         (with-demoted-errors "Asset error: %s"
+           (doom-docs--link-asset-download path))))
+    (when (and file (file-exists-p file))
+      (if (fboundp 'org--create-inline-image)
+          (org--create-inline-image
+           file (and (fboundp 'org-display-inline-image--width)
+                     (org-display-inline-image--width link)))
+        (create-image file nil nil :max-width (window-body-width nil t))))))
+
+;; For Org 9.6-9.8
+(defun doom-docs--org-display-inline-images-a (&optional _ _ beg end)
+  "Advice for `org-display-inline-images' to display previews of asset:* links."
+  (when (display-graphic-p)
+    (org-with-point-at (or beg (point-min))
+      (let ((end (or end (point-max))))
+        (while (re-search-forward "\\[\\[asset:" end t)
+          (let ((link (save-match-data (org-element-context))))
+            (when (and (eq (org-element-type link) 'link)
+                       (equal (org-element-property :type link) "asset")
+                       (not (get-char-property (point) 'org-image-overlay)))
+              (let ((ov (make-overlay
+                         (org-element-property :begin link)
+                         (- (org-element-property :end link)
+                            (or (org-element-property :post-blank link) 0)))))
+                (if-let* ((img (doom-docs--link-asset-image
+                                (org-element-property :path link) link)))
+                    (progn
+                      (overlay-put ov 'display img)
+                      (overlay-put ov 'org-image-overlay t)
+                      (overlay-put ov 'modification-hooks '(org-display-inline-remove-overlay))
+                      (push ov org-inline-image-overlays))
+                  (overlay-put ov 'display (propertize "<image not found>" 'face 'error)))))))))))
+
+;; For Org 9.8+
+(defun doom-docs--link-asset-preview (ov path link)
+  "Preview function for asset: links (Org 9.8+ API).
+Put the image on OV and return non-nil; returning nil deletes OV."
+  (when-let* ((img (doom-docs--link-asset-image path link)))
+    (overlay-put ov 'display img)
+    t))
 
 
 ;;; ** Navbar
@@ -728,21 +784,23 @@ This primes `org-mode' for reading."
       ;; docs with read-only mode off don't need to be pretty.
       (when (bound-and-true-p org-modern-mode)
         (org-modern-mode -1))
-      (doom-docs--locations-load nil (list (current-buffer))))))
-
-;;;###autoload
-(defun doom-docs-view-mode-h ()
-  "Activate `read-only-mode' if the current file exists and is non-empty."
-  ;; The rationale: if it's empty or non-existant, you want to write an org
-  ;; file, not read it.
-  (let ((file-name (buffer-file-name (buffer-base-buffer))))
-    (when (and file-name
-               (> (buffer-size) 0)
-               (not (string-prefix-p "." (file-name-base file-name)))
-               (file-exists-p file-name))
-      (doom-docs-view-mode +1))))
-
-(add-hook 'doom-docs-mode-hook #'doom-docs-view-mode-h)
+      (when (bound-and-true-p spell-fu-faces-exclude)
+        (setq-local spell-fu-faces-exclude
+                    (append spell-fu-faces-exclude
+                            '(doom-docs-shell-command doom-docs-variable
+                              doom-docs-function doom-docs-face
+                              doom-docs-command doom-docs-kbd doom-docs-repo
+                              doom-docs-package doom-docs-module))))
+      (doom-docs--locations-load nil (list (current-buffer)))
+      (when doom-docs-enable-view-mode
+        (let ((file-name (buffer-file-name (buffer-base-buffer))))
+          ;; The rationale: if it's empty or non-existant, you want to write an
+          ;; org file, not read it.
+          (when (and file-name
+                     (> (buffer-size) 0)
+                     (not (string-prefix-p "." (file-name-base file-name)))
+                     (file-exists-p file-name))
+            (doom-docs-view-mode +1)))))))
 
 
 ;;
@@ -778,11 +836,12 @@ This primes `org-mode' for reading."
     (let* ((context (org-element-context (org-element-at-point-no-context beg)))
            (desc (doom-docs--get-link-description context t)))
       (when-let* ((link (or (if (string-empty-p target) desc) target)))
-        (when buffer-read-only
-          (when-let* ((type (org-element-property :type context))
-                      (icon (org-link-get-parameter type :activate-icon))
-                      (icon (if (functionp icon) (funcall icon link) icon)))
-            (add-text-properties beg (1+ beg) `(display ,(concat icon " ")))))
+        (if-let* ((buffer-read-only)
+                  (type (org-element-property :type context))
+                  (icon (org-link-get-parameter type :activate-icon))
+                  (icon (if (functionp icon) (funcall icon link) icon)))
+            (add-text-properties beg (1+ beg) `(display ,(concat icon " ")))
+          (remove-text-properties beg (1+ beg) '(display t)))
         (unless desc
           (let ((offset (if bracket? 2 0))
                 tagend)
@@ -813,29 +872,45 @@ This primes `org-mode' for reading."
                                   "C-u"))
                  ("<help>" . "C-h")
                  ,@(when user-friendly?
-                     '(("\\<M-" . "Meta-")
+                     '(("RET" . "Return")
+                       ("SPC" . "Space")
+                       ("\\<M-" . "Meta-")
                        ("\\<S-" . "Shift-")
                        ("\\<s-" . "super-")
-                       ("\\<C-" . "Ctrl-"))))
+                       ("\\<C-" . "Ctrl-")))
+                 ("\\[" . "[")
+                 ("\\]" . "]"))
                keystr)
     (setq keystr
           (replace-regexp-in-string (car key) (cdr key)
                                     keystr t t))))
 
-(defun doom-docs-link--kbd-activate (beg end key _)
-  (when buffer-read-only
-    (let* ((context (doom-docs-context-at-pos beg))
-           (key (doom-docs--get-link-description context))
-           (keystr (doom-docs-link--kbd key))
-           (total (max 0 (- (string-width key)
-                            (string-width keystr)))))
-      (add-text-properties
-       (if (string-empty-p (org-element-property :path context))
-           beg
-         (+ beg 3 (string-width (org-element-property :type context))))
-       end `(display
-             ,(propertize (concat keystr (make-string total ?\s))
-                          'face 'doom-docs-kbd))))))
+(defun doom-docs-link--kbd-follow (key)
+  (message "%s %s"
+           (propertize "Key sequence:" 'face 'bold)
+           (doom-docs-link--kbd key t)))
+
+(defun doom-docs-link--kbd-activate-func (beg end key _bracketed?)
+  (if (not org-descriptive-links)
+      (remove-text-properties beg end '(display nil))
+    ;; Hide kbd:
+    (add-text-properties
+     beg (save-excursion
+           (goto-char beg)
+           (skip-chars-forward "^:" end)
+           (1+ (point)))
+     `(invisible t intangible t cursor-intangible t))
+    ;; Resolve keybinds in str:
+    (when buffer-read-only
+      (let ((keystr (doom-docs-link--kbd key)))
+        (add-text-properties
+         beg end `(display
+                   ,(propertize
+                     (concat keystr
+                             (make-string (max 0 (- (string-width key)
+                                                    (string-width keystr)))
+                                          ?\s))
+                     'face 'doom-docs-kbd)))))))
 
 (defun doom-docs-link--kbd-help-echo (window object pos)
   (with-selected-window window
@@ -848,14 +923,16 @@ This primes `org-mode' for reading."
 
 ;;; ** M-x:*
 
-(defun doom-docs-link--M-x-activate-func (beg end target bracketed?)
-  (when org-descriptive-links
-    (let ((context (org-element-context (org-element-at-point-no-context beg))))
-      (unless (doom-docs--get-link-description context t)
-        (let ((offset (if bracketed? 2 0)))
-          (add-text-properties
-           (+ beg offset 3) (+ beg offset 4)
-           '(display " ")))))))
+(defun doom-docs-link--M-x-activate-func (beg end _target _bracketed?)
+  (let ((pt (save-excursion (goto-char beg)
+                            (skip-chars-forward "^:" end)
+                            (point))))
+    (if (or (not org-descriptive-links)
+            (doom-docs--get-link-description
+             (org-element-context (org-element-at-point-no-context beg))
+             t))
+        (remove-text-properties pt (1+ pt) '(display nil))
+      (add-text-properties pt (1+ pt) '(display " ")))))
 
 
 ;;; ** repo:*
@@ -1129,6 +1206,18 @@ This primes `org-mode' for reading."
        :face 'link-visited)
 
       (org-link-set-parameters
+       "sh"
+       :activate-func #'doom-docs-link-activate-func
+       :face 'doom-docs-shell-command)
+
+      (org-link-set-parameters "asset" :follow #'doom-docs--link-asset-follow)
+      (if (fboundp 'org-link-preview)
+          ;; Org 9.8+
+          (org-link-set-parameters "asset" :preview #'doom-docs--link-asset-preview)
+        ;; Org 9.6 – 9.8+
+        (advice-add #'org-display-inline-images :after #'doom-docs--org-display-inline-images-a))
+
+      (org-link-set-parameters
        "var"
        :follow (call #'describe-variable)
        :face 'doom-docs-variable
@@ -1174,8 +1263,9 @@ This primes `org-mode' for reading."
        :help-desc (fn! (function-documentation (intern-soft %))))
       (org-link-set-parameters
        "kbd"
+       :follow #'doom-docs-link--kbd-follow
        :face 'doom-docs-kbd
-       :activate-func #'doom-docs-link--kbd-activate
+       :activate-func #'doom-docs-link--kbd-activate-func
        :help-echo #'doom-docs-link--kbd-help-echo)
       (org-link-set-parameters
        "repo"
@@ -1262,17 +1352,21 @@ If FORCE? is non-nil, do it even if they're already loaded."
   (doom-docs--abbr-populate force?))
 
 ;;;###autoload
-(defun doom/docs (&optional file interactive?)
+(defun doom/docs (&optional file)
   "View Doom's documentation FILE.
 
 If the prefix arg is set, open docs.doomemacs.org instead.
 
-\(fn &optional FILE INTERACTIVE?)"
-  (interactive '(nil interactive))
-  (if current-prefix-arg
-      (browse-url "https://docs.doomemacs.org")
-    (doom-docs-find-file (or file (doom-path doom-docs-dir "index.org"))
-                         (if interactive? "Loading Doom manual..."))))
+\(fn &optional FILE)"
+  (interactive)
+  (doom-docs-find-file (or file (doom-path doom-docs-dir "index.org"))
+                       "Loading Doom manual..."))
+
+;;;###autoload
+(defun doom/docs-find-file (&optional file)
+  "Browse `doom-docs-dir'."
+  (interactive (list (read-file-name "Find docs file: " doom-docs-dir "index.org" t)))
+  (doom-docs-find-file file "Loading Doom docs file..."))
 
 ;;;###autoload
 (defun doom/docs-module (key &optional visit-dir?)
@@ -1316,7 +1410,7 @@ documentation.
   (interactive '(interactive))
   (doom/docs (read-file-name
               "Select version: " (doom-path doom-docs-dir "news/")
-              (apply #'format "v%d.%d.org" (seq-take (version-to-list doom-version) 2))
+              (apply #'format "v%d.%d.org" (seq-take (version-to-list (doom-version)) 2))
               t)
              interactive?))
 

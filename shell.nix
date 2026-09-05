@@ -76,6 +76,8 @@ let
                 "30.1" = (getNixpkgs "25.05").emacs;
                 "30.2" = (getNixpkgs "nixos-25.05-small").emacs;
                 "30"   = (getNixpkgs "nixos-25.05-small").emacs;
+                "31.1" = (getNixpkgs "c0d33601291021def122a8b45e77c3c7e5eb9320").emacs31;
+                "31"   = (getNixpkgs "c0d33601291021def122a8b45e77c3c7e5eb9320").emacs31;
                 "head" = pkgs.emacsGit;
                 "ci-26.1" = pkgs.emacs-26-1;
                 "ci-26.2" = pkgs.emacs-26-2;

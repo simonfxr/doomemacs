@@ -228,10 +228,13 @@ tolerated so long as they meet the following criteria:
 1. LLM-generated contributions are small,
 2. LLM-use is disclosed,
 3. [Issue](https://github.com/doomemacs/.github/blob/main/.github/ISSUE_TEMPLATE/bug_report.yml) and [pull request](https://github.com/doomemacs/.github/blob/main/.github/PULL_REQUEST_TEMPLATE.md) templates are followed (it is disruptive when LLMs omit key information and AI disclosures, or follow arbitrary heading structures),
-4. A human responds to reviews and questions.
+4. Your `M-x doom/info` must be uploaded as a file, not published as text in the issue/PR.[^1]
+5. A human responds to reviews and questions.
 
 Failing that, related issues/PRs will be immediately closed and refused with
 notice. Repeat offenders will be banned.
+
+[^1]: A file-upload is used because `doom-info`s are filled with keywords that pollute search engine results and make issues harder for users/maintainers to find.
 
 
 [contribute]: docs/contributing.org

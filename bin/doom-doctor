@@ -56,23 +56,19 @@ in."
 
   (print! (start "Checking your Emacs version..."))
   (print-group!
-    (when (or (> emacs-major-version 31)
-              (string-match-p ".\\([56]0\\|9[0-9]\\)$" emacs-version))
-      (warn! "Detected a development build of Emacs (%s)" emacs-version)
-      (if (> emacs-major-version 31)
-          (explain! "This is the bleeding edge of Emacs and is inherently unstable.\n")
-        (explain! "A version that ends in .50, .60, or .9X indicates a pre-release build of Emacs "
-                  "in between stable releases. Doom does not officially support them.\n"))
-      (explain! "If you encounter issues, make extra sure that your issue is reproducible on "
-                "a stable version of Emacs (between 27.1–31.1) before reporting them to Doom's "
-                "issue tracker! Check out the \"Why does Doom not support Emacs HEAD\" QnA "
-                "in Doom's FAQ for common issues and debugging."))
+    (when (nth 2 (version-to-list emacs-version))
+      (warn! "Detected a development/pre-release build of Emacs (%s)" emacs-version)
+      (explain! "Any version with more than 2 components in their version string (e.g. ending "
+                "in X.X.50, X.X.60, or X.X.9X) indicates a pre-release or bleeding-edge build "
+                "of Emacs. They may be unstable and Doom does not officially support them.\n\n"
+                "If you encounter issues, please make sure that your issue is reproducible on "
+                "a stable version of Emacs before reporting them!"))
 
-    (when (and (version= emacs-version "29.4") (featurep 'pgtk))
-      (warn! "Detected emacs-pgtk 29.4!")
-      (explain! "If you are experiencing segfaults (crashes), consider downgrading to 29.3 or "
-                "upgrading to 30.1+. A known bug in 29.4 causes intermittent crashes. "
-                "See doomemacs#7915 for details.")))
+      (when (and (version= emacs-version "29.4") (featurep 'pgtk))
+        (warn! "Detected emacs-pgtk 29.4!")
+        (explain! "If you are experiencing segfaults (crashes), consider downgrading to 29.3 or "
+                  "upgrading to 30.1+. A known bug in 29.4 causes intermittent crashes. "
+                  "See doomemacs/core#7915 for details.")))
 
   (print! (start "Checking for Doom's prerequisites..."))
   (print-group!
@@ -225,7 +221,7 @@ in."
         (doom-startup)
         (require 'straight)
 
-        (print! (success "Initialized Doom Emacs %s") doom-version)
+        (print! (success "Initialized Doom Emacs %s") (doom-version))
         (print!
          (if (hash-table-p doom-modules)
              (success "Detected %d modules" (hash-table-count doom-modules))

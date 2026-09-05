@@ -2547,7 +2547,7 @@ OPTIONS:
   -s, --short
     Only show the version number for Doom Core."
   (if short?
-      (print! "%s" doom-version)
+      (print! "%s" (doom-version))
     (doom/version)
     (terpri)
     (with-temp-buffer

@@ -264,7 +264,7 @@ ready to be pasted in a bug report on github."
                                   (substring emacs-repository-version 0 9))
                              (format "EMACSDIR=%s" (symlink-path doom-emacs-dir))
                              (format "EMACS=%s" (expand-file-name invocation-name invocation-directory)))))
-        (doom . ,(list doom-version
+        (doom . ,(list (doom-version)
                        (format "PROFILE=%s" (doom-profile->id (doom-profile-key doom-profile t)))
                        (if (file-exists-p! ".git" doom-emacs-dir)
                            (sh "git" "log" "-1" "--format=%D %h %ci")
@@ -407,7 +407,7 @@ FILL-COLUMN determines the column at which lines will be broken."
     (princ (format fmt "emacs" emacs-version
                    (and (stringp emacs-repository-version)
                         (substring emacs-repository-version 0 9))))
-    (princ (format fmt "doom" doom-version (gitinfo doom-emacs-dir)))
+    (princ (format fmt "doom" (doom-version) (gitinfo doom-emacs-dir)))
     (dolist (dir (cddr doom-module-load-path))
       (princ (format fmt
                      (or (doom-config `(,dir modules name))

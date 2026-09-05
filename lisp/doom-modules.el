@@ -448,74 +448,76 @@ See `doom-module-key' for the format and documentation for module keys."
   (cons t (mapcar #'intern (split-string str " " t))))
 
 ;;;###autoload
-(defun doom-module-at-point (&optional fallback?)
-  "Return the module under point.
+(defun doom-module-at-point ()
+  "Return the key of the module at point.
 
-Determines if the point is in a `doom!' block, a `modulep!' call, or returns the
-current file's containing module in the format of a list (SOURCE GROUP MODULE
-[FLAGS...])."
-  (cond ((save-excursion
-           (ignore-errors
-             (thing-at-point--beginning-of-sexp)
-             (unless (eq (char-after) ?\()
-               (backward-char))
-             (let ((sexp (sexp-at-point)))
-               (and (eq (car-safe sexp) 'modulep!)
-                    (cons t (cdr sexp)))))))
-        ((and buffer-file-name
-              (file-equal-p buffer-file-name (doom-user-dir "init.el")))
-         (save-excursion
-           (let ((origin (point))
-                 (syntax (syntax-ppss)))
-             (when (and (> (ppss-depth syntax) 0)
-                        (not (ppss-string-terminator syntax)))
-               (let ((parens (ppss-open-parens syntax))
-                     (doom-depth 1))
-                 (while (and parens (progn (goto-char (car parens))
-                                           (not (looking-at "(doom!\\_>"))))
-                   (setq parens (cdr parens)
-                         doom-depth (1+ doom-depth)))
-                 (when parens ;; Are we inside a `doom!' block?
-                   (goto-char origin)
-                   (let* ((doom-start (car parens))
-                          (bare-symbol
-                           (if (ppss-comment-depth syntax)
-                               (= (save-excursion (beginning-of-thing 'list)) doom-start)
-                             (null (cdr parens))))
-                          (sexp-start (if bare-symbol
-                                          (beginning-of-thing 'symbol)
-                                        (or (cadr parens) (beginning-of-thing 'list))))
-                          (match-start nil))
-                     (goto-char sexp-start)
-                     (while (and (not match-start)
-                                 (re-search-backward
-                                  "\\_<:\\(?:\\sw\\|\\s_\\)+\\_>" ;; Find a keyword.
-                                  doom-start 'noerror))
-                       (unless (looking-back "(" (pos-bol))
-                         (let ((kw-syntax (syntax-ppss)))
-                           (when (and (= (ppss-depth kw-syntax) doom-depth)
-                                      (not (ppss-string-terminator kw-syntax))
-                                      (not (ppss-comment-depth kw-syntax)))
-                             (setq match-start (point))))))
-                     (when match-start
-                       (let (category module flag)
-                         ;; `point' is already at `match-start'.
-                         (setq category (symbol-at-point))
-                         (goto-char origin)
-                         (if bare-symbol
-                             (setq module (symbol-at-point))
-                           (let ((symbol (symbol-at-point))
-                                 (head (car (list-at-point))))
-                             (if (and (symbolp head) (not (keywordp head))
-                                      (not (eq head symbol)))
-                                 (setq module head
-                                       flag symbol)
-                               (setq module symbol))))
-                         (list t category module flag))))))))))
-        ((and fallback? buffer-file-name)
-         (when-let* ((mod (doom-module-from-path buffer-file-name)))
-           (append (list t (car mod) (cdr mod))
-                   (doom-module-get mod :flags))))))
+The key is in the format (SOURCE GROUP MODULE [FLAG]) and is deduced from the
+arguments of the surrounding `doom!' or `modulep!' call. In `modulep!', all its
+arguments are processed into a module key. In `doom!', it depends on what the
+cursor is on (see demos).
+
+The key is a list of the form (SOURCE GROUP MODULE [FLAGS...])."
+  (with-syntax-table emacs-lisp-mode-syntax-table
+    (save-excursion
+      (save-match-data
+        (let* ((parse-sexp-ignore-comments t)
+               (origin (point))
+               (re (format "(%s\\_>" (regexp-opt '("doom!" "modulep!") t)))
+               (start (cl-find-if (fn! (goto-char %) (looking-at re))
+                                  (reverse (ppss-open-parens (syntax-ppss))))))
+          (pcase (and start (match-string-no-properties 1))
+            ("modulep!"
+             (goto-char start)
+             (when-let* ((args (cdr (ignore-errors (read (current-buffer))))))
+               (if (keywordp (car args))
+                   (cons t args)
+                 ;; Only flags were given, e.g. (modulep! +lsp): the group and
+                 ;; module are implied by the surrounding file.
+                 (when-let* ((mod (doom-module-from-path
+                                   (or buffer-file-name default-directory))))
+                   (append (list t (car mod) (cdr mod)) args)))))
+            ("doom!"
+             (goto-char origin)
+             (forward-line 0)
+             (skip-chars-forward " \t")
+             (let ((commented? (looking-at ";"))
+                   ;; Where this line's code begins, past any comment markers.
+                   (code (progn (skip-chars-forward "; \t") (point))))
+               (setq origin (max origin code))
+               ;; If point is in a trailing comment, snap it back to the code
+               ;; before it.
+               (when (search-forward ";" origin t)
+                 (skip-chars-backward "; \t")
+                 (setq origin (1- (point))))
+               (save-restriction
+                 ;; A commented-out line is parsed in isolation, so unbalanced
+                 ;; junk in it can't affect the rest of the form.
+                 (when commented? (narrow-to-region code (pos-eol)))
+                 (let* ((state (parse-partial-sexp (if commented? code (1+ start)) origin))
+                        ;; The (MODULE FLAGS...) list around point, if any.
+                        ;; `parse-partial-sexp' has left point at ORIGIN.
+                        (entry (car (ppss-open-parens state)))
+                        (sym (symbol-at-point))
+                        (beg (cond (commented? (pos-bol))
+                                   (entry)
+                                   ((car (bounds-of-thing-at-point 'symbol)))
+                                   (origin)))
+                        (module (if entry
+                                    (ignore-errors (goto-char (1+ entry)) (read (current-buffer)))
+                                  (unless (keywordp sym) sym)))
+                        (flag (and entry (not (eq sym module)) sym)))
+                   (widen)
+                   ;; Walk back over sibling sexps and comments to the group
+                   ;; keyword. Comment lines are only inspected, never parsed.
+                   (goto-char beg)
+                   (ignore-errors
+                     (while (not (looking-at "[; \t]*:"))
+                       (unless (forward-comment -1)
+                         (goto-char (scan-sexps (point) -1)))))
+                   (when (looking-at "[; \t]*:")
+                     (skip-chars-forward "; \t")
+                     (append (list t (symbol-at-point))
+                             (delq nil (list module flag))))))))))))))
 
 ;; DEPRECATED: Will be replaced in v3.
 (let ((cache (make-hash-table :test 'equal)))
@@ -570,10 +572,12 @@ MODULE are symbols and GROUP is a keyword."
                           (cycle-sort-function . ,sortfn))
                       (complete-with-action action cands str pred))))
                 nil t nil nil
-                (when-let* ((key (doom-module-at-point t)))
+                (when-let* ((key (or (doom-module-at-point)
+                                     (doom-module-from-path (or buffer-file-name default-directory))))
+                            (key (doom-module-key key)))
                   (format-spec "%g %m"
-                               `((?g . ,(nth 1 key))
-                                 (?m . ,(or (nth 2 key) ""))))))))
+                               `((?g . ,(car key))
+                                 (?m . ,(or (cdr key) ""))))))))
     (doom-module-key<-str choice)))
 
 

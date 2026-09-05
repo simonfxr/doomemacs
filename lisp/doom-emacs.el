@@ -119,12 +119,13 @@ Hide the mode line if it is shown, and show it if it's hidden."
 (defcustom doom-theme nil
   "What theme (or themes) to load at startup.
 
-Is either a symbol representing the name of an Emacs theme, or a list thereof
-(to enable in order).
+Is either a symbol representing the name of an Emacs theme, or a cons cell in
+the format of (DARK-THEME . LIGHT-THEME). At startup, Doom tries to determine if
+the system is in dark mode (see `doom--dark-mode-p' for its methods).
 
 Set to `nil' to load no theme at all. This variable is changed by `load-theme'
 and `enable-theme'."
-  :type '(choice symbol (repeat symbol))
+  :type '(choice symbol (cons symbol symbol))
   :group 'doom)
 
 (defcustom doom-font nil
@@ -1008,7 +1009,9 @@ If this is a daemon session, load them all immediately instead."
 
 (defun doom-run-switch-buffer-hooks-h (&optional _)
   "Trigger `doom-switch-buffer-hook' when selecting a new buffer."
-  (with-delayed-gc! (run-hooks 'doom-switch-buffer-hook)))
+  (unless (or (minibufferp)
+              (eq (window-old-buffer) (current-buffer)))
+    (with-delayed-gc! (run-hooks 'doom-switch-buffer-hook))))
 
 (defun doom-run-switch-window-hooks-h (&optional _)
   "Trigger `doom-switch-window-hook' when selecting a window in the same frame."
@@ -1164,9 +1167,46 @@ windows, switch to `doom-fallback-buffer'. Otherwise, delegate to original
     (run-hooks 'after-setting-font-hook))
   (put 'doom-font 'initialized t))
 
+(defun doom--dark-mode-p ()
+  "Return non-nil if the OS is in dark-mode."
+  (cond ((featurep :system 'macos)
+         (if (boundp 'ns-system-appearance)
+             (eq ns-system-appearance 'dark)
+           (let ((cmd "tell app \"System Events\" to tell appearance preferences to return (dark mode as text)")
+                 (true "true")
+                 (gui? (display-graphic-p)))
+             (string-equal
+              (cond ((and gui? (fboundp 'mac-do-applescript))
+                     (setq true "\"true\"")
+                     (ignore-errors (mac-do-applescript cmd)))
+                    ((and gui? (fboundp 'ns-do-applescript))
+                     (ignore-errors (ns-do-applescript cmd)))
+                    ((string-trim (shell-command-to-string
+                                   (format "osascript -e '%s'" cmd)))))
+              true))))
+        ((fboundp 'w32-read-registry)
+         (eq 0 (w32-read-registry
+                'HKCU
+                "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize"
+                "AppsUseLightTheme")))
+        ((and (featurep :system 'linux)
+              (require 'dbus nil t))
+         (eq 1 (car-safe (flatten-list
+                          (dbus-call-method
+                           :session "org.freedesktop.portal.Desktop"
+                           "/org/freedesktop/portal/desktop"
+                           "org.freedesktop.portal.Settings" "Read"
+                           "org.freedesktop.appearance" "color-scheme")))))
+        ((doom-log 1 "Failed to determine if system is in dark mode")
+         nil)))
+
 (defun doom-init-theme-h (&rest _)
   "Load the theme specified by `doom-theme' in FRAME."
-  (dolist (th (ensure-list doom-theme))
+  (when-let* ((th (if (consp doom-theme)
+                      (if (doom--dark-mode-p)
+                          (car doom-theme)
+                        (cdr doom-theme))
+                    doom-theme)))
     (unless (custom-theme-enabled-p th)
       (if (custom-theme-p th)
           (enable-theme th)
@@ -1219,7 +1259,9 @@ them as such. Also intended as a helper for `doom--theme-is-colorscheme-p'."
         ;; HACK: If the user uses `load-theme' in their $DOOMDIR instead of
         ;;   setting `doom-theme', override the latter, because they shouldn't
         ;;   be using both.
-        (unless (memq theme (ensure-list doom-theme))
+        (unless (or (eq doom-theme theme)
+                    (eq doom-theme (car-safe theme))
+                    (eq doom-theme (cdr-safe theme)))
           (setq-default doom-theme theme))))))
 
 (add-hook! 'after-make-frame-functions :depth -90
@@ -1555,8 +1597,10 @@ with `set-indent-vars!'."
                            cursor-face-highlight-mode
                            (doom-temp-buffer-p b)
                            (minibufferp)))))
-              ;; Don't display line highlights in non-focused windows, for
-              ;; performance sake and to reduce UI clutter.
+              ;; Per-window line highlights is more performant than other
+              ;; settings for `global-hl-line-sticky-flag', because it uses
+              ;; `pre-redisplay-functions' and per-window overlays instead of
+              ;; `post-command-hook' and per-buffer overlays.
               global-hl-line-sticky-flag 'window)
       ;; HACK: `global-hl-line-buffers' wasn't introduced until 31.1, so I
       ;;   reimplement it for `global-hl-line-modes', so we have a major mode
@@ -1647,17 +1691,15 @@ with `set-indent-vars!'."
 
   ;; PERF: Text properties inflate the size of recentf's files, and there is no
   ;;   reason to persist them (must be first in `recentf-filename-handlers'!)
-  (add-to-list 'recentf-filename-handlers #'substring-no-properties)
+  ;; DEPRECATED: Remove when 30.x support is dropped
+  ;;   (see emacs-mirror/emacs@6b901a8e8598)
+  (when (< emacs-major-version 31)
+    (add-to-list 'recentf-filename-handlers #'substring-no-properties))
 
   ;; UX: Reorder the recent files list by frecency (i.e. every time you touch a
   ;;   buffer, bump it to the top of the list).
-  (add-hook! '(doom-switch-window-hook write-file-functions)
-    (defun doom--recentf-touch-buffer-h ()
-      "Bump file in recent file list when it is switched or written to."
-      (when buffer-file-name
-        (recentf-add-file buffer-file-name))
-      ;; Return nil for `write-file-functions'
-      nil))
+  (add-hook! '(doom-switch-buffer-hook doom-switch-window-hook)
+             #'recentf-track-opened-file)
   (add-hook! 'dired-mode-hook
     (defun doom--recentf-add-dired-directory-h ()
       "Add dired directories to recentf file list."
@@ -1689,19 +1731,26 @@ with `set-indent-vars!'."
         savehist-additional-variables
         '(kill-ring                        ; persist clipboard
           register-alist                   ; persist macros
-          mark-ring global-mark-ring       ; persist marks
           search-ring regexp-search-ring)) ; persist searches
   (add-hook! 'savehist-save-hook
     (defun doom-savehist-unpropertize-variables-h ()
-      "Remove text properties from `kill-ring' to reduce savehist cache size."
-      (setq kill-ring
-            (mapcar #'substring-no-properties
-                    (cl-remove-if-not #'stringp kill-ring))
-            register-alist
-            (cl-loop for (reg . item) in register-alist
-                     if (stringp item)
-                     collect (cons reg (substring-no-properties item))
-                     else collect (cons reg item))))
+      "Strip text properties from vars to reduce size and serialization errors."
+      (letf! (defun* strip-properties (tree)
+               (cond ((stringp tree) (substring-no-properties tree))
+                     ((consp tree)
+                      (let* ((head (cons nil nil))
+                             (tail head))
+                        (while (consp tree)
+                          (setcdr tail (list (strip-properties (car tree))))
+                          (setq tail (cdr tail)
+                                tree (cdr tree)))
+                        (if tree (setcdr tail tree))  ; preserve dotted tails
+                        (cdr head)))
+                     (tree)))
+        (dolist (var (append savehist-additional-variables
+                             savehist-minibuffer-history-variables))
+          (when (boundp var)
+            (set var (strip-properties (symbol-value var)))))))
     (defun doom-savehist-remove-unprintable-registers-h ()
       "Remove unwriteable registers (e.g. containing window configurations).
 Otherwise, `savehist' would discard `register-alist' entirely if we don't omit
@@ -1733,12 +1782,14 @@ the unwritable tidbits."
     :before-while #'save-place-find-file-hook
     (bobp))
 
-  (defadvice! doom--dont-prettify-saveplace-cache-a (fn)
-    "`save-place-alist-to-file' uses `pp' to prettify the contents of its cache.
+  ;;; DEPRECATED: Drop with 30.x support (emacs-mirror/emacs@c270402).
+  (when (< emacs-major-version 31)
+    (defadvice! doom--dont-prettify-saveplace-cache-a (fn)
+      "`save-place-alist-to-file' uses `pp' to prettify the contents of its cache.
 `pp' can be expensive for longer lists, and there's no reason to prettify cache
 files, so this replace calls to `pp' with the much faster `prin1'."
-    :around #'save-place-alist-to-file
-    (letf! ((#'pp #'prin1)) (funcall fn))))
+      :around #'save-place-alist-to-file
+      (letf! ((#'pp #'prin1)) (funcall fn)))))
 
 
 ;;;###package so-long
