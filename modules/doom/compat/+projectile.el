@@ -77,10 +77,10 @@ Must end with a slash.")
   (setq compilation-buffer-name-function #'projectile-compilation-buffer-name
         compilation-save-buffers-predicate #'projectile-current-project-buffer-p)
 
-  ;; HACK: Centralize Projectile's per-project cache files, so they don't litter
-  ;;   projects with dotfiles.
-  (defadvice! doom--projectile-centralized-cache-files-a (fn &optional proot)
-    :around #'projectile-project-cache-file
+  (define-advice projectile-project-cache-file
+      (:around (fn &optional proot) centralize-cache-file)
+    "Write per-project cache files to a centralized location.
+This is to prevent littering projects with additional dotfiles."
     (let* ((proot (or proot (doom-project-root) default-directory))
            (projectile-cache-file
             (expand-file-name
@@ -88,32 +88,33 @@ Must end with a slash.")
              doom-project-cache-dir)))
       (funcall fn proot)))
 
-  ;; HACK: `projectile-ensure-project' operates on the current value of
-  ;;   `projectile-known-projects' when prompting the using for a project, which
-  ;;   may not have been initialized yet, so do so the first time it is called.
   ;; REVIEW: PR this upstream
-  (defadvice! doom--projectile-update-known-projects-a (dir)
-    :before #'projectile-ensure-project
+  (define-advice projectile-ensure-project (:before (dir) update-known-projects)
+    "To ensure `projectile-known-projects' is populated before it is used.
+
+`projectile-ensure-project' may be called before projectile has loaded its list
+of known projects, causing some project-listing/switching commands to report no
+known projects."
     (unless dir
       (when (and (eq projectile-require-project-root 'prompt)
                  (not projectile-known-projects))
         (projectile-known-projects))
       (advice-remove 'projectile-ensure-project #'doom--projectile-update-known-projects-a)))
 
-  ;; Support the more generic .project files as an alternative to .projectile
-  (defadvice! doom--projectile-dirconfig-file-a ()
-    :override #'projectile-dirconfig-file
+  (define-advice projectile-dirconfig-file (:override () support-dotproject-file)
+    "Support a more generic .project file as an alternative to .projectile."
     (let ((proot (projectile-project-root)))
       (cond ((file-exists-p! (or projectile-dirconfig-file ".project") proot))
             ((expand-file-name ".project" proot)))))
 
-  ;; HACK: `projectile-files-to-ensure' binds `default-directory' to the result
-  ;;   of `projectile-project-root', which returns nil when called from a buffer
-  ;;   outside of a project, poisoning the entire downstream call chain with a
-  ;;   wrong-type-argument error.
-  ;; REVIEW: Remove if/when resolved upstream.
-  (defadvice! doom--projectile-files-to-ensure-a ()
-    :override #'projectile-files-to-ensure
+  ;; REVIEW: PR this upstream
+  (define-advice projectile-files-to-ensure (:override (&rest _) fix-in-non-projects)
+    "Fix type error if executed in a non-project context.
+
+`projectile-files-to-ensure' binds `default-directory' to the result of
+`projectile-project-root', which returns nil when called from a buffer outside
+of a project, poisoning the entire downstream call chain with a
+wrong-type-argument error."
     (let ((default-directory (or (projectile-project-root) default-directory)))
       (flatten-tree (mapcar #'file-expand-wildcards
                             (projectile-patterns-to-ensure)))))
@@ -130,13 +131,12 @@ Must end with a slash.")
     (setenv "MSYS_NO_PATHCONV" "1") ; Fix path in Git Bash
     (setenv "MSYS2_ARG_CONV_EXCL" "--path-separator")) ; Fix path in MSYS2
 
-  ;; HACK: Don't rely on VCS-specific commands to generate our file lists.
-  ;;   That's 7 commands to maintain, versus the more generic, reliable, and
-  ;;   performant `fd' or `ripgrep'.
-  (defadvice! doom--only-use-generic-command-a (fn vcs &optional directory)
+  (define-advice projectile-get-ext-command (:around (fn vcs &optional directory) use-generic-command)
     "Only use `projectile-generic-command' for indexing project files.
-And if it's a function, evaluate it."
-    :around #'projectile-get-ext-command
+
+And if it's a function, evaluate it. Ensures that we don't rely on VCS-specific
+commands to generate our file lists. That's 7 commands to maintain, versus the
+more generic, consistent, reliable, and performant `fd' or `ripgrep'."
     (let ((default-directory (or directory default-directory)))
       (if (and (functionp projectile-generic-command)
                (not (file-remote-p default-directory)))
@@ -197,15 +197,15 @@ And if it's a function, evaluate it."
            ((not doom--system-windows-p) "find . -type f | cut -c3- | tr '\\n' '\\0'")
            ("find . -type f -print0"))))
 
-  (defadvice! doom--projectile-default-generic-command-a (fn &rest args)
-    "If projectile can't tell what kind of project you're in, it issues an error
-when using many of projectile's command, e.g. `projectile-compile-command',
-`projectile-run-project', `projectile-test-project', and
-`projectile-configure-project', for instance.
+  (define-advice projectile-default-generic-command
+      (:around (fn &rest args) suppress-error)
+    "Suppress error so compile/test/run/configure commands fail gracefully.
 
-This suppresses the error so these commands will still run, but prompt you for
-the command instead."
-    :around #'projectile-default-generic-command
+If projectile can't tell what kind of project you're in, it issues an error when
+using many of projectile's command, e.g. `projectile-compile-command',
+`projectile-run-project', `projectile-test-project', and
+`projectile-configure-project', for instance. This makes them gracefully prompt
+you, instead."
     (ignore-errors (apply fn args)))
 
   (projectile-mode +1))
