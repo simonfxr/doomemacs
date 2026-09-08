@@ -1458,7 +1458,9 @@ documentation.
                   `(:level ,level
                     :title ,(cdr (assoc "TITLE" (org-collect-keywords '("TITLE") '("TITLE"))))
                     :path ,(org-get-outline-path)
-                    :heading ,(replace-regexp-in-string org-link-any-re "\\4" (substring-no-properties (org-get-heading t t t t)))
+                    :heading ,(replace-regexp-in-string
+                               org-link-any-re "\\3" (substring-no-properties
+                                                      (org-get-heading t t t t)))
                     :tags ,tags
                     :file ,(buffer-file-name)
                     :pos  ,(point)))))
