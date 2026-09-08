@@ -1,4 +1,4 @@
-;;; lisp/doom-docs.el -*- lexical-binding: t; -*-
+;;; lisp/doom-docs.el -*- lexical-binding: t; no-byte-compile: t; -*-
 ;;; Commentary:
 ;;
 ;; This file defines `doom-docs-mode', a major mode derived from `org-mode'
