@@ -146,7 +146,7 @@ file.")
         (unless skip?
           (quiet! (autoload-generate-file-autoloads file target-buffer)))
         (when module?
-          (doom-loaddefs--scan-autodefs file target-buffer module enabled?))))))
+          (doom-loaddefs--scan-autodefs file target-buffer module (not skip?)))))))
 
 (defun doom-loaddefs--read (files thunk &optional literal? relative-to)
   (let (seen forms)
