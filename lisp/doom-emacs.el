@@ -1454,6 +1454,14 @@ with `set-indent-vars!'."
 
 ;;;###package bookmark
 (setq bookmark-default-file (doom-profile-data-dir t "bookmarks"))
+(define-advice bookmark-load (:around (fn &rest args) no-find-file-hook)
+  "Suppress `find-file-hook' and mode hooks while loading bookmarks.
+
+`bookmarks-load' shouldn't be using `find-file-noselect' where a
+`insert-file-contents' + `read' would've been enough, and much more performant.
+This advice exists the mitigate first-time load times that this triggers."
+  (dlet (find-file-hook)
+    (delay-mode-hooks (apply fn args))))
 
 
 ;;;###package comint
