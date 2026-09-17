@@ -54,17 +54,19 @@ variable names."
      &optional output-file)
   "(Re)generates an environment variables file from your shell environment.
 
-The envvars file is created by scraping the current shell environment into
-newline-delimited KEY=VALUE pairs. Typically by running '$SHELL -ic env' (or
-'$SHELL -c set' on windows). The user can load this file from their configs to
-ensure Emacs' mirrors your shell environment (particularly to ensure PATH and
-SHELL are correctly set).
+The envvars file is created by scraping the current shell environment. It is an
+elisp script that sets `process-environment', `exec-path' ($PATH), and
+`shell-file-name' ($SHELL) in your Emacs session. The user can load this file
+from their configs to ensure Emacs' mirrors your shell environment (particularly
+to ensure PATH and SHELL are correctly set).
 
-This is useful in cases where you cannot guarantee that Emacs (or the daemon)
-will be launched from the correct environment (e.g. on MacOS or through certain
-app launchers on Linux).
+This is useful in cases where Emacs (or the daemon) is launched from a bare,
+incomplete, or misconfigured environment (e.g. through an *.app bundle on MacOS,
+a misconfigured systemd environment, or through certain app launchers, like
+dmenu, rofi, or Alfred).
 
-Why this over exec-path-from-shell?
+A popular alternative to this approach is installing the `exec-path-from-shell'
+Emacs package. Why not use that over this? Because...
 
   1. `exec-path-from-shell' spawns (at least) one process at startup to scrape
      your shell environment. This can be arbitrarily slow and insecure depending
