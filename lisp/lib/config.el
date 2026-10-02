@@ -61,9 +61,7 @@
           'compilation-finish-functions
           (lambda (_buf status)
             (if (equal status "finished\n")
-                (progn
-                  (local-set-key "q" #'quit-window)
-                  (with-current-buffer "*scratch*" ,on-success))
+                (with-current-buffer "*scratch*" ,on-success)
               ,on-failure))
           nil 'local)))))
 
