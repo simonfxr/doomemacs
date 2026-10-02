@@ -3,7 +3,7 @@
 ;; doom.el
 (package! compat
   :recipe (:host github :repo "emacs-compat/compat")
-  :pin "df03e91f1fc47503ca71e11dd507ed18ca8b5ab0")  ; 31.0.0.2
+  :pin "90880f81419577e1d3f68424d2a3adf31e6d663e")  ; 31.1.0.0
 (unless (fboundp 'igc-info)
   (package! gcmh
     :pin "0089f9c3a6d4e9a310d0791cf6fa8f35642ecfd9"))
@@ -16,7 +16,7 @@
             :branch "develop"
             :local-repo "straight.el"
             :files ("straight*.el"))
-  :pin "6051b6a6ea7a5b65e306b5787988ac4192de534d")
+  :pin "1a6b4b29815ffa95d3545f65d32e5b3820e4e563")
 
 ;; doom-ui.el
 (package! nerd-icons :pin "17faac7977242b470732efd417d3bcc8eb5a830e")
