@@ -71,9 +71,9 @@
   ;; `let-alist' is built into Emacs 26 and onwards
   (add-to-list 'straight-built-in-pseudo-packages 'let-alist))
 
-(defadvice! doom--read-pinned-packages-a (fn &rest args)
+(define-advice straight--lockfile-read-all
+    (:around (fn &rest args) read-pinned-packages)
   "Read `:pin's in `doom-packages' on top of straight's lockfiles."
-  :around #'straight--lockfile-read-all
   (append (apply fn args) ; lockfiles still take priority
           (doom-package-pinned-alist)))
 
@@ -85,8 +85,8 @@
 ;;   they will try to load their dependencies (like dash or pkg-info), causing
 ;;   file errors.
 ;; REVIEW: Report this upstream.
-(defadvice! doom--fix-loaddefs-generate--parse-file-a (fn &rest args)
-  :around #'loaddefs-generate--parse-file
+(define-advice loaddefs-generate--parse-file
+    (:around (fn &rest args) inhibit-emacs-lisp-mode)
   (let (emacs-lisp-mode-hook)
     (apply fn args)))
 
@@ -131,8 +131,8 @@ original state.")
 ;;   when native-compiling packages in interactive sessions. It ignores the
 ;;   variable when, say, straight is building packages. This advice forces it to
 ;;   obey it, even when used by straight (but only in the CLI).
-(defadvice! doom-straight--native--compile-async-skip-p (fn files &optional recursively load selector)
-  :around #'native-compile-async
+(define-advice native-compile-async
+    (:around (fn files &optional recursively load selector) skip)
   (let (file-list)
     (dolist (file-or-dir (ensure-list files))
       (cond ((file-directory-p file-or-dir)
@@ -152,10 +152,10 @@ original state.")
                             file-list)
              recursively load selector)))
 
-;; HACK: Replace GUI popup prompts (which hang indefinitely in tty Emacs) with
-;;   simple prompts.
-(defadvice! doom-straight--fallback-to-y-or-n-prompt-a (fn &optional prompt noprompt?)
-  :around #'straight-are-you-sure
+(define-advice straight-are-you-sure
+    (:around (fn &optional prompt noprompt?) fix-tty-prompts)
+  "Replace GUI popup prompts with `y-or-n-p'.
+The popups hang non-interactive Emacs sessions indefinitely."
   (or noprompt?
       (if noninteractive
           (y-or-n-p (format! "%s" (or prompt "")))
@@ -166,22 +166,21 @@ original state.")
            if (string-match-p prompt-re prompt)
            return (string-match-p opt-re option)))
 
-(defadvice! doom-straight--no-compute-prefixes-a (fn &rest args)
-  :around #'straight--build-autoloads
+(define-advice straight--build-autoloads
+    (:around (fn &rest args) no-compute-prefixes)
   (eval-when-compile
     (or (require 'loaddefs-gen nil 'noerror)
         (require 'autoload)))
   (let (autoload-compute-prefixes)
     (apply fn args)))
 
-(defadvice! doom-straight--suppress-confirm-a (&rest _)
-  :before-until #'straight-are-you-sure
+(define-advice straight-are-you-sure (:before-until (&rest _) no-confirm)
+  "Obey the -!/--force option in Doom's CLI."
   (and (bound-and-true-p doom-cli--context)
        (get! :suppress-prompts?)))
 
-(defadvice! doom-straight--fallback-to-tty-prompt-a (prompt actions)
+(define-advice straight--popup-raw (:override (prompt actions) fix-tty-prompts)
   "Modifies straight to prompt on the terminal when in noninteractive sessions."
-  :override #'straight--popup-raw
   (if (bound-and-true-p async-in-child-emacs)
       (error "Straight prompt: %s" prompt)
     (let ((doom-straight--auto-options doom-straight--auto-options))
@@ -194,7 +193,7 @@ original state.")
             (cl-remove-if (lambda (o)
                             (string-match-p "^\\(?:Magit\\|Dired\\)" (nth 1 o)))
                           actions))
-      (if (get! :suppress-prompts?)
+      (if (get! :suppress-prompts?)  ; obey -!/--force from Doom's CLI
           (cl-loop for (_key desc func) in actions
                    when desc
                    when (doom-straight--recommended-option-p prompt desc)
@@ -237,10 +236,8 @@ original state.")
               (funcall (nth answer options)))))))))
 
 (setq straight-arrow " > ")
-(defadvice! doom-straight--respect-print-indent-a (string &rest objects)
-  "Same as `message' (which see for STRING and OBJECTS) normally.
-However, in batch mode, print to stdout instead of stderr."
-  :override #'straight--output
+(define-advice straight--output (:override (string &rest objects) respect-indent)
+  "Make output print to stdout while respecting indentation from cli/print.el."
   (let ((msg (apply #'format string objects)))
     (save-match-data
       (when (string-match (format "^%s\\(.+\\)$" (regexp-quote straight-arrow)) msg)
@@ -249,9 +246,8 @@ However, in batch mode, print to stdout instead of stderr."
          (not (string-suffix-p "...done" msg))
          (doom-print (concat "> " msg) :format t))))
 
-(defadvice! doom-straight--ignore-gitconfig-a (fn &rest args)
+(define-advice straight--process-call (:around (fn &rest args) ignore-gitconfig)
   "Prevent user and system git configuration from interfering with git calls."
-  :around #'straight--process-call
   (with-environment-variables
       (("GIT_CONFIG" nil)
        ("GIT_CONFIG_NOSYSTEM" "1")
@@ -259,30 +255,54 @@ However, in batch mode, print to stdout instead of stderr."
                                 "/dev/null")))
     (apply fn args)))
 
-;; If the repo failed to clone correctly (usually due to a connection failure),
-;; straight proceeds as normal until a later call produces a garbage result
-;; (typically, when it fails to fetch the remote branch of the empty directory).
-;; This causes Straight to throw an otherwise cryptic type error when it tries
-;; to sanitize the result for its log buffer.
-;;
-;; This error is a common source of user confusion and false positive bug
-;; reports, so this advice catches them to regurgitates a more cogent
-;; explanation.
-(defadvice! doom-straight--throw-error-on-no-branch-a (fn &rest args)
-  :around #'straight--process-log
+
+;; HACK: Implement safety nets in case Straight fails to clone the repo properly
+;;   (usually due to connection issues or upstream outages).
+
+(define-advice straight--process-log (:around (fn &rest args) barf-if-failed-clone)
+  "Throw a more user-friendly error if the repo wasn't cloned properly.
+
+If the repo failed to clone correctly (usually due to a connection failure),
+straight proceeds as normal until a later call produces a garbage result
+\(typically, when it fails to fetch the remote branch of the empty directory).
+This causes Straight to throw an otherwise cryptic type error when it tries to
+sanitize the result for its log buffer.
+
+This error is a common source of user confusion and false positive bug reports,
+so this advice catches them to regurgitates a more cogent explanation."
   (letf! (defadvice shell-quote-argument (:before (&rest args))
            (unless (car args)
              (error "Package was not properly cloned due to a connection failure, please try again later")))
     (apply fn args)))
 
-(defadvice! doom-straight--regurgitate-empty-string-error-a (fn &rest args)
-  :around #'straight-vc-git-local-repo-name
+(define-advice straight-vc-git-local-repo-name (:around (fn &rest args) barf-if-failed-clone)
+  "Throw a more user-friendly error if the repo wasn't cloned properly."
   (condition-case-unless-debug e
       (apply fn args)
     (wrong-type-argument
-   (if (eq (cadr e) 'stringp)
-       (error "Package was not properly cloned due to a connection failure, please try again later")
-     (signal (car e) (cdr e))))))
+     (if (eq (cadr e) 'stringp)
+         (error "Package was not properly cloned due to a connection failure, please try again later")
+       (signal (car e) (cdr e))))))
+
+(define-advice straight-vc-clone (:around (fn recipe) barf-if-failed-clone)
+  "Throw a more user-friendly error if repo wasn't cloned properly.
+
+In some cases, either Straight or git silently fails to clone a package without
+triggering an catchable error (and thus evading the auto-retry logic in
+`doom-straight--retry-a') and leaves behind an empty directory. This detects
+this and forces straight to emit a catchable error."
+  (prog1 (funcall fn recipe)
+    (when noninteractive
+      (straight--with-plist recipe (package type local-repo)
+        (let* ((local-repo (or local-repo package))
+               (repo-dir (straight--repos-dir local-repo))
+               (build-dir (straight--build-dir local-repo)))
+          (when (file-in-directory-p repo-dir straight-base-dir)
+            (unless (or (file-directory-p (doom-path repo-dir ".git"))
+                        (file-exists-p (doom-path repo-dir ".straight-commit")))
+              (delete-directory repo-dir t)
+              (delete-directory build-dir t)
+              (error "Failed to clone %S..." package))))))))
 
 
 ;; HACK: Straight can sometimes fail to clone/update a repo, leaving behind an
@@ -300,8 +320,8 @@ However, in batch mode, print to stdout instead of stderr."
     merge-from-upstream)
   "Which `straight-vc' methods to retry, if they fail.")
 
-(defadvice! doom-straight--retry-a (fn method type &rest args)
-  :around #'straight-vc
+(define-advice straight-vc (:around (fn method type &rest args) retry)
+  "Make additional attempts if first clone fails."
   (if (or (not noninteractive)
           (memq type '(nil built-in))
           (not (memq method +doom-straight-retry-methods)))
@@ -321,25 +341,6 @@ However, in batch mode, print to stdout instead of stderr."
                    +doom-straight-retries)
            (sleep-for 1))))
       res)))
-
-;; HACK: In some edge cases, either Straight or git silently fails to clone a
-;;   package without triggering an catchable error (and thus evading the
-;;   auto-retry logic in `doom-straight--retry-a') and leaves behind an empty
-;;   directory. This detects this an forces straight to emit a catchable error.
-(defadvice! doom-straight--clone-emit-error-a (fn recipe)
-  :around #'straight-vc-clone
-  (prog1 (funcall fn recipe)
-    (when noninteractive
-      (straight--with-plist recipe (package type local-repo)
-        (let* ((local-repo (or local-repo package))
-               (repo-dir (straight--repos-dir local-repo))
-               (build-dir (straight--build-dir local-repo)))
-          (when (file-in-directory-p repo-dir straight-base-dir)
-            (unless (or (file-directory-p (doom-path repo-dir ".git"))
-                        (file-exists-p (doom-path repo-dir ".straight-commit")))
-              (delete-directory repo-dir t)
-              (delete-directory build-dir t)
-              (error "Failed to clone %S..." package))))))))
 
 ;; HACK: Line encoding issues can plague repos with dirty worktree prompts when
 ;;   updating packages or "Local variables entry is missing the suffix" errors

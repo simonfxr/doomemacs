@@ -491,20 +491,20 @@ or file path may exist now."
              (set-auto-mode)
              (not (eq major-mode 'fundamental-mode)))))))
 
-(defadvice! doom--shut-up-autosave-a (fn &rest args)
-  "If a file has autosaved data, `after-find-file' will pause for 1 second to
-tell you about it. Very annoying. This prevents that."
-  :around #'after-find-file
+(define-advice after-find-file (:around (fn &rest args) suppress-sit-for)
+  "Inhibit `sit-for' calls in FN.
+
+If a file has autosaved data, `after-find-file' pauses for a second to tell you
+about it. Very annoying. This prevents that."
   (letf! ((#'sit-for #'ignore))
     (apply fn args)))
 
-;; HACK: Make sure backup files (like undo-tree's) don't have ridiculously long
-;;   file names that some filesystems will refuse.
 ;; REVIEW: PR this upstream, like they have with the UNIQUIFY argument in
 ;;   `auto-save-file-name-transforms' entries.
-(defadvice! doom-make-hashed-backup-file-name-a (fn file)
-  "A few places use the backup file name so paths don't get too long."
-  :around #'make-backup-file-name-1
+(define-advice make-backup-file-name-1 (:around (fn file) hash-long-paths)
+  "Hash backup file names so they don't get too long for some filesystems.
+
+A few places use the backup file name so paths don't get too long."
   (let ((alist backup-directory-alist)
         backup-directory)
     (while alist
@@ -1060,14 +1060,13 @@ the frame through some other means.")
 
 ;;; ** kill-current-buffer advice
 
-(defadvice! doom--switch-to-fallback-buffer-maybe-a (&rest _)
+(define-advice kill-current-buffer (:before-until (&rest _) to-fallback-buffer)
   "Switch to `doom-fallback-buffer' if on last real buffer.
 
 Advice for `kill-current-buffer'. If in a dedicated window, delete it. If there
 are no real buffers left OR if all remaining buffers are visible in other
 windows, switch to `doom-fallback-buffer'. Otherwise, delegate to original
 `kill-current-buffer'."
-  :before-until #'kill-current-buffer
   (let ((buf (current-buffer)))
     (cond ((eq buf (doom-fallback-buffer))
            (message "Can't kill the fallback buffer.")
@@ -1212,12 +1211,11 @@ windows, switch to `doom-fallback-buffer'. Otherwise, delegate to original
           (enable-theme th)
         (load-theme th t)))))
 
-(defadvice! doom--detect-colorscheme-a (theme)
+(define-advice provide-theme (:after (theme) detect-color-scheme)
   "Add :kind \\='color-scheme to THEME if it doesn't already have one.
 
 Themes wouldn't call `provide-theme' unless they were a color-scheme, so treat
 them as such. Also intended as a helper for `doom--theme-is-colorscheme-p'."
-  :after #'provide-theme
   (or (plist-get (get theme 'theme-properties) :kind)
       (cl-callf plist-put (get theme 'theme-properties) :kind
                 'color-scheme)))
@@ -1456,6 +1454,14 @@ with `set-indent-vars!'."
 
 ;;;###package bookmark
 (setq bookmark-default-file (doom-profile-data-dir t "bookmarks"))
+(define-advice bookmark-load (:around (fn &rest args) no-find-file-hook)
+  "Suppress `find-file-hook' and mode hooks while loading bookmarks.
+
+`bookmarks-load' shouldn't be using `find-file-noselect' where a
+`insert-file-contents' + `read' would've been enough, and much more performant.
+This advice exists the mitigate first-time load times that this triggers."
+  (dlet (find-file-hook)
+    (delay-mode-hooks (apply fn args))))
 
 
 ;;;###package comint
@@ -1466,8 +1472,7 @@ with `set-indent-vars!'."
   ;;   undo could destroy output while it's being printed or delete buffer
   ;;   contents past the boundaries of the current prompt.
   (add-hook 'comint-exec-hook #'buffer-disable-undo)
-  (defadvice! doom--comint-enable-undo-a (process _string)
-    :after #'comint-output-filter
+  (define-advice comint-output-filter (:after (process _string) disable-undo)
     (unless buffer-read-only  ; don't affect output-only buffers like `compilation-mode'
       (with-current-buffer (process-buffer process)
         (when-let* ((start-marker comint-last-output-start))
@@ -1481,14 +1486,14 @@ with `set-indent-vars!'."
   ;; Protect prompts from accidental modifications.
   (setq-default comint-prompt-read-only t)
 
-  ;; UX: Prior output in shell and comint shells (like ielm) should be
-  ;;   read-only. Otherwise, it's trivial to make edits in visual modes (like
-  ;;   evil's or term's term-line-mode) and leave the buffer in a half-broken
-  ;;   state (which you have to flush out with a couple RETs, which may execute
-  ;;   the broken text in the buffer),
-  (defadvice! doom--comint-protect-output-in-visual-modes-a (process _string)
-    :after #'comint-output-filter
-    ;; Adapted from https://github.com/michalrus/dotfiles/blob/c4421e361400c4184ea90a021254766372a1f301/.emacs.d/init.d/040-terminal.el.symlink#L33-L49
+  ;; Adapted from michalrus/dotfiles (no longer exists)
+  (define-advice comint-output-filter (:after (process _string) protect-output)
+    "Mark prior output as read-only to prevent breakage caused by edits.
+
+Prior output in shell and comint shells (like ielm) should be read-only.
+Otherwise, it's trivial to make edits in visual modes (like evil's or term's
+term-line-mode) and leave the buffer in a half-broken state (which you have to
+flush out with a couple RETs, which may execute the broken text in the buffer)."
     (with-current-buffer (process-buffer process)
       (let ((start-marker comint-last-output-start)
             (end-marker (process-mark process)))
@@ -1767,28 +1772,25 @@ the unwritable tidbits."
 (setq save-place-file (doom-profile-cache-dir t "saveplace"))
 (add-hook 'doom-first-input-hook #'save-place-mode)
 (with-eval-after-load 'saveplace
-  (defadvice! doom--recenter-on-load-saveplace-a (&rest _)
-    "Recenter on cursor when loading a saved place."
-    :after-while #'save-place-find-file-hook
-    (if buffer-file-name (ignore-errors (recenter))))
+  (add-hook! 'save-place-after-find-file-hook
+    (defun doom-recenter-if-in-file-h ()
+      (if buffer-file-name (ignore-errors (recenter)))))
 
-  (defadvice! doom--inhibit-saveplace-in-long-files-a (fn &rest args)
-    :around #'save-place-to-alist
+  (define-advice save-place-to-alist
+      (:around (fn &rest args) inhibit-in-so-long-minor-mode)
     (unless (bound-and-true-p so-long-minor-mode)
       (apply fn args)))
 
-  (defadvice! doom--inhibit-saveplace-if-point-not-at-bol-a (&rest _)
+  (define-advice save-place-find-file-hook (:before-while (&rest _) only-at-bobp)
     "If something else has moved point, don't try to move it again."
-    :before-while #'save-place-find-file-hook
     (bobp))
 
   ;;; DEPRECATED: Drop with 30.x support (emacs-mirror/emacs@c270402).
   (when (< emacs-major-version 31)
-    (defadvice! doom--dont-prettify-saveplace-cache-a (fn)
+    (define-advice save-place-alist-to-file (:around (fn) use-print1)
       "`save-place-alist-to-file' uses `pp' to prettify the contents of its cache.
 `pp' can be expensive for longer lists, and there's no reason to prettify cache
 files, so this replace calls to `pp' with the much faster `prin1'."
-      :around #'save-place-alist-to-file
       (letf! ((#'pp #'prin1)) (funcall fn)))))
 
 

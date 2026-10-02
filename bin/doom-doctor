@@ -229,6 +229,17 @@ in."
 
         (print! (success "Detected %d packages") (length doom-packages))
 
+        (let ((envvar-file (doom-profile-dir t doom-profile-init-dir-name "05-doom-env.load.el")))
+          (when (and (file-exists-p envvar-file)
+                     (not (equal (get 'exec-path 'initial-value)
+                                 (let (process-environment exec-path shell-file-name)
+                                   (load envvar-file t t)
+                                   exec-path))))
+            (warn! "Your $PATH has changed since you last generated your envvar file!")
+            (explain! "Run `doom sync' to regenerate your envvar file. Or run `doom sync -r' to only "
+                      "regenerate your profile files without syncing your modules/packages/etc (much "
+                      "faster). See `doom help env` for more information about envvar files.")))
+
         (print! (start "Checking Doom core for irregularities..."))
         (print-group!
           ;; Check for oversized problem files in cache that may cause unusual/tremendous
@@ -280,7 +291,7 @@ in."
             (explain! "Doom will only load one of these (~/.config/doom takes precedence). Possessing\n"
                       "both is rarely intentional; you should one or the other."))
 
-          (unless (string-match-p "/\\(ba\\|z\\|m?k\\|d?a\\)?sh$" shell-file-name)
+          (unless (string-match-p "/\\(ba\\|\\(fi\\)?z\\|m?k\\|d?a\\)?sh$" shell-file-name)
             (print! (warn "Detected a non-POSIX compliant shell (%s)" shell-file-name))
             (explain! "Non-POSIX compliant shells (particularly Fish and Nushell) can cause "
                       "unpredictable issues with any Emacs utilities that spawn child processes "

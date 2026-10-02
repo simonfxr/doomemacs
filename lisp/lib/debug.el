@@ -126,8 +126,8 @@ DEBUG-LEVEL dictates at what `doom-log-level' it should be set at, defaulting to
 ;;   itself from the backtrace. Doing it manually would require reimplementing
 ;;   most of `debug', which is a lot of unnecessary work, when I only want to
 ;;   decorate the original one slightly.
-(defadvice! doom-debugger-a (fn &rest args)
-  :around #'debug
+(define-advice debug (:around (fn &rest args) support-doom-cli)
+  "Pretty backtraces in Doom's CLI."
   ;; Without `doom-debug-mode', be as vanilla as possible.
   (if (not doom-debug-mode)
       (apply fn args)

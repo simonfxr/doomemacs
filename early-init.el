@@ -143,7 +143,7 @@
       ;;   command line, and will do so *really* early in the startup process.
       ;;   These might contain special file paths like TRAMP paths, so restore
       ;;   `file-name-handler-alist' just for this portion of startup.
-      (define-advice command-line-1 (:around (fn args-left))
+      (define-advice command-line-1 (:around (fn args-left) restore-file-name-handlers)
         (let ((file-name-handler-alist
                (if args-left (copy-sequence old-value) file-name-handler-alist)))
           (funcall fn args-left)))
