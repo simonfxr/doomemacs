@@ -27,7 +27,7 @@ The functions in the hook are called with one parameter -- the
     (define-advice disable-theme (:around (fn theme) trigger-hooks)
       (when (custom-theme-enabled-p theme)
         (funcall fn theme)
-        (run-hook-with-args 'enable-theme-functions theme))))
+        (run-hook-with-args 'disable-theme-functions theme))))
 
   ;; Introduced in 29.1
   ;; In case of Emacs builds where treesit isn't built in (to avoid void-function
@@ -73,13 +73,13 @@ The functions in the hook are called with one parameter -- the
     (defvar safe-local-variable-directories ())
     (define-advice hack-local-variables-filter
         (:around (fn variables dir-name) backport-safe-local-variable-directories)
-      (let ((enable-local-variables
-             (if (delq nil (mapcar (lambda (dir)
-                                     (and dir-name dir
-                                          (file-equal-p dir dir-name)))
-                                   safe-local-variable-directories))
-                 :all
-               enable-local-variables)))
+      (dlet ((enable-local-variables
+              (if (delq nil (mapcar (lambda (dir)
+                                      (and dir-name dir
+                                           (file-equal-p dir dir-name)))
+                                    safe-local-variable-directories))
+                  :all
+                enable-local-variables)))
         (funcall fn variables dir-name))))
 
 
@@ -289,7 +289,7 @@ multiple frames focused at once)."
 
 Otherwise, `en/disable-command' (in novice.el.gz) is hardcoded to write them to
 `user-init-file')."
-  (let ((user-init-file custom-file))
+  (dlet ((user-init-file custom-file))
     (apply fn args)))
 
 
@@ -324,11 +324,15 @@ Otherwise, `en/disable-command' (in novice.el.gz) is hardcoded to write them to
                       ;; compatibility fallbacks
                       "gnutls-cli -p %p %h")))
 
-;; DEPRECATED: Interactive sessions won't be able to interact with Straight
-;;   (or Elpaca) in the future, so this is temporary.
-(with-eval-after-load 'straight
-  (require 'doom-straight)
-  (doom-initialize-packages))
+;; Trust the contents of $EMACSDIR and $DOOMDIR, because the user will likely be
+;; working with either/both.
+(when (boundp 'trusted-content)
+  (add-to-list 'trusted-content (abbreviate-file-name (file-truename doom-emacs-dir)))
+  (add-to-list 'trusted-content (abbreviate-file-name (file-truename doom-user-dir))))
+
+;; Ensure .dir-locals.el in $EMACSDIR and $DOOMDIR are always respected
+(add-to-list 'safe-local-variable-directories doom-emacs-dir)
+(add-to-list 'safe-local-variable-directories doom-user-dir)
 
 
 ;;; ** Runtime optimizations
@@ -372,19 +376,6 @@ Otherwise, `en/disable-command' (in novice.el.gz) is hardcoded to write them to
 ;; emacs-lsp/lsp-ui#613.
 (when (boundp 'pgtk-wait-for-event-timeout)
   (setq pgtk-wait-for-event-timeout 0.001))
-
-
-;;; ** Accommodating Doom itself
-
-;; Trust the contents of $EMACSDIR and $DOOMDIR, because the user will likely be
-;; working with either/both.
-(when (boundp 'trusted-content)
-  (add-to-list 'trusted-content (abbreviate-file-name (file-truename doom-emacs-dir)))
-  (add-to-list 'trusted-content (abbreviate-file-name (file-truename doom-user-dir))))
-
-;; Ensure .dir-locals.el in $EMACSDIR and $DOOMDIR are always respected
-(add-to-list 'safe-local-variable-directories doom-emacs-dir)
-(add-to-list 'safe-local-variable-directories doom-user-dir)
 
 
 ;;
@@ -974,10 +965,10 @@ afterwards."
                           (doom-log 2 "start:iloader: Loading %s (%d left)" req (length packages))
                           ;; If `default-directory' doesn't exist or is
                           ;; unreadable, Emacs throws file errors.
-                          (let ((default-directory doom-emacs-dir)
-                                (inhibit-message t)
-                                (file-name-handler-alist
-                                 (list (rassq 'jka-compr-handler file-name-handler-alist))))
+                          (dlet ((default-directory doom-emacs-dir)
+                                 (inhibit-message t)
+                                 (file-name-handler-alist
+                                  (list (rassq 'jka-compr-handler file-name-handler-alist))))
                             (require req nil t)
                             t))))
                    (push req packages))
@@ -1009,11 +1000,26 @@ If this is a daemon session, load them all immediately instead."
 
 ;;; ** Switch {buffer,frame,window} hooks
 
+(defvar doom--switch-buffer-origin nil)
 (defun doom-run-switch-buffer-hooks-h (&optional _)
   "Trigger `doom-switch-buffer-hook' when selecting a new buffer."
-  (unless (or (minibufferp)
-              (eq (window-old-buffer) (current-buffer)))
-    (with-delayed-gc! (run-hooks 'doom-switch-buffer-hook))))
+  (let ((buffer (window-buffer)))
+    (if (or (minibufferp)
+            (minibufferp buffer))
+        ;; For commands that change the focused buffer while the minibuffer is
+        ;; selected (like `consult-buffer').
+        (unless doom--switch-buffer-origin
+          (when-let* ((window (minibuffer-selected-window)))
+            (setq doom--switch-buffer-origin
+                  (cons window (window-old-buffer window)))))
+      (let ((old-buffer
+             (if (eq (car doom--switch-buffer-origin) (selected-window))
+                 (cdr doom--switch-buffer-origin)
+               (window-old-buffer))))
+        (setq doom--switch-buffer-origin nil)
+        (unless (eq old-buffer buffer)
+          (with-current-buffer buffer
+            (with-delayed-gc! (run-hooks 'doom-switch-buffer-hook))))))))
 
 (defun doom-run-switch-window-hooks-h (&optional _)
   "Trigger `doom-switch-window-hook' when selecting a window in the same frame."
@@ -1042,7 +1048,7 @@ the frame through some other means.")
                          doom-switch-frame-hook-debounce-delay))
               (with-selected-frame fr
                 (unwind-protect
-                    (let ((inhibit-redisplay t))
+                    (dlet ((inhibit-redisplay t))
                       (run-hooks 'doom-switch-frame-hook))
                   (set-frame-parameter fr '+last-focus (current-time)))))))))))
 
@@ -1073,8 +1079,8 @@ windows, switch to `doom-fallback-buffer'. Otherwise, delegate to original
     (cond ((eq buf (doom-fallback-buffer))
            (message "Can't kill the fallback buffer.")
            t)
-          ((and (doom-real-buffer-p buf)
-                (run-hook-with-args-until-failure 'kill-buffer-query-functions))
+          ((not (doom-real-buffer-p buf)) nil)
+          ((run-hook-with-args-until-failure 'kill-buffer-query-functions)
            (let ((visible-p (delq (selected-window) (get-buffer-window-list buf nil t))))
              (unless visible-p
                (when (and (buffer-file-name (buffer-base-buffer))
@@ -1083,9 +1089,9 @@ windows, switch to `doom-fallback-buffer'. Otherwise, delegate to original
                                 (format "Buffer %s is modified; kill anyway?"
                                         buf))))
                  (user-error "Aborted")))
-             (let ((inhibit-redisplay t)
-                   buffer-list-update-hook
-                   kill-buffer-query-functions)
+             (dlet ((inhibit-redisplay t)
+                    buffer-list-update-hook
+                    kill-buffer-query-functions)
                (when (or
                       ;; if there aren't more real buffers than visible buffers,
                       ;; then there are no real, non-visible buffers left.
@@ -1100,7 +1106,8 @@ windows, switch to `doom-fallback-buffer'. Otherwise, delegate to original
                    (restore-buffer-modified-p nil))
                  (kill-buffer buf)))
              (run-hooks 'buffer-list-update-hook)
-             t)))))
+             t))
+          (t))))
 
 
 ;;; ** Theme & font loaders
@@ -1117,29 +1124,43 @@ windows, switch to `doom-fallback-buffer'. Otherwise, delegate to original
           (condition-case e
               (when-let* ((face (car map))
                           (font (cdr map)))
+                ;; A tty frame's font attributes are placeholders (e.g. a
+                ;; :height of 1). Recording them in the user theme would
+                ;; clobber the fonts of GUI frames in the same session the next
+                ;; time a theme is enabled (and faces are recalculated).
                 (when (display-multi-font-p frame)
                   (set-face-attribute face frame
                                       :width 'normal :weight 'normal
-                                      :slant 'normal :font font))
-                (custom-push-theme
-                 'theme-face face 'user 'set
-                 (let* ((base-specs (cadr (assq 'user (get face 'theme-face))))
-                        (base-specs (or base-specs '((t nil))))
-                        (attrs '(:family :foundry :slant :weight :height :width))
-                        (new-specs nil))
-                   (dolist (spec base-specs)
-                     (let ((display (car spec))
-                           (plist (copy-tree (nth 1 spec))))
-                       (when (or (memq display '(t default))
-                                 (face-spec-set-match-display display frame))
-                         (dolist (attr attrs)
-                           (setq plist (plist-put plist attr (face-attribute face attr)))))
-                       (push (list display plist) new-specs)))
-                   (nreverse new-specs)))
-                (put face 'face-modified nil))
+                                      :slant 'normal :font font)
+                  (custom-push-theme
+                   'theme-face face 'user 'set
+                   (let* ((base-specs (cadr (assq 'user (get face 'theme-face))))
+                          (base-specs (or base-specs '((t nil))))
+                          (attrs '(:family :foundry :slant :weight :height :width))
+                          (new-specs nil))
+                     (dolist (spec base-specs)
+                       (let ((display (car spec))
+                             (plist (copy-tree (nth 1 spec))))
+                         (when (or (memq display '(t default))
+                                   (face-spec-set-match-display display frame))
+                           (dolist (attr attrs)
+                             (setq plist (plist-put plist attr (face-attribute face attr frame)))))
+                         (push (list display plist) new-specs)))
+                     (nreverse new-specs)))
+                  (put face 'face-modified nil)))
             (error
              (if (string-prefix-p "Font not available" (error-message-string e))
-                 (signal 'doom-font-error (list (font-get (cdr map) :family)))
+                 ;; Don't signal an error here; that would abort the rest of
+                 ;; startup (theme included) over a cosmetic issue. Warn and
+                 ;; fall back to whatever font Emacs picked for this face.
+                 (let ((font (cdr map)))
+                   (display-warning
+                    'doom (format "%s: %s (for the `%s' face)"
+                                  (get 'doom-font-error 'error-message)
+                                  (or (and (fontp font) (font-get font :family))
+                                      font)
+                                  (car map))
+                    :error))
                (signal (car e) (cdr e))))))
         (put 'doom-font 'initialized-frames
              (cons frame (cl-delete-if-not #'frame-live-p initialized-frames))))))
@@ -1193,11 +1214,12 @@ windows, switch to `doom-fallback-buffer'. Otherwise, delegate to original
         ((and (featurep :system 'linux)
               (require 'dbus nil t))
          (eq 1 (car-safe (flatten-list
-                          (dbus-call-method
-                           :session "org.freedesktop.portal.Desktop"
-                           "/org/freedesktop/portal/desktop"
-                           "org.freedesktop.portal.Settings" "Read"
-                           "org.freedesktop.appearance" "color-scheme")))))
+                          (ignore-errors
+                            (dbus-call-method
+                             :session "org.freedesktop.portal.Desktop"
+                             "/org/freedesktop/portal/desktop"
+                             "org.freedesktop.portal.Settings" "Read"
+                             "org.freedesktop.appearance" "color-scheme"))))))
         ((doom-log 1 "Failed to determine if system is in dark mode")
          nil)))
 
@@ -1253,15 +1275,15 @@ them as such. Also intended as a helper for `doom--theme-is-colorscheme-p'."
       ;; which can be contaminated by buffer-local face remaps (e.g. by
       ;; `mixed-pitch-mode'); this prevents that contamination:
       (with-temp-buffer
-        (let ((enable-theme-functions
-               (remq 'doom-enable-theme-h enable-theme-functions)))
+        (dlet ((enable-theme-functions
+                (remq 'doom-enable-theme-h enable-theme-functions)))
           (doom-run-hooks 'doom-load-theme-hook))
         ;; HACK: If the user uses `load-theme' in their $DOOMDIR instead of
         ;;   setting `doom-theme', override the latter, because they shouldn't
         ;;   be using both.
         (unless (or (eq doom-theme theme)
-                    (eq doom-theme (car-safe theme))
-                    (eq doom-theme (cdr-safe theme)))
+                    (eq theme (car-safe doom-theme))
+                    (eq theme (cdr-safe doom-theme)))
           (setq-default doom-theme theme))))))
 
 (add-hook! 'after-make-frame-functions :depth -90
@@ -1500,7 +1522,7 @@ flush out with a couple RETs, which may execute the broken text in the buffer)."
       (let ((start-marker comint-last-output-start)
             (end-marker (process-mark process)))
         (when (and start-marker (< start-marker end-marker)) ;; Account for some of the IELM’s wilderness.
-          (let ((inhibit-read-only t))
+          (dlet ((inhibit-read-only t))
             ;; Make all past output read-only (disallow buffer modifications)
             (add-text-properties comint-last-input-start (1- end-marker) '(read-only t))
             ;; Disallow interleaving.
@@ -1542,7 +1564,7 @@ flush out with a couple RETs, which may execute the broken text in the buffer)."
   ;; much data and grind Emacs' GC to a halt or crash. Also rate-limit expensive
   ;; calls to `comint-truncate-buffer'.
   (autoload 'comint-truncate-buffer "comint" nil t)
-  (add-hook! 'compilation-filter-hook
+  (add-hook! 'compilation-filter-hook :append
     (defun doom-comint-truncate-buffer-h (&optional _string)
       "Rate-limit `comint-truncate-buffer' in compilation-mode buffers."
       (if (> (buffer-size)
@@ -1640,7 +1662,14 @@ flush out with a couple RETs, which may execute the broken text in the buffer)."
   (add-hook! 'hl-line-mode-hook
     (defun doom-truly-disable-hl-line-h ()
       (unless hl-line-mode
-        (kill-local-variable 'doom--hl-line-mode)))))
+        (kill-local-variable 'doom--hl-line-mode))))
+  ;; HACK: Ensure `hl-line-mode's overlays don't change the behavior of other
+  ;;   overlay-reading plugins, like smartparens.
+  (add-hook! 'hl-line-mode-hook
+    (defun doom-hl-line-highlight-last-h ()
+      (when hl-line-mode
+        (remove-hook 'post-command-hook #'hl-line-highlight t)
+        (add-hook 'post-command-hook #'hl-line-highlight 90 t)))))
 
 
 ;;;###package package
@@ -1979,7 +2008,7 @@ and whether the line count of the buffer exceeds that matching entry in
         ;; cause problems when read back, so disable nul byte detection. (Bug
         ;; #52554)
         (inhibit-null-byte-detection t))
-    (let ((debug-on-error debug-on-error-initial))
+    (dlet ((debug-on-error debug-on-error-initial))
       (condition-case-unless-debug error
           (when init-file-user
             (let ((init-file-name
@@ -2039,6 +2068,12 @@ the `--debug-init' option to view a complete error backtrace."
                 debug-on-error-from-init-file debug-on-error)))
     (when debug-on-error-should-be-set
       (setq debug-on-error debug-on-error-from-init-file))))
+
+;; DEPRECATED: Interactive sessions won't be able to interact with Straight
+;;   (or Elpaca) in the future, so this is temporary.
+(with-eval-after-load 'straight
+  (require 'doom-straight)
+  (doom-initialize-packages))
 
 (provide 'doom-emacs)
 ;;; doom-emacs.el
