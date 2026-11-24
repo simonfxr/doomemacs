@@ -1499,12 +1499,10 @@ This advice exists the mitigate first-time load times that this triggers."
   ;;   contents past the boundaries of the current prompt.
   (add-hook 'comint-exec-hook #'buffer-disable-undo)
   (define-advice comint-output-filter (:after (process _string) disable-undo)
-    (unless buffer-read-only  ; don't affect output-only buffers like `compilation-mode'
-      (with-current-buffer (process-buffer process)
+    (with-current-buffer (process-buffer process)
+      (unless buffer-read-only  ; don't affect output-only buffers like `compilation-mode'
         (when-let* ((start-marker comint-last-output-start))
-          (when (and (< start-marker
-                        (or (if process (process-mark process))
-                            (point-max-marker)))
+          (when (and (< start-marker (process-mark process))
                      (eq (char-before start-marker) ?\n)) ;; Account for some of the IELM’s wilderness.
             (buffer-enable-undo)
             (setq buffer-undo-list nil))))))
@@ -1524,18 +1522,30 @@ flush out with a couple RETs, which may execute the broken text in the buffer)."
       (let ((start-marker comint-last-output-start)
             (end-marker (process-mark process)))
         (when (and start-marker (< start-marker end-marker)) ;; Account for some of the IELM’s wilderness.
-          (dlet ((inhibit-read-only t))
-            ;; Make all past output read-only (disallow buffer modifications)
-            (add-text-properties comint-last-input-start (1- end-marker) '(read-only t))
-            ;; Disallow interleaving.
-            (remove-text-properties start-marker (1- end-marker) '(rear-nonsticky))
-            ;; Make sure that at `max-point' you can always append. Important for
-            ;; bad REPLs that keep writing after giving us prompt (e.g. sbt).
-            (add-text-properties (1- end-marker) end-marker '(rear-nonsticky t))
-            ;; Protect fence (newline of input, just before output).
-            (when (eq (char-before start-marker) ?\n)
-              (remove-text-properties (1- start-marker) start-marker '(rear-nonsticky))
-              (add-text-properties (1- start-marker) start-marker '(read-only t))))))))
+          (save-restriction
+            (widen)
+            ;; Don't mark the buffer modified, run change hooks, or leave undo
+            ;; records that could strip these properties again.
+            (with-silent-modifications
+              ;; Make all past output read-only (disallow buffer modifications)
+              ;; PERF: Only on the first output after an input does this have
+              ;;   to reach back to the input. Afterwards, only cover the new
+              ;;   output (and the last char of the previous one, left writable
+              ;;   below), otherwise streaming N chunks costs O(N^2).
+              (add-text-properties
+               (if (get-text-property comint-last-input-start 'read-only)
+                   (max (point-min) (1- start-marker))
+                 comint-last-input-start)
+               (1- end-marker) '(read-only t))
+              ;; Disallow interleaving.
+              (remove-text-properties start-marker (1- end-marker) '(rear-nonsticky))
+              ;; Make sure that at `max-point' you can always append. Important for
+              ;; bad REPLs that keep writing after giving us prompt (e.g. sbt).
+              (add-text-properties (1- end-marker) end-marker '(rear-nonsticky t))
+              ;; Protect fence (newline of input, just before output).
+              (when (eq (char-before start-marker) ?\n)
+                (remove-text-properties (1- start-marker) start-marker '(rear-nonsticky))
+                (add-text-properties (1- start-marker) start-marker '(read-only t)))))))))
 
   ;; UX: If the user is anywhere but the last prompt, typing should move them
   ;;   there instead of unhelpfully spew read-only errors at them.
